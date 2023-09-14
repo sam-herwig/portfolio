@@ -1,0 +1,15 @@
+
+@use 'sass:math';
+$cols: 28;
+$perc: (math.div(1, $cols) * 100%);
+
+@mixin grid {
+  display: grid;
+  grid-template-columns: $perc;
+  grid-template-rows: auto;
+  grid-auto-columns: $perc;
+}
+
+@function span($n) {
+  @return calc(#{math.div($n, $cols)} * var(--wrapper-width));
+}

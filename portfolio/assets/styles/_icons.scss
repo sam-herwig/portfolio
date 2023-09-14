@@ -1,0 +1,169 @@
+
+/**********************************************
+Generic Icons Mixin
+- Use explicit width and height when animating between icons for Safari
+- Include background size and position to get "background-size" / "background-position" / "background-repeat" defaults)
+- Usage:
+  * First use:
+    div {
+      @include icon(facebook, $black, true, 22px, 22px);
+    }
+
+  * Second use (eg. media query change or overwrite), set $include_background_size_and_position to false:
+    @include can-hover {
+      div:hover {
+        @include icon(facebook, $white, false, 22px, 22px);
+      }
+    }
+
+**********************************************/
+@mixin icon($name, $fill, $include_background_size_and_position: false, $width: false, $height: false) {
+  /**********************************************
+  Base Options
+  **********************************************/
+  @if $include_background_size_and_position {
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+  }
+
+  /**********************************************
+  Social Media
+  **********************************************/
+  @if $name == facebook {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 10 20" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M7.57,3.46h2.16C9.88,3.46,10,3.35,10,3.21V0.25C10,0.11,9.88,0,9.73,0H6.08C3.94,0,2.2,1.61,2.2,3.6v2.85H0.27C0.12,6.46,0,6.57,0,6.71v2.96c0,0.14,0.12,0.25,0.27,0.25H2.2v0.16v9.67C2.2,19.89,2.32,20,2.47,20h3.86c0.15,0,0.27-0.11,0.27-0.25V9.92h2.8c0.14,0,0.26-0.1,0.27-0.23l0.27-2.96c0.01-0.15-0.11-0.27-0.27-0.27H6.61v-2.1C6.61,3.86,7.04,3.46,7.57,3.46z"/></svg>');
+  }
+
+  @if $name == instagram {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 20 20" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M15,10c0-2.76-2.24-5-5-5c-2.76,0-5,2.24-5,5c0,2.76,2.24,5,5,5C12.76,15,15,12.76,15,10z M6.8,10c0-1.77,1.44-3.2,3.2-3.2c1.77,0,3.2,1.44,3.2,3.2s-1.44,3.2-3.2,3.2C8.23,13.2,6.8,11.77,6.8,10z"/><path d="M6.02,20h7.95C17.3,20,20,17.31,20,13.98V6.02C20,2.69,17.3,0,13.98,0H6.02C2.7,0,0,2.7,0,6.02v7.95C0,17.3,2.7,20,6.02,20z M1.89,6.02c0-2.28,1.85-4.14,4.14-4.14h7.95c2.29,0,4.14,1.85,4.14,4.14v7.95c0,2.28-1.85,4.14-4.14,4.14H6.02c-2.28,0-4.14-1.85-4.14-4.14V6.02z"/><path d="M16.25,4.8c0-0.69-0.56-1.25-1.25-1.25c-0.69,0-1.25,0.56-1.25,1.25c0,0.69,0.56,1.25,1.25,1.25C15.69,6.05,16.25,5.49,16.25,4.8z"/></svg>');
+  }
+
+  @if $name == vimeo {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 22 22" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M17.51,14.85c-2.99,4.07-5.52,6.1-7.6,6.1c-1.28,0-2.37-1.24-3.25-3.72 c-0.59-2.28-1.18-4.55-1.78-6.82C4.22,7.93,3.52,6.68,2.76,6.68c-0.16,0-0.74,0.36-1.73,1.09L0,6.37c1.08-1,2.15-2,3.21-3 c1.44-1.31,2.53-2,3.25-2.07c1.71-0.17,2.76,1.05,3.16,3.67c0.42,2.83,0.72,4.59,0.88,5.27c0.49,2.34,1.03,3.51,1.63,3.51 c0.46,0,1.15-0.76,2.07-2.27c0.92-1.52,1.41-2.67,1.48-3.47c0.13-1.31-0.36-1.96-1.48-1.96c-0.53,0-1.07,0.12-1.63,0.36 c1.09-3.69,3.16-5.48,6.21-5.38c2.26,0.07,3.33,1.6,3.2,4.6C21.89,7.89,20.4,10.96,17.51,14.85z"/></svg>');
+  }
+
+  @if $name == youtube {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 176 124" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M176 62s0 29-4 43a22 22 0 0 1-15 15c-14 4-69 4-69 4s-55 0-69-4a22 22 0 0 1-15-15C0 91 0 62 0 62s0-29 4-43A22 22 0 0 1 19 4c14-4 69-4 69-4s55 0 69 4a22 22 0 0 1 15 15c4 14 4 43 4 43zM70 88l46-26-46-26z"/></svg>');
+  }
+
+  @if $name == linkedin {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 22 22" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M0,2.93c0-0.7,0.25-1.3,0.74-1.74c0.49-0.47,1.15-0.7,1.93-0.7s1.4,0.23,1.89,0.68c0.49,0.47,0.74,1.08,0.74,1.83 c0,0.68-0.23,1.25-0.72,1.7c-0.49,0.47-1.15,0.7-1.95,0.7H2.61c-0.79,0-1.4-0.23-1.89-0.7C0.23,4.23,0,3.63,0,2.93z M0.28,21.51 V7.33h4.71v14.19H0.28z M7.6,21.51h4.71v-7.92c0-0.49,0.06-0.87,0.17-1.15c0.19-0.49,0.51-0.89,0.91-1.21 c0.4-0.34,0.89-0.51,1.51-0.51c1.59,0,2.38,1.06,2.38,3.21v7.58H22v-8.13c0-2.1-0.49-3.67-1.49-4.76c-1-1.08-2.29-1.64-3.93-1.64 c-1.83,0-3.25,0.79-4.27,2.36v0.04H12.3l0.02-0.04V7.33H7.6C7.62,12.05,7.62,16.78,7.6,21.51z"/></svg>');
+  }
+
+  @if $name == twitter {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 22 20" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M4.06,16.41c-1.19,0.41-2.48,0.6-3.74,0.48c-0.2-0.03-0.24-0.03-0.3,0c-0.06,0.03-0.01,0.08,0.06,0.13c0.26,0.17,0.51,0.32,0.78,0.46c0.8,0.42,1.63,0.75,2.5,0.99c4.49,1.23,9.56,0.33,12.93-3c2.65-2.62,3.58-6.22,3.58-9.83c0-0.14,0.17-0.22,0.27-0.29c0.69-0.51,1.24-1.13,1.75-1.82C22.01,3.37,22,3.23,22,3.18V3.16c0-0.06,0.01-0.04-0.08,0c-0.7,0.31-1.47,0.5-2.22,0.63c0.36-0.06,0.89-0.7,1.1-0.96c0.32-0.4,0.59-0.85,0.74-1.34c0.02-0.04,0.03-0.09,0-0.11c-0.05-0.02-0.08-0.01-0.12,0.01c-0.84,0.45-1.71,0.77-2.64,1c-0.08,0.02-0.13,0-0.18-0.05c-0.08-0.09-0.15-0.17-0.23-0.23c-0.39-0.33-0.81-0.59-1.28-0.78c-0.62-0.25-1.29-0.36-1.96-0.31c-0.65,0.04-1.28,0.22-1.86,0.52c-0.58,0.3-1.09,0.72-1.5,1.22c-0.42,0.52-0.74,1.13-0.9,1.78c-0.15,0.63-0.14,1.25-0.05,1.88c0.01,0.11,0,0.12-0.09,0.11C7.09,5.98,4.09,4.7,1.65,1.93C1.54,1.81,1.49,1.81,1.4,1.94c-1.07,1.59-0.55,4.14,0.78,5.4c0.18,0.17,0.36,0.33,0.56,0.49C2.67,7.84,1.78,7.75,0.99,7.34C0.89,7.28,0.83,7.31,0.82,7.43C0.81,7.6,0.83,7.76,0.85,7.95c0.2,1.61,1.33,3.1,2.87,3.68c0.18,0.08,0.38,0.14,0.58,0.18c-0.35,0.08-0.71,0.13-1.72,0.05c-0.13-0.02-0.17,0.04-0.13,0.16c0.76,2.05,2.39,2.65,3.61,3c0.16,0.03,0.33,0.03,0.49,0.07c-0.01,0.01-0.02,0.01-0.03,0.03C6.12,15.73,4.72,16.19,4.06,16.41z"/></svg>');
+  }
+
+  @if $name == discord{
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="#{$width}" height="#{$height}" fill="#{svgColorMaker($fill)}" xml:space="preserve" viewBox="0 0 28 28"><path d="M23.59,5.26s0,0,0,0a22.59,22.59,0,0,0-5.61-1.74.09.09,0,0,0-.09,0c-.24.43-.51,1-.7,1.43a21.45,21.45,0,0,0-6.3,0,13.58,13.58,0,0,0-.71-1.43.08.08,0,0,0-.09,0A22.18,22.18,0,0,0,4.44,5.23a.05.05,0,0,0,0,0A23.28,23.28,0,0,0,.33,21l0,.06a23,23,0,0,0,6.88,3.48.09.09,0,0,0,.1,0,17.38,17.38,0,0,0,1.41-2.29.09.09,0,0,0,0-.12,15.75,15.75,0,0,1-2.15-1,.09.09,0,0,1,0-.15L7,20.54a.07.07,0,0,1,.09,0,16.29,16.29,0,0,0,13.85,0,.08.08,0,0,1,.09,0c.13.11.28.23.42.33a.09.09,0,0,1,0,.15,14.1,14.1,0,0,1-2.15,1,.1.1,0,0,0-.05.13,18.52,18.52,0,0,0,1.41,2.29.08.08,0,0,0,.09,0A22.86,22.86,0,0,0,27.63,21a.09.09,0,0,0,0-.06A23.09,23.09,0,0,0,23.59,5.26ZM9.43,17.81A2.64,2.64,0,0,1,7,15a2.63,2.63,0,0,1,2.48-2.78A2.63,2.63,0,0,1,11.91,15,2.63,2.63,0,0,1,9.43,17.81Zm9.16,0A2.64,2.64,0,0,1,16.11,15a2.63,2.63,0,0,1,2.48-2.78A2.61,2.61,0,0,1,21.06,15,2.62,2.62,0,0,1,18.59,17.81Z"/></svg>');
+  }
+
+  /**********************************************
+  Controls
+  **********************************************/
+  @if $name == circle-play {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M14 .16A13.84 13.84 0 1 0 27.84 14 13.86 13.86 0 0 0 14 .16zm0 26.71A12.87 12.87 0 1 1 26.87 14 12.88 12.88 0 0 1 14 26.87z"/><path d="M9.98 20.02L20.89 14 9.98 7.99v12.03z"/></svg>');
+  }
+
+  @if $name == circle-pause {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><polyline points="11.28 8.94 10.32 8.94 10.32 19.06 11.28 19.06"/><polyline points="16.72 19.06 17.68 19.06 17.68 8.94 16.72 8.94"/><path d="M14,.16A13.84,13.84,0,1,0,27.84,14,13.86,13.86,0,0,0,14,.16Zm0,26.71A12.87,12.87,0,1,1,26.87,14,12.88,12.88,0,0,1,14,26.87Z"/></svg>');
+  }
+
+  @if $name == pause {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M4.93.63h5.73v26.73H4.93zM17.34.63h5.73v26.73h-5.73z"/></svg>');
+  }
+
+  @if $name == play {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M4.41 24.58L23.59 14 4.41 3.42v21.16z"/></svg>');
+  }
+
+  @if $name == play-inverse {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M14 .11A13.89 13.89 0 1 0 27.89 14 13.9 13.9 0 0 0 14 .11zm4.91 14.17l-7.67 4.45a.26.26 0 0 1-.15 0 .28.28 0 0 1-.15 0 .32.32 0 0 1-.15-.26V9.53a.3.3 0 0 1 .15-.26.32.32 0 0 1 .3 0l7.67 4.49a.3.3 0 0 1 0 .52z"/></svg>');
+  }
+
+  @if $name == triangle-right {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M19 13.75l-7.78-4.52a.32.32 0 0 0-.3 0 .32.32 0 0 0-.16.27v9a.33.33 0 0 0 .15.27.32.32 0 0 0 .31 0L19 14.28a.3.3 0 0 0 .1-.28.33.33 0 0 0-.1-.25z"/></svg>');
+  }
+
+  @if $name == mute {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M19.57 6.57h1.86v15.04h-1.86zM25.14 1.93H27v24.33h-1.86z"/><path fill-rule="evenodd" d="M1 6.57v15.04h5.22L16.45 27V1L5.87 6.57H1z"/></svg>');
+  }
+
+  @if $name == muted {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path class="cls-1" d="M28 18.59l-3.31-4.57 3.28-4.59-1.26-.89-2.97 4.16-3.06-4.22-1.25.9 3.37 4.65-3.33 4.67 1.25.89 3.03-4.24 3 4.15 1.25-.91zM1 6.57v15.04h5.22L16.45 27V1L5.87 6.57H1z"/></svg>');
+  }
+
+  @if $name == fullscreen {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M25.36 12.32V2.64h-9.68V4.5h6.6l-8.23 8.23L5.82 4.5h6.5V2.64H2.64v9.68H4.5v-6.5l8.23 8.23-8.23 8.23v-6.6H2.64v9.68h9.68V23.5h-6.4l8.13-8.13 8.13 8.13h-6.5v1.86h9.68v-9.68H23.5v6.5l-8.13-8.13 8.13-8.13v6.4h1.86z"/></svg>');
+  }
+
+  @if $name == upload-arrow {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 26 33" xml:space="preserve" fill="none" stroke="#{svgColorMaker($fill)}"><path d="M12.787 1.546v23.002M21.796 16.866l-9.068 9.444-9.068-9.444M24.032 31.008H1"/></svg>');
+  }
+
+  @if $name == chevron {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M9.09 25.76l-2.74-2.92L15.79 14 6.35 5.16l2.74-2.92L21.65 14 9.09 25.76z"/></svg>');
+  }
+
+  /**********************************************
+  General
+  **********************************************/
+  @if $name == slash {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 16 22" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M1.38,22c-0.24,0-0.47-0.07-0.69-0.21c-0.57-0.37-0.72-1.13-0.34-1.69 L13.59,0.54c0.38-0.56,1.15-0.71,1.71-0.34c0.57,0.37,0.72,1.13,0.34,1.69L2.41,21.46C2.17,21.81,1.78,22,1.38,22"/></svg>');
+  }
+
+  @if $name == sign-mask {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 1440 820" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M694.919 564H1074L884.46 235.644 189.54 0 0 328.357z"/></svg>');
+  }
+
+  @if $name == loading-indicator {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M13.61 0c-1.42 0-2.84.22-4.19.66l.65 2.02c1.14-.37 2.32-.55 3.53-.55V0h.01zM5.65 2.57c-1.16.83-2.17 1.84-3.01 2.99l1.71 1.26C5.06 5.85 5.92 5 6.89 4.3L5.65 2.57zM.69 9.32C.25 10.63.01 12.04 0 13.5l2.13.02c.01-1.21.21-2.39.58-3.53L.69 9.32zM2.65 17.05l-2.03.64c.43 1.36 1.06 2.64 1.89 3.79l1.73-1.23c-.7-.98-1.23-2.05-1.59-3.2zM6.74 22.81l-1.27 1.7c1.13.85 2.39 1.52 3.75 1.98l.69-2.01c-1.14-.38-2.21-.95-3.17-1.67zM16.96 24.6c-1.14.35-2.34.51-3.54.5l-.03 2.13h.22c1.34 0 2.69-.2 3.97-.59l-.62-2.04zM22.76 20.55c-.73.96-1.6 1.79-2.58 2.48l1.22 1.74c1.17-.81 2.2-1.81 3.06-2.93l-1.7-1.29zM25.09 13.89c-.03 1.21-.24 2.39-.64 3.52l2.01.7c.47-1.34.72-2.75.76-4.17l-2.13-.05z"/></svg>');
+  }
+
+  @if $name == plus {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M26.4 12.4H15.6V1.6a1.6 1.6 0 1 0-3.2 0v10.8H1.6a1.6 1.6 0 1 0 0 3.2h10.8v10.8a1.6 1.6 0 0 0 3.2 0V15.6h10.8a1.6 1.6 0 0 0 0-3.2z"/></svg>');
+  }
+
+  @if $name == x {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M15 14l6.3-6.3a.7.7 0 1 0-1-1L14 13 7.7 6.6a.7.7 0 1 0-1 1L13 14l-6.4 6.3a.7.7 0 0 0 0 1 .7.7 0 0 0 1 0L14 15l6.3 6.3a.7.7 0 0 0 1 0 .7.7 0 0 0 0-1z"/></svg>');
+  }
+
+  @if $name == arrow {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="m16.58 5.52 6.67 7.33H.61v2.3h22.64l-6.67 7.33 1.7 1.54L27.39 14 18.28 3.98l-1.7 1.54z"/></svg>');
+  }
+
+  @if $name == circle-arrow {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M14 .16A13.84 13.84 0 1 0 27.84 14 13.86 13.86 0 0 0 14 .16zm0 26.71A12.87 12.87 0 1 1 26.87 14 12.88 12.88 0 0 1 14 26.87z"/><path d="M13.34 8.65l4.86 4.87H8.05v.96H18.2l-4.86 4.87.68.68L20.05 14l-6.03-6.03-.68.68z"/></svg>');
+  }
+
+  @if $name == hamburger {
+    background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="#{$width}" height="#{$height}" viewBox="0 0 28 28" xml:space="preserve" fill="#{svgColorMaker($fill)}"><path d="M0 3.39h28V6.1H0zM0 21.9h28v2.71H0zM0 12.87h28v2.71H0z"/></svg>');
+  }
+
+  /**********************************************
+  Custom
+  **********************************************/
+
+  //Arrow from Sketch Designs
+  @if $name == arrow2 {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="#{$width}" height="#{$height}" viewBox="0 0 27.74 18.23" fill="#{svgColorMaker($fill)}"><rect class="cls-1" y="7.67" width="23.38" height="2.92"/><polygon class="cls-1" points="17.81 18.23 15.8 16.1 23.41 8.93 15.84 2.18 17.78 0 27.74 8.87 17.81 18.23"/></svg>');
+  }
+  
+  @if $name == dots {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="#{$width}" height="#{$height}" viewBox="0 0 27.74 18.23" fill="#{svgColorMaker($fill)}"><path class="dots" d="m1,1.46c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55.01-1-.44-1-.99Zm8-.03c0-.56.44-1.01,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.56.44-1.01,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55.01-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.56.44-1.01,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.45,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.56.44-1.01,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.04c0-.55.44-1,1-1h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-1Zm8-.02c0-.56.44-1.01.99-1.01h0c.56,0,1.01.44,1.01,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.04c0-.55.44-1,1-1h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-1Zm8-.02c0-.56.44-1.01.99-1.01h0c.56,0,1.01.44,1.01,1h0c0,.55-.45,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.04c0-.55.44-1,1-1h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-1Zm8-.03c0-.55.44-1,1-1h0c.55,0,1,.44,1,1h0c0,.55-.45,1-1,1h0c-.55,0-1-.44-1-1Z"/></svg>');
+  }
+
+  @if $name == asterisk {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="#{$width}" height="#{$height}" viewBox="0 0 27.74 18.23" fill="#{svgColorMaker($fill)}"><polygon id="Path" class="cls-1" points="5.1 17.07 8.71 11.15 12.33 17.07 15.71 14.67 11.38 9.35 17.43 7.77 16.16 4.02 10.29 6.41 10.79 0 6.68 0 7.18 6.41 1.26 4.02 0 7.77 6.05 9.35 1.72 14.67 5.1 17.07"/></svg>');
+  }
+}
+
+
+@mixin repeating-icon($name, $fill, $background-width: false, $background-height: false) {
+  background-size: $background-width $background-height;
+  background-repeat: repeat;
+
+  @if $name == dots {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 2.46" fill="#{svgColorMaker($fill)}"><path class="dots" d="m1,1.46c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55.01-1-.44-1-.99Zm8-.03c0-.56.44-1.01,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.56.44-1.01,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55.01-1-.44-1-.99Zm8-.03c0-.55.44-1,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.56.44-1.01,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.45,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.03c0-.56.44-1.01,1-1.01h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.04c0-.55.44-1,1-1h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-1Zm8-.02c0-.56.44-1.01.99-1.01h0c.56,0,1.01.44,1.01,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.04c0-.55.44-1,1-1h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-1Zm8-.02c0-.56.44-1.01.99-1.01h0c.56,0,1.01.44,1.01,1h0c0,.55-.45,1-1,1h0c-.55,0-1-.44-1-.99Zm8-.04c0-.55.44-1,1-1h0c.55,0,1,.45,1,1h0c0,.55-.44,1-1,1h0c-.55,0-1-.44-1-1Zm8-.03c0-.55.44-1,1-1h0c.55,0,1,.44,1,1h0c0,.55-.45,1-1,1h0c-.55,0-1-.44-1-1Z"/></svg>');
+  }
+}
