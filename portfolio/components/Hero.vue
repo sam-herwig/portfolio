@@ -3,6 +3,7 @@
     <div class="hero-inner">
       <h1>Sam Herwig</h1>
       <button @click="increment">Count is: {{ count }}</button>
+      <button @click="increment">Count is: {{ count }}</button>
     </div>
   </section>
 
@@ -14,15 +15,19 @@ import { ref, onMounted } from 'vue'
 // reactive state
 const count = ref(0)
 
+console.log(count);
+
 // functions that mutate state and trigger updates
 function increment() {
   count.value++
+  console.log(count);
 }
 
 // lifecycle hooks
 onMounted(() => {
   console.log(`The initial count is ${count.value}.`)
 })
+
 </script>
 
 <style lang="scss">
@@ -39,6 +44,7 @@ onMounted(() => {
     flex-direction: column; 
     align-items: center; 
     justify-content: center;
+
   }
 }
 
