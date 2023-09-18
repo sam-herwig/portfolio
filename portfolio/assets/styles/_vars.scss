@@ -1,13 +1,13 @@
 
 @import 'mixins';
-// @import 'fonts';
+@import 'fonts';
 @import 'icons';
 @import 'grid';
 
 
 // Colors
-$black: #232020;
-$off-white: #e7e7e7;
+$black: #000000;
+// $off-white: #e7e7e7;
 $white: #ffffff;
 $blue: #253b77;
 
@@ -19,6 +19,8 @@ $margin-small: 12px;
 $margin-extra-small: 6px;
 
 // Fonts
+$poppins-medium: 'Poppins Medium', Helvetica, sans-serif;
+$poppins-bold: 'Poppins Bold', Helvetica, sans-serif;
 // $gt-walsheim-medium: 'GT Walsheim Medium', Helvetica, sans-serif;
 // $gt-walsheim-bold: 'GT Walsheim Bold', Helvetica, sans-serif;
 // $gt-walsheim-condensed-bold: 'GT Walsheim Pro Condensed Bold', Helvetica, sans-serif;

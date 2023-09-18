@@ -1,21 +1,32 @@
 <template>
   <section class="hero-wrapper">
     <div class="hero-inner">
-      <h1>Sam Herwig</h1>
-      <button @click="increment">Count is: {{ count }}</button>
-      <button @click="increment">Count is: {{ count }}</button>
+      <div class="hero-titles">
+        <h1 class="main-title">Sam Herwig</h1>
+        <h6 class="work-title">Front End Web Developer</h6>
+      </div>
+      <!-- <button @click="increment">Count is: {{ count }}</button>
+      <button @click="increment">Count is: {{ count }}</button> -->
     </div>
   </section>
 
 </template> 
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, data } from 'vue'
 
 // reactive state
 const count = ref(0)
 
 console.log(count);
+
+// data() {
+//   return{
+//     samImg: {
+//       src: 
+//     }
+//   }
+// };
 
 // functions that mutate state and trigger updates
 function increment() {
@@ -34,16 +45,22 @@ onMounted(() => {
 // @import "@/assets/styles/_variables.scss";
 
 .hero-wrapper {
- padding: span(2);
+//  padding: span(2);
 
   .hero-inner {
-    background-color: $white;
-    padding: span(4) 0;
+    // background-color: $white;
+    padding: span(3) 0;
 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    justify-content: center;
+    .hero-titles {
+      margin: 0 auto;
+      width: max-content;
+    }
+
+    .main-title {
+    }
+
+    .work-title {
+    }
 
   }
 }
