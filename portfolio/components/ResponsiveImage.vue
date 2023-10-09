@@ -114,13 +114,15 @@ export default {
     };
   },
   beforeDestroy() {
-    this.$nuxt.$off('viewportResize', this.onViewportResize);
+    // this.$nuxt.$off('viewportResize', this.onViewportResize);
+    window.removeEventListener("resize", this.onViewportResize);
   },
   created() {
     this.throttledResize = throttle(this.onViewportResizeThrottled, 300);
   },
   mounted() {
-    this.$nuxt.$on('viewportResize', this.onViewportResize);
+    // this.$nuxt.$on('viewportResize', this.onViewportResize);
+    window.addEventListener("resize", this.onViewportResize);
     window.requestAnimationFrame(this.onViewportResize);
 
     if(this.$refs.image) {

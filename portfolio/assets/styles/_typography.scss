@@ -99,7 +99,7 @@ h6, .h6 {
 .p3,
 .p4,
 p, a, select, body, li, button {
-  font-family: $poppins-medium;
+  font-family: $tinos-regular;
   // font-weight: $weight-medium;
   line-height: 1.16em;
   text-transform: none;
@@ -111,12 +111,12 @@ p, a, select, body, li, button {
   }
 }
 
-.p1 {
+.p1, li {
   font-size: 21px;
   line-height: 1.16em;
 }
 
-.p2, p, a, select, body, li, button {
+.p2, p, a, select, body,  button {
   font-size: 16px;
   line-height: 1.625em;
 }
@@ -151,11 +151,11 @@ p, a, select, body, li, button {
     line-height: 1em;
   }
 
-  .p1 {
+  .p1, li {
     font-size: 26px;
   }
 
-   p, a, select, body, li, button {
+   p, a, select, body, button {
     font-size: 18px;
     line-height: 1.33em;
   }
