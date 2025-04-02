@@ -1,5 +1,5 @@
 const site_name = 'portfolio';
-const site_url = ''
+const site_url = 'https://vocal-hamster-363b22.netlify.app/'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
