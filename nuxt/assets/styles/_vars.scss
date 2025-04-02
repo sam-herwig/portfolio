@@ -1,0 +1,79 @@
+// --------------------------------------------
+// Colors...
+// --------------------------------------------
+
+$white: #ffffff;
+$gold: #9a9247;
+$green: #559b88;
+$orange: #ff5501;
+$purple: #b280c9;
+$black: #000000;
+$ash: #e5e5e5; // equivalent to rgba($black, 0.1)
+
+// --------------------------------------------
+// Fonts...
+// --------------------------------------------
+
+$poppins: 'poppins', sans-serif;
+$poppins-semi-bold: 'poppins-semi-bold', sans-serif;
+$poppins-extra-bold: 'poppins-extra-bold', sans-serif;
+$omelet-hand: 'omelet-hand', sans-serif;
+
+// --------------------------------------------
+// Speeds...
+// --------------------------------------------
+
+$speed-333: 333ms;
+$speed-666: 666ms;
+
+// --------------------------------------------
+// Heights...
+// --------------------------------------------
+
+$header-height: 60px;
+
+// --------------------------------------------
+// Spacing
+// --------------------------------------------
+
+$space-xs: 5px;
+$space-s: 10px;
+$space-m: 20px;
+$space-l: 30px;
+$space-xl: 40px;
+$space-xxl: 50px;
+
+// --------------------------------------------
+// Easy does it...
+// --------------------------------------------
+
+$ease-out:  cubic-bezier(0.333, 1.000, 0.666, 1.000);
+$evil-ease: cubic-bezier(0.666, 0.000, 0.333, 1.000);
+
+// --------------------------------------------
+// Breakpoints...
+// --------------------------------------------
+
+$portrait:           '(orientation: portrait)';
+$landscape:          '(orientation: landscape)';
+$mobile:             '(min-width: 375px)';
+$small-tablet:       '(min-width: 500px)';
+$tablet:             '(min-width: 768px)';
+$large-tablet:       '(min-width: 1024px)';
+$desktop:            '(min-width: 1280px)';
+$average-desktop:    '(min-width: 1440px)';
+$macbook:            '(min-width: 1680px)';
+$retina-macbook:     '(min-width: 1920px)';
+$largest-screens:    '(min-width: 2000px)';
+
+// --------------------------------------------
+// Functions...
+// --------------------------------------------
+
+@function span($n) {
+  @return calc($n / 14 * (100vw - var(--scrollbar-width)));
+}
+
+@function svgColorMaker($color) {
+  @return '%23' + str-slice('#{$color}', 2, -1);
+}

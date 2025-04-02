@@ -1,0 +1,151 @@
+@use "sass:math";
+
+@function strip-unit($value) {
+  @return math.div($value, $value * 0 + 1);
+}
+
+@mixin fluid-type($min-vw, $max-vw, $min-font-size, $max-font-size) {
+  $u1: unit($min-vw);
+  $u2: unit($max-vw);
+  $u3: unit($min-font-size);
+  $u4: unit($max-font-size);
+
+  @if $u1 == $u2 and $u1 == $u3 and $u1 == $u4 {
+    & {
+      font-size: $min-font-size;
+
+      @media screen and (min-width: $min-vw) {
+        font-size: calc(#{$min-font-size} + #{strip-unit($max-font-size - $min-font-size)} * ((100vw - #{$min-vw}) / #{strip-unit($max-vw - $min-vw)}) );
+      }
+
+      @media screen and (min-width: $max-vw) {
+        font-size: $max-font-size;
+      }
+    }
+  }
+}
+
+$min: 320px;
+$max: 1680px;
+
+body {
+  font-family: $poppins;
+  @include fluid-type($min, $max, 14px, 18px);
+  line-height: 1.25em;
+}
+
+strong,
+.bold {
+  font-family: $poppins-semi-bold;
+}
+
+em, i {
+  font-style: italic;
+}
+
+.nav-a1 {
+  font-family: $poppins-extra-bold;
+  font-size: 13px;
+  line-height: 0.8em;
+  text-transform: uppercase;
+
+  &.--alt {
+    font-size: 18px;
+    line-height: 1.1em;
+  }
+}
+
+.nav-a2 {
+  font-family: $poppins-semi-bold;
+  font-size: 10px;
+  line-height: 1.2em;
+  text-transform: uppercase;
+}
+
+.fs-p1 {
+  font-family: $poppins-semi-bold;
+  @include fluid-type($min, $max, 22px, 37px);
+  line-height: 1.1em;
+  letter-spacing: -0.01em;
+  transform: translateX(-0.03em);
+}
+
+.fs-p2 {
+  font-family: $poppins-semi-bold;
+  @include fluid-type($min, $max, 16px, 22px);
+  line-height: 1.1em;
+  letter-spacing: -0.01em;
+}
+
+.fs-p3 {
+  font-family: $poppins;
+  @include fluid-type($min, $max, 14px, 18px);
+  line-height: 1.666em;
+}
+
+.fs-p4 {
+  font-family: $poppins-semi-bold;
+  @include fluid-type($min, $max, 12px, 14px);
+  line-height: 1.1em;
+
+  &.reg {
+    font-family: $poppins;
+  }
+}
+
+.fs-t1 {
+  font-family: $omelet-hand;
+  @include fluid-type($min, $max, 32px, 56px);
+  line-height: 1em;
+  letter-spacing: -0.01em;
+}
+
+.fs-t2 {
+  font-family: $omelet-hand;
+  @include fluid-type($min, $max, 22px, 45px);
+  line-height: 0.95em;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-family: $poppins;
+  @include fluid-type($min, $max, 10px, 12px);
+  line-height: 12px;
+  letter-spacing: -0.01em;
+  transform: translateX(-0.05em);
+
+  strong,
+  .bold {
+    font-family: $poppins-semi-bold;
+  }
+}
+
+h2 {
+  font-family: $poppins-extra-bold;
+  @include fluid-type($min, $max, 46px, 93px);
+  line-height: 0.8em;
+  text-transform: uppercase;
+  transform: translateX(-0.05em);
+}
+
+h3 {
+  font-family: $poppins-extra-bold;
+  @include fluid-type($min, $max, 36px, 64px);
+  line-height: 0.85em;
+  text-transform: uppercase;
+  transform: translateX(-0.05em);
+}
+
+h4 {
+  font-family: $poppins-extra-bold;
+  @include fluid-type($min, $max, 24px, 40px);
+  line-height: 0.8em;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  transform: translateX(-0.05em);
+
+  &.alt {
+    @include fluid-type($min, $max, 25px, 55px);
+    line-height: 1.1em;
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxtjs/sanity": "^1.12.2",
+    "@nuxtjs/sitemap": "^6.1.2",
+    "@pinia/nuxt": "^0.5.5",
+    "@portabletext/to-html": "^2.0.13",
+    "body-scroll-lock": "^4.0.0-beta.0",
+    "debounce": "^2.2.0",
+    "gsap": "^3.12.5",
+    "lodash": "^4.17.21",
+    "nuxt": "^3.13.0",
+    "nuxt-gtag": "^3.0.1",
+    "pinia": "^2.2.4",
+    "vue": "latest",
+    "vue-router": "latest",
+    "vue-vimeo-player": "^1.1.2",
+    "vue3-carousel": "^0.10.0"
+  },
+  "devDependencies": {
+    "@nuxtjs/dotenv": "^1.4.2",
+    "sass": "1.58.3",
+    "sass-loader": "^12.1.0"
+  },
+  "overrides": {
+    "vue": "latest"
+  }
+}
