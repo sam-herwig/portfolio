@@ -11,6 +11,18 @@
       v-if="pageData"
       :caseStudies="pageData.caseStudies"
     />
+    
+    <Projects
+      v-if="pageData && pageData.projects"
+      :projects="pageData.projects"
+    />
+
+    <!-- Contact Form Section -->
+    <section class="container mx-auto px-4 py-12">
+      <h2 class="text-3xl font-bold mb-8 text-center">Get In Touch</h2>
+      <ContactForm />
+    </section>
+
     <Footer />
   </div>
 </template>
@@ -32,10 +44,17 @@ const homeQuery = groq`*[(_type == "home")][0]{
     title,
     slug
   },
+  projects[]-> {
+    title,
+    subtitle,
+    slug,
+    titleClass,
+    "cursorImage": cursorImage.asset->url,
+    tags
+  }
 }`;
 
 const pageData = await useSanityData({ query: homeQuery });
 
 console.log(pageData);
-
 </script>

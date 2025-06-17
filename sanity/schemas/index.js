@@ -6,6 +6,7 @@ import home from './pages/home';
 
 // Collections
 import caseStudy from './collections/case-study';
+import project from './collections/project';
 
 // Builders
 import textBlock from './shared/builder/text-block';
@@ -20,7 +21,8 @@ export const schemaTypes = [
   site,
   home,
   textBlock, 
-  caseStudy, 
+  caseStudy,
+  project,
   pullQuote, 
   singleImage, 
   videoLoop, 

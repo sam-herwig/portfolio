@@ -16,6 +16,10 @@ export default defineType({
     {
       name: 'work',
       title: 'Work'
+    },
+    {
+      name: 'projects',
+      title: 'Projects'
     }
   ],
   fields: [
@@ -61,6 +65,30 @@ export default defineType({
         }
       ]
     }),
+    defineField({
+      fieldset: 'projects',
+      name: 'projectsTitle',
+      title: 'Projects Section Title',
+      type: 'string',
+      initialValue: 'PROJECTS',
+      validation: [
+        Rule => Rule.required()
+      ]
+    }),
+    defineField({
+      fieldset: 'projects',
+      name: 'projects',
+      title: 'Projects',
+      type: 'array',
+      validation: [
+        Rule => Rule.required().unique().error('Must include at least 1 project')
+      ],
+      of: [
+        {
+          type: 'reference',
+          to: [{ type: 'project' }]
+        }
+      ]
+    })
   ]
 });
-

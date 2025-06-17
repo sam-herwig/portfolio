@@ -29,6 +29,8 @@
   },
   "devDependencies": {
     "@nuxtjs/dotenv": "^1.4.2",
+    "init": "^0.1.2",
+    "npx": "^10.2.2",
     "sass": "1.58.3",
     "sass-loader": "^12.1.0"
   },

@@ -50,7 +50,8 @@ const route = useRoute();
 const router = useRouter();
 const store = useSiteStore();
 const params = { slug: route.params.slug };
-const pageQuery = groq`*[_type == 'caseStudy' && slug.current == $slug][0]{
+const pageQuery = groq`*[(_type == 'caseStudy' || _type == 'project') && slug.current == $slug][0]{
+  _type,
   title,
   slug,
   subtitle,
