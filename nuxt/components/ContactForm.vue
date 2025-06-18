@@ -3,6 +3,10 @@
     <div class="container">
       <div class="greeting">
         <h2>Hi Sam,</h2>
+
+        <div class="note">
+          <p>Please fill this out if you want to chat!</p>
+        </div>
       </div>
       <div class="form-wrapper">
         <form
@@ -27,11 +31,26 @@
                 required
                 placeholder="Your name"
               />
-            <span>I want some help with</span>
-            </div>
+           
+          </div>
 
           <div class="form-row">
+            <span>I want some help with</span>
+            <div class="dropdown-wrapper project-type">
+              <select name="project_type" v-model="formData.projectType" required>
+                <option value="" disabled selected>Project type</option>
+                <option value="website">Website</option>
+                <option value="branding">Branding</option>
+                <option value="application">Application</option>
+                <option value="marketing">Marketing</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
             <label>My budget is</label>
+          </div>
+
+          <div class="form-row">
+           
             <div class="dropdown-wrapper">
               <select name="budget" v-model="formData.budget" required>
                 <option value="" disabled selected>$1,000,000</option>
@@ -43,23 +62,13 @@
                 <option value="more_than_100k">More than $100,000</option>
               </select>
             </div>
-            </div>
-
-          <div class="form-row">
-            <div class="dropdown-wrapper project-type">
-              <select name="project_type" v-model="formData.projectType" required>
-                <option value="" disabled selected>Project type</option>
-                <option value="website">Website</option>
-                <option value="branding">Branding</option>
-                <option value="application">Application</option>
-                <option value="marketing">Marketing</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+            <label>reach me at</label>
           </div>
 
+       
+
           <div class="form-row">
-            <label>reach me at</label>
+         
             <input
               type="email"
               id="email"
@@ -68,16 +77,16 @@
               required
               placeholder="Email"
             />
-          </div>
 
-          <div class="form-actions">
-            <button
-              type="submit"
-              :disabled="submitting"
-            >
-              <span v-if="submitting">Sending...</span>
-              <span v-else>LET'S COOK</span>
-            </button>
+            <div class="form-actions">
+              <button
+                type="submit"
+                :disabled="submitting"
+              >
+                <p v-if="submitting">Sending...</p>
+                <p v-else>LET'S COOK</p>
+              </button>
+            </div>
           </div>
 
           <div v-if="formSubmitted" class="form-feedback">
@@ -87,12 +96,8 @@
             <div v-else class="error-message">
               {{ errorMessage }}
           </div>
-    </div>
-        </form>
-      </div>
-
-      <div class="note">
-        <p>Please fill this out if you want to chat!</p>
+       </div>
+      </form>
       </div>
     </div>
   </section>
@@ -150,16 +155,12 @@ const handleSubmit = async () => {
 
 <style lang="scss" scoped>
 // Variables
-$red-background: #f44336;
-$black: #000000;
-$white: #ffffff;
-$dark-button: #222222;
 $border-radius: 4px;
 $transition-normal: all 0.3s ease;
 
 .contact-section {
   padding: 3rem 0;
-  background-color: $red-background;
+  background-color: $red;
   color: $black;
   position: relative;
   min-height: 80vh;
@@ -171,47 +172,74 @@ $transition-normal: all 0.3s ease;
     max-width: 1000px;
     margin: 0 auto;
     padding: 0 2rem;
+    
+    @media (max-width: 768px) {
+      padding: 0 1.5rem;
+    }
   }
 
   .greeting {
     margin-bottom: 2rem;
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+
+    @media (max-width: 768px) {
+      display: block; 
+      padding: 0 1rem;
+    }
 
     h2 {
       font-size: 3.5rem;
       font-weight: 700;
       margin: 0;
+      
+      @media (max-width: 768px) {
+        margin-bottom: 12px;
+      }
     }
   }
 
   .note {
-    position: absolute;
-    top: 2rem;
-    right: 2rem;
-    font-size: 0.9rem;
+    // position: absolute;
+    // top: 2rem;
+    // right: 2rem;
+    // font-size: 0.9rem;
 
     @media (max-width: 768px) {
-      position: static;
-      text-align: right;
-      margin-top: 1rem;
+      // position: static;
+      // text-align: right;
+      // margin-top: 1rem;
     }
   }
 
   .form-wrapper {
     width: 100%;
+    
+    @media (min-width: 768px) {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+    }
+    
     form {
+      width: 100%;
       .hidden {
         display: none;
       }
 
       .form-row {
         display: flex;
-        align-items: center;
+        align-items: center;  
         margin-bottom: 1.5rem;
+        justify-content: center;
         flex-wrap: wrap;
 
         @media (max-width: 768px) {
           flex-direction: column;
           align-items: flex-start;
+          padding: 0 1rem;
         }
 
           label {
@@ -223,9 +251,9 @@ $transition-normal: all 0.3s ease;
           }
         }
 
-        input, select {
+        input {
           flex: 1;
-            padding: 0.75rem 1rem;
+          padding: 0.75rem 1rem;
           border: 1px solid $black;
           border-radius: $border-radius;
           background: transparent;
@@ -234,9 +262,29 @@ $transition-normal: all 0.3s ease;
           max-width: 300px;
           margin: 0 1rem;
 
-            &::placeholder {
+          &::placeholder {
             color: rgba($black, 0.7);
-            }
+          }
+          &:focus {
+            outline: none;
+          }
+
+          @media (max-width: 768px) {
+            width: 90%;
+            margin: 0.5rem 0;
+            max-width: 100%;
+          }
+        }
+        
+        select {
+          flex: 1;
+          padding: 0.75rem 1rem;
+          border: 1px solid $black;
+          border-radius: $border-radius;
+          font-size: 1.1rem;
+          max-width: 300px;
+          margin: 0 1rem;
+          
           &:focus {
             outline: none;
           }
@@ -245,8 +293,8 @@ $transition-normal: all 0.3s ease;
             width: 100%;
             margin: 0.5rem 0;
             max-width: 100%;
+          }
         }
-      }
 
         span {
           margin-left: 1rem;
@@ -262,6 +310,8 @@ $transition-normal: all 0.3s ease;
           max-width: 300px;
           flex: 1;
           margin: 0 1rem;
+          border-radius: $border-radius;
+          overflow: hidden;
 
           @media (max-width: 768px) {
             width: 100%;
@@ -270,16 +320,13 @@ $transition-normal: all 0.3s ease;
           }
 
           &:after {
-            content: '';
+            content: '⌄';
             position: absolute;
             right: 15px;
             top: 50%;
             transform: translateY(-50%);
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 6px solid $black;
+            color: $red;
+            font-size: 16px;
             pointer-events: none;
           }
 
@@ -288,6 +335,14 @@ $transition-normal: all 0.3s ease;
             width: 100%;
             margin: 0;
             padding-right: 2.5rem;
+            background-color: $black;
+            color: $red;
+            border: 1px solid $black;
+            
+            option {
+              background-color: $black;
+              color: $red;
+            }
           }
 
           &.project-type {
@@ -301,9 +356,16 @@ $transition-normal: all 0.3s ease;
       }
 
       .form-actions {
-        margin-top: 2rem;
+        display: flex;
+        justify-content: flex-end;
+        
+        @media (max-width: 768px) {
+          padding: 0 1rem;
+          margin-top: 2rem;
+        }
+
         button {
-          background-color: $dark-button;
+          background-color: $black;
           color: $white;
           font-weight: 500;
           padding: 0.75rem 2.5rem;
@@ -315,7 +377,7 @@ $transition-normal: all 0.3s ease;
           text-transform: uppercase;
 
           &:hover {
-            background-color: darken($dark-button, 10%);
+            color: $red;
           }
 
           &:disabled {
@@ -327,6 +389,10 @@ $transition-normal: all 0.3s ease;
 
       .form-feedback {
         margin-top: 1.5rem;
+        
+        @media (max-width: 768px) {
+          padding: 0 1rem;
+        }
         .success-message {
           color: $white;
           font-weight: 500;

@@ -1,5 +1,5 @@
 <template>
-  <section class="hero-section pad-bl">
+  <section class="hero-section">
     <div class="hero-section-inner">
       <div class="hero-left">
         <h1 class="first-name">SAM</h1>
@@ -62,8 +62,8 @@ const props = defineProps({
 section.hero-section {
   position: relative;
   height: 100svh;
-  background-color: #e94234; /* Red background color */
-  color: #000;
+  background-color: $red; /* Red background color */
+  color: $black;
   overflow: hidden;
 
   .hero-section-inner {
@@ -77,24 +77,27 @@ section.hero-section {
   /* Mobile styles - stacked layout */
   @media (max-width: 767px) {
     height: auto;
-    min-height: 100svh;
+    // min-height: 100svh;
 
     .hero-section-inner {
       display: flex;
       flex-direction: column;
-      padding: $space-m;
+      justify-content: space-between;
+      padding: $space-l;
       height: auto;
     }
 
     .hero-left {
       position: relative;
-      top: auto;
-      left: auto;
-      margin-top: $space-l;
-      text-align: center;
+      // top: auto;
+      // left: auto;
+      // margin-top: $space-l;
+      // margin-bottom: $space-l;
+      text-align: left;
 
       .first-name {
         font-size: 80px;
+        line-height: 80px;
       }
     }
 
@@ -113,7 +116,7 @@ section.hero-section {
 
         .collage-image {
           position: absolute;
-          background-color: #000;
+          background-color: $black;
           overflow: hidden;
 
           img {
@@ -155,7 +158,7 @@ section.hero-section {
       right: auto;
       max-width: 100%;
       margin: $space-l 0;
-      text-align: center;
+      text-align: right;
 
       .hero-title {
         .job-title {
@@ -170,13 +173,31 @@ section.hero-section {
         gap: $space-m;
 
         .hero-link {
+          display: block;
+          font-family: $poppins-semi-bold;
+          font-size: 16px;
+          padding: $space-xs 0;
+          border-bottom: 1px solid $black;
+          position: relative;
           padding: $space-xs $space-s;
+          text-align: left;
           
           &:after {
-            position: static;
-            margin-left: $space-xs;
+            content: "→";
+            position: absolute;
+            right: 0;
+            width: max-content;
           }
         }
+
+        // .hero-link {
+        //   padding: $space-xs $space-s;
+          
+        //   &:after {
+        //     position: static;
+        //     margin-left: $space-xs;
+        //   }
+        // }
       }
     }
 
@@ -188,9 +209,13 @@ section.hero-section {
       margin-bottom: $space-l;
       width: 100%;
       justify-content: center;
+      display: flex;
+      align-items: center;
+      text-align: right;
 
       .last-name {
-        font-size: 60px;
+        font-size: 80px;
+        line-height: 80px;
       }
 
       .logo-circle {
@@ -204,11 +229,12 @@ section.hero-section {
   
 
   @include respond-to($tablet) {
-    .hero-left {
+  .hero-left {
     position: absolute;
     top: 100px;
     left: $space-l;
     z-index: 2;
+    top: 30px;
 
     .first-name {
       font-family: $poppins-extra-bold;
@@ -233,7 +259,7 @@ section.hero-section {
 
       .collage-image {
         position: absolute;
-        background-color: #000;
+        background-color: $black;
         overflow: hidden;
 
         img {
@@ -268,10 +294,10 @@ section.hero-section {
 
   .hero-right {
     position: absolute;
-    top: 100px;
+    top: 42px;
     right: $space-l;
     z-index: 2;
-    max-width: 300px;
+    max-width: 400px;
 
     .hero-title {
       .job-title {
@@ -293,7 +319,7 @@ section.hero-section {
         font-family: $poppins-semi-bold;
         font-size: 16px;
         padding: $space-xs 0;
-        border-bottom: 1px solid #000;
+        border-bottom: 1px solid $black;
         position: relative;
         
         &:after {
@@ -307,7 +333,7 @@ section.hero-section {
 
   .hero-bottom {
     position: absolute;
-    bottom: $space-l;
+    bottom: 90px;
     right: $space-l;
     display: flex;
     align-items: flex-end;
@@ -323,7 +349,7 @@ section.hero-section {
     .logo-circle {
       width: 50px;
       height: 50px;
-      border: 1px solid #000;
+      border: 1px solid $black;
       border-radius: 50%;
       display: flex;
       align-items: center;

@@ -7,10 +7,10 @@
       :image="pageData.heroImage"
     />
 
-    <News 
+    <!-- <News 
       v-if="pageData"
       :caseStudies="pageData.caseStudies"
-    />
+    /> -->
     
     <Projects
       v-if="pageData && pageData.projects"
@@ -19,7 +19,7 @@
 
     <!-- Contact Form Section -->
     <section class="container mx-auto px-4 py-12">
-      <h2 class="text-3xl font-bold mb-8 text-center">Get In Touch</h2>
+      <!-- <h2 class="text-3xl font-bold mb-8 text-center">Get In Touch</h2> -->
       <ContactForm />
     </section>
 

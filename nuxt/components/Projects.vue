@@ -148,8 +148,8 @@ const resetCursor = () => {
 <style lang="scss">
 .projects-section {
   padding: 4rem 0;
-  background-color: #1a1a1a;
-  color: #ffffff;
+  background-color: $dark-black;
+  color: $white;
   
   .projects-header {
     display: flex;
@@ -177,21 +177,21 @@ const resetCursor = () => {
       
       .tag {
         padding: 0.5rem 1rem;
-        border: 1px solid #e94234;
+        border: 1px solid $red;
         border-radius: 2rem;
         font-family: $poppins-semi-bold;
         font-size: 0.875rem;
         cursor: pointer;
         transition: background-color 0.3s, color 0.3s;
-        color: #ffffff;
+        color: $white;
         
         &:hover {
-          background-color: rgba(233, 66, 52, 0.1);
+          background-color: rgba($red, 0.1);
         }
         
         &.active {
-          background-color: #e94234;
-          color: #ffffff;
+          background-color: $red;
+          color: $white;
         }
       }
     }
@@ -199,7 +199,7 @@ const resetCursor = () => {
   
   .projects-divider {
     height: 1px;
-    background-color: #e94234;
+    background-color: $red;
     margin: 2rem 0;
   }
   
@@ -234,7 +234,7 @@ const resetCursor = () => {
         margin-bottom: 0.5rem;
         
         &.red {
-          color: #e94234;
+          color: $red;
         }
       }
       

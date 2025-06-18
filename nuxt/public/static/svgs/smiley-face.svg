@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="uuid-a312f297-1b4f-41d9-8080-0272de61d0c7" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 178.42 178.42">
+  <defs>
+    <style>
+      .uuid-3f114508-162c-4871-8170-1a5e1e127915 {
+        stroke: #231f20;
+        stroke-miterlimit: 10;
+        stroke-width: 4px;
+      }
+
+      .uuid-3f114508-162c-4871-8170-1a5e1e127915, .uuid-5e9b90ef-871b-43cb-b481-72481dc79705 {
+        fill: #fff;
+      }
+
+      .uuid-67c9abce-dad3-40de-8f26-1add457aba8f, .uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7 {
+        fill: #231f20;
+      }
+
+      .uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7 {
+        font-family: Helvetica-Bold, Helvetica;
+        font-size: 16.26px;
+        font-weight: 700;
+      }
+    </style>
+  </defs>
+  <g id="uuid-864609a6-d57c-412c-96b8-ab1dc14b8f36" data-name="Layer 1">
+    <g>
+      <circle class="uuid-5e9b90ef-871b-43cb-b481-72481dc79705" cx="89.21" cy="89.21" r="89.21"/>
+      <g>
+        <ellipse class="uuid-3f114508-162c-4871-8170-1a5e1e127915" cx="61.53" cy="72.62" rx="22.93" ry="30.85"/>
+        <ellipse class="uuid-67c9abce-dad3-40de-8f26-1add457aba8f" cx="58.01" cy="82.26" rx="14.3" ry="19.24"/>
+        <ellipse class="uuid-3f114508-162c-4871-8170-1a5e1e127915" cx="114.53" cy="72.62" rx="22.93" ry="30.85"/>
+        <ellipse class="uuid-67c9abce-dad3-40de-8f26-1add457aba8f" cx="111.01" cy="82.26" rx="14.3" ry="19.24"/>
+        <ellipse class="uuid-5e9b90ef-871b-43cb-b481-72481dc79705" cx="53.41" cy="77.27" rx="3.71" ry="4.99"/>
+        <ellipse class="uuid-5e9b90ef-871b-43cb-b481-72481dc79705" cx="105.54" cy="77.27" rx="3.71" ry="4.99"/>
+      </g>
+      <g>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(36.18 124.51) rotate(51.49)"><tspan x="0" y="0">S</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(44.43 134.54) rotate(39.8)"><tspan x="0" y="0">E</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(54.54 142.67) rotate(28.03)"><tspan x="0" y="0">E</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(65.79 148.25) rotate(19.5)"><tspan x="0" y="0"> </tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(71.73 150.51) rotate(10.45)"><tspan x="0" y="0">P</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(84.47 152.77) rotate(-1)"><tspan x="0" y="0">R</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(98.54 152.3) rotate(-14.18)"><tspan x="0" y="0">O</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(112.76 148.3) rotate(-25.89)"><tspan x="0" y="0">J</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(122.65 143.38) rotate(-36.59)"><tspan x="0" y="0">E</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(133 135.47) rotate(-48.7)"><tspan x="0" y="0">C</tspan></text>
+        <text class="uuid-533d6c5d-f93c-4d94-8371-ea9298221bd7" transform="translate(141.92 124.84) rotate(-60.46)"><tspan x="0" y="0">T</tspan></text>
+      </g>
+    </g>
+  </g>
+</svg>
