@@ -100,13 +100,11 @@ export default defineType({
           type: 'string',
           options: {
             list: [
-              { title: 'HTML', value: 'HTML' },
-              { title: 'CSS', value: 'CSS' },
-              { title: 'JS', value: 'JS' },
-              { title: 'Three.JS', value: 'Three.JS' },
-              { title: 'Skier', value: 'Skier' },
-              { title: 'Climber', value: 'Climber' },
-              { title: 'Cyclist', value: 'Cyclist' }
+              { title: 'Web', value: 'WEB' },
+              { title: 'Interactive', value: 'Interactive' },
+              { title: 'Three.JS', value: 'Three.JS' }, 
+              { title: 'New Belgium', value: 'New Belgium' },
+              { title: 'Fresh Build', value: 'freshBuild' }
             ]
           }
         }

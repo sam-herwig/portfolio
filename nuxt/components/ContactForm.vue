@@ -125,10 +125,11 @@ const handleSubmit = async () => {
   try {
     const formDataObj = new FormData();
     formDataObj.append('form-name', 'contact');
-    Object.entries(formData.value).forEach(([key, value]) => {
-      formDataObj.append(key, value);
-    });
-    
+    formDataObj.append('name', formData.value.name);
+    formDataObj.append('email', formData.value.email);
+    formDataObj.append('budget', formData.value.budget);
+    formDataObj.append('project_type', formData.value.projectType); // <-- match field name
+
     const response = await fetch('/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
