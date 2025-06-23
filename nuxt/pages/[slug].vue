@@ -37,6 +37,16 @@
           :vimeo="block.vimeo"
           :controls="true"
         />
+        <BuilderImageExplosion
+          v-if="block.type === 'imageExplosion'"
+          :centerImage="block.centerImage"
+          :explosionImages="block.explosionImages"
+          :explosionVideos="block.explosionVideos"
+          :animationDuration="block.animationDuration"
+          :staggerDelay="block.staggerDelay"
+          :fadeOutDelay="block.fadeOutDelay"
+          :gradientText="block.showGradientText && block.gradientText ? block.gradientText : null"
+        />
       </template>
       <Footer />
     </template> 
@@ -45,6 +55,7 @@
 
 <script setup>
 import { useSiteStore } from '~/stores/store';
+import { imageProps } from '~/utils/groq-common';
 
 const route = useRoute();
 const router = useRouter();
@@ -84,6 +95,39 @@ const pageQuery = groq`*[(_type == 'caseStudy' || _type == 'project') && slug.cu
     _type == 'videoPlayer' => {
       'type': _type,
       vimeo
+    },
+    _type == 'imageExplosion' => {
+      'type': _type,
+      'centerImage': {
+        'src': centerImage.asset->url,
+        'alt': centerImage.asset->altText,
+        'width': centerImage.asset->metadata.dimensions.width,
+        'height': centerImage.asset->metadata.dimensions.height
+      },
+      'explosionImages': explosionImages[].asset->{
+        'src': url,
+        'alt': altText,
+        'width': metadata.dimensions.width,
+        'height': metadata.dimensions.height
+      },
+      'explosionVideos': explosionVideos[].asset->{
+        'src': url,
+        'width': metadata.dimensions.width,
+        'height': metadata.dimensions.height
+      },
+      animationDuration,
+      staggerDelay,
+      fadeOutDelay,
+      showGradientText,
+      'gradientText': gradientText {
+        title,
+        description,
+        linkText,
+        linkUrl,
+        gradientStartColor,
+        gradientEndColor,
+        animationDuration
+      }
     },
   }
 }`;

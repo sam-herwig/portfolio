@@ -108,9 +108,9 @@ em, i {
 }
 
 h1 {
-  font-family: $poppins;
-  @include fluid-type($min, $max, 10px, 12px);
-  line-height: 12px;
+  font-family: $poppins-extra-bold;
+  @include fluid-type($min, $max, 50px, 120px);
+  line-height: 1em;
   letter-spacing: -0.01em;
   transform: translateX(-0.05em);
 

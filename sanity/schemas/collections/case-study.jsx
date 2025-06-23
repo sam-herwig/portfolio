@@ -84,6 +84,9 @@ export default defineType({
           type: 'singleImage'
         }, 
         {
+          type: 'imageExplosion'
+        },
+        {
           type: 'videoLoop'
         },
         {

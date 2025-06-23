@@ -10,7 +10,7 @@
   >
     <p v-if="!nosr" class="screen-reader">Image element: {{ dataAlt ? dataAlt : dataFilename }}</p>
     <picture class="responsive-image-picture picture" :class="{ 'responsive-image-fade': !palette }">
-      <source :srcset="src.endsWith('.png') ? generateSrcSet('png') : generateSrcSet('jpg')" :type="src.endsWith('.png') ? 'image/png' : 'image/jpeg'" :sizes="`${effectiveWidth}px`">
+      <source v-if="src" :srcset="src.endsWith('.png') ? generateSrcSet('png') : generateSrcSet('jpg')" :type="src && src.endsWith('.png') ? 'image/png' : 'image/jpeg'" :sizes="`${effectiveWidth}px`">
       <img
         :src="generateSrc()"
         :alt="dataAlt ? dataAlt : dataFilename"
@@ -149,10 +149,9 @@ export default {
   },
   methods: {
     generateSrc() {
-      if (!this.effectiveWidth) {
+      if (!this.effectiveWidth || !this.src) {
         // must return no src if effective width is not determined yet
-        // otherwise it will download the asset as if it was the full size
-        // of the viewport
+        // or if src is undefined
         return '';
       }
       let min_width = this.width < this.min_width ? this.min_width : this.width;
@@ -160,10 +159,9 @@ export default {
       return `${this.src}${this.src.includes('?') ? '&' : '?'}q=${this.quality}&w=${Math.min(min_width, this.maxSrcWidth)}`;
     },
     generateSrcSet(format) {
-      if (!this.effectiveWidth) {
+      if (!this.effectiveWidth || !this.src) {
         // must return no src if effective width is not determined yet
-        // otherwise it will download the asset as if it was the full size
-        // of the viewport
+        // or if src is undefined
         return '';
       }
 

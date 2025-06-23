@@ -189,15 +189,6 @@ section.hero-section {
             width: max-content;
           }
         }
-
-        // .hero-link {
-        //   padding: $space-xs $space-s;
-          
-        //   &:after {
-        //     position: static;
-        //     margin-left: $space-xs;
-        //   }
-        // }
       }
     }
 

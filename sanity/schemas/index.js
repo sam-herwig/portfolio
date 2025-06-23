@@ -12,6 +12,8 @@ import project from './collections/project';
 import textBlock from './shared/builder/text-block';
 import pullQuote from './shared/builder/pull-quote';
 import singleImage from './shared/builder/single-image';
+import imageExplosion from './shared/builder/image-explosion';
+import gradientText from './shared/builder/gradient-text';
 
 // Shared 
 import videoLoop from './shared/video-loop';
@@ -25,6 +27,8 @@ export const schemaTypes = [
   project,
   pullQuote, 
   singleImage, 
+  imageExplosion,
+  gradientText,
   videoLoop, 
   videoPlayer
 ];

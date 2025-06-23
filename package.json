@@ -1,0 +1,21 @@
+{
+  "name": "portfolio-puppeteer",
+  "version": "1.0.0",
+  "description": "Puppeteer scripts for taking screenshots of the portfolio website",
+  "main": "puppeteer-screenshot.js",
+  "scripts": {
+    "screenshot": "node puppeteer-screenshot.js",
+    "screenshot:component": "node -e \"require('./puppeteer-screenshot').takeComponentScreenshot('http://localhost:3001', '.builder-image-explosion', 'image-explosion-component')\"",
+    "screenshot:mobile": "node -e \"require('./puppeteer-screenshot').takeScreenshot('http://localhost:3001', 'homepage-mobile', { width: 375, height: 667 })\"",
+    "screenshot:desktop": "node -e \"require('./puppeteer-screenshot').takeScreenshot('http://localhost:3001', 'homepage-desktop', { width: 1280, height: 800 })\"",
+    "screenshot:gradient": "node -e \"require('./puppeteer-screenshot').takeComponentScreenshot('http://localhost:3001', '.builder-gradient-text', 'gradient-text-component')\"",
+    "screenshot:transition": "node -e \"require('./puppeteer-screenshot').takeDelayedScreenshot('http://localhost:3001', 'explosion-to-gradient-transition', { width: 1280, height: 800 }, 8000)\""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dat.gui": "^0.7.9",
+    "puppeteer": "^21.0.0",
+    "three": "^0.177.0"
+  }
+}
