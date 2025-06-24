@@ -73,6 +73,7 @@ const combinedMedia = ref([]);
 
 // --- Click Interaction State ---
 const originalPositions = ref(new Map());
+const explodedPositions = ref(new Map());
 const isAnyMediaCentered = ref(false);
 const centeredMediaIndex = ref(null);
 
@@ -200,9 +201,9 @@ const bringToCenter = (event, index) => {
 
 const resetToOriginalPosition = (index) => {
   const targetElement = index === 'center' ? centerImageEl.value : explosionMediaRefs.value[index];
-  if (!targetElement || !originalPositions.value.has(index)) return;
-  
-  const position = originalPositions.value.get(index);
+  if (!targetElement) return;
+  // Use exploded position if available, else fallback to original
+  const position = explodedPositions.value.get(index) || originalPositions.value.get(index);
   
   gsap.to(targetElement, {
     x: position.x,
@@ -527,7 +528,12 @@ onMounted(async () => {
       explosionMediaRefs.value.forEach((mediaEl, index) => {
         const quadrant = quadrants[index % quadrants.length];
         const { x, y, scale } = getQuadrantPosition(quadrant, mediaEl);
-        timeline.to(mediaEl, { x, y, scale, opacity: 1, duration: props.animationDuration, ease: "none" }, index * props.staggerDelay);
+        timeline.to(mediaEl, { x, y, scale, opacity: 1, duration: props.animationDuration, ease: "none",
+          onComplete: () => {
+            // Store exploded position after animation
+            explodedPositions.value.set(index, { x, y, scale });
+          }
+        }, index * props.staggerDelay);
       });
       
       timeline.play();
