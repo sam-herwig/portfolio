@@ -52,6 +52,19 @@ const props = defineProps({
   }
 });
 
+// Debug logging
+console.log('Projects component received:', props.projects);
+if (props.projects) {
+  props.projects.forEach((project, index) => {
+    console.log(`Project ${index} in component:`, {
+      title: project.title,
+      slug: project.slug,
+      slugCurrent: project.slug?.current,
+      linkTo: `/${project.slug?.current}`
+    });
+  });
+}
+
 // Tag filtering
 const activeTag = ref(null);
 const availableTags = computed(() => {

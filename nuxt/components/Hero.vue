@@ -22,8 +22,8 @@
         <div class="hero-title">
           <h3 class="job-title">Front End Web Developer<br />& Creative Technologist</h3>
           <div class="hero-links">
-            <a href="#projects" class="hero-link">SEE PROJECTS</a>
-            <a href="#contact" class="hero-link">CONTACT ME</a>
+            <NuxtLink to="/projects" class="hero-link">SEE PROJECTS</NuxtLink>
+            <NuxtLink to="/contact" class="hero-link">CONTACT ME</NuxtLink>
           </div>
         </div>
       </div>

@@ -51,21 +51,6 @@ export default defineType({
       ],
     }),
     defineField({
-      fieldset: 'work',
-      name: 'caseStudies',
-      title: 'Work',
-      type: 'array',
-      validation: [
-        Rule => Rule.required().unique().error('Must include at least 1 case study')
-      ],
-      of: [
-        {
-          type: 'reference',
-          to: [{ type: 'caseStudy' }]
-        }
-      ]
-    }),
-    defineField({
       fieldset: 'projects',
       name: 'projectsTitle',
       title: 'Projects Section Title',

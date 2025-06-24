@@ -6,11 +6,6 @@
       :subtitle="pageData.heroSubtitle"
       :image="pageData.heroImage"
     />
-
-    <!-- <News 
-      v-if="pageData"
-      :caseStudies="pageData.caseStudies"
-    /> -->
     
     <Projects
       v-if="pageData && pageData.projects"
@@ -40,10 +35,6 @@ const homeQuery = groq`*[(_type == "home")][0]{
   heroImage ${imageProps},
   heroTitle,
   heroSubtitle, 
-  caseStudies[]-> {
-    title,
-    slug
-  },
   projects[]-> {
     title,
     subtitle,
@@ -56,5 +47,16 @@ const homeQuery = groq`*[(_type == "home")][0]{
 
 const pageData = await useSanityData({ query: homeQuery });
 
-console.log(pageData);
+// Debug logging
+console.log('Home page data:', pageData);
+console.log('Projects data:', pageData?.projects);
+if (pageData?.projects) {
+  pageData.projects.forEach((project, index) => {
+    console.log(`Project ${index}:`, {
+      title: project.title,
+      slug: project.slug,
+      slugCurrent: project.slug?.current
+    });
+  });
+}
 </script>

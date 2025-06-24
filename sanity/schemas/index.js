@@ -3,17 +3,18 @@ import site from './settings/site';
 
 //Pages
 import home from './pages/home';
+import projectsPage from './pages/projects-page';
+import contactPage from './pages/contact-page';
 
 // Collections
-import caseStudy from './collections/case-study';
 import project from './collections/project';
 
 // Builders
 import textBlock from './shared/builder/text-block';
 import pullQuote from './shared/builder/pull-quote';
 import singleImage from './shared/builder/single-image';
-import imageExplosion from './shared/builder/image-explosion';
-import gradientText from './shared/builder/gradient-text';
+import heroExplosion from './shared/builder/hero-explosion';
+import generalBlock from './shared/builder/general-block';
 
 // Shared 
 import videoLoop from './shared/video-loop';
@@ -22,13 +23,14 @@ import videoPlayer from './shared/video-player';
 export const schemaTypes = [
   site,
   home,
+  projectsPage,
+  contactPage,
   textBlock, 
-  caseStudy,
   project,
   pullQuote, 
   singleImage, 
-  imageExplosion,
-  gradientText,
+  heroExplosion,
+  generalBlock,
   videoLoop, 
   videoPlayer
 ];

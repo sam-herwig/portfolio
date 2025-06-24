@@ -128,7 +128,7 @@ export default defineType({
           type: 'singleImage'
         }, 
         {
-          type: 'imageExplosion'
+          type: 'heroExplosion'
         },
         {
           type: 'videoLoop'

@@ -2,7 +2,7 @@
   <section class="news-section pad-bl">
   <div class="news-section-inner"> 
     <NuxtLink
-      v-for="(item, index) in caseStudies"
+      v-for="(item, index) in projects"
       class="list-item"
       :to="`/${item.slug.current}`"
       :key="index"
@@ -21,7 +21,7 @@ const props = defineProps({
   title: {
     type: String
   },
-  caseStudies: {
+  projects: {
     type: Array
   }
 });

@@ -2,12 +2,14 @@
   <header :class="{ 'transparent': isTransparent, 'visible': isVisible }">
     <div class="header-content">
       <div class="logo-container">
-        <img src="/static/svgs/hero-logo.svg" alt="Logo" class="header-logo" />
+        <NuxtLink to="/">
+          <img src="/static/svgs/hero-logo.svg" alt="Logo" class="header-logo" />
+        </NuxtLink>
       </div>
       <nav class="header-nav">
         <ul>
-          <li><a href="#projects">Projects</a></li>
-          <li><a href="#contact">Contact</a></li>
+          <li><NuxtLink to="/projects">Projects</NuxtLink></li>
+          <li><NuxtLink to="/contact">Contact</NuxtLink></li>
         </ul>
       </nav>
     </div>
