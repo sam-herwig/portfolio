@@ -1,7 +1,23 @@
-export { default as carousel } from './carousel';
-export { default as textBlock } from './text-block';
-export { default as pullQuote } from './pull-quote';
-export { default as singleImage } from './single-image';
-export { default as heroExplosion } from './hero-explosion';
-export { default as generalBlock } from './general-block';
-// ... existing exports 
+// Import all builder components
+import carousel from './carousel'
+import circularText from './circular-text'
+import generalBlock from './general-block'
+import heroExplosion from './hero-explosion'
+import masonryWall from './masonry-wall'
+import pullQuote from './pull-quote'
+import singleImage from './single-image'
+import textBlock from './text-block'
+import flowingMenu from './flowing-menu'
+
+// Export array of all builder components
+export default [
+  carousel,
+  circularText,
+  generalBlock,
+  heroExplosion,
+  masonryWall,
+  pullQuote,
+  singleImage,
+  textBlock,
+  flowingMenu
+] 

@@ -1,16 +1,26 @@
 <template>
   <div id="home-page" class="page space-t">
-    <Hero 
-      v-if="pageData"
-      :title="pageData.heroTitle"
-      :subtitle="pageData.heroSubtitle"
-      :image="pageData.heroImage"
-    />
+    <InteractiveHero />
     
-    <Projects
-      v-if="pageData && pageData.projects"
-      :projects="pageData.projects"
-    />
+    <!-- Flowing Menu Section -->
+    <section 
+      class="flowing-menu-section" 
+      v-if="pageData && pageData.flowingMenu"
+    >
+      <h2 class="section-title">{{ pageData.flowingMenu.title || 'EXPLORE PROJECTS' }}</h2>
+      <div 
+        class="flowing-menu-container"
+        :style="{ height: pageData.flowingMenu.height || '70vh' }"
+      >
+        <FlowingMenu
+          :projects="pageData.flowingMenu.projects || pageData.projects"
+          :backgroundColor="pageData.flowingMenu.backgroundColor || 'black'"
+          :textColor="pageData.flowingMenu.textColor || 'white'"
+          :enableTags="pageData.flowingMenu.enableTags !== false"
+          :height="pageData.flowingMenu.height || '70vh'"
+        />
+      </div>
+    </section>
 
     <!-- Contact Form Section -->
     <section class="container mx-auto px-4 py-12">
@@ -33,6 +43,8 @@ import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useSiteStore } from '~/stores/store';
 import { smoothScrollTo } from '~/utils/smooth-scroll-to';
 import { typeFilter, imageProps } from '~/utils/groq-common';
+import FlowingMenu from '~/components/FlowingMenu.vue';
+import InteractiveHero from '~/components/InteractiveHero.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -51,6 +63,21 @@ const homeQuery = groq`*[(_type == "home")][0]{
     titleClass,
     "cursorImage": cursorImage.asset->url,
     tags
+  },
+  flowingMenu {
+    title,
+    backgroundColor,
+    textColor,
+    enableTags,
+    height,
+    projects[]-> {
+      title,
+      subtitle,
+      slug,
+      titleClass,
+      "cursorImage": cursorImage.asset->url,
+      tags
+    }
   }
 }`;
 
@@ -132,6 +159,26 @@ const exitPreview = () => {
     &:hover {
       background-color: darken($red, 10%);
     }
+  }
+}
+
+.flowing-menu-section {
+  background-color: $black;
+  color: $white;
+  padding: 4rem 0;
+  
+  .section-title {
+    font-family: $poppins-extra-bold;
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  
+  .flowing-menu-container {
+    height: 70vh;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
   }
 }
 </style>

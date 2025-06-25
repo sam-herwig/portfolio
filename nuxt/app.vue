@@ -14,24 +14,14 @@
       <Menu v-if="store.menu_open" />
     </transition> -->
     <NuxtPage />
-    
-    <!-- Preview mode indicator -->
-    <div v-if="isPreviewMode" class="preview-indicator">
-      Preview Mode
-      <button @click="exitPreview" class="exit-preview-btn">Exit</button>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { useSiteStore } from '~/stores/store';
-import { useCookie } from '#app';
 
 const store = useSiteStore();
 const config = useRuntimeConfig();
-const previewCookie = useCookie('preview');
-const isPreviewMode = computed(() => previewCookie.value === 'true');
-const router = useRouter();
 
 // Debug runtime config
 console.log('Runtime config:', {
@@ -48,18 +38,6 @@ useSeoMeta({
   ogDescription: store.site_seo_description,
   ogImage: store.site_seo_image
 });
-
-// Exit preview mode
-const exitPreview = async () => {
-  try {
-    await $fetch('/api/disable-preview');
-    previewCookie.value = null;
-    // Reload the page to exit preview mode
-    window.location.reload();
-  } catch (error) {
-    console.error('Failed to exit preview mode:', error);
-  }
-};
 
 // Mounted
 onMounted(() => {
@@ -115,34 +93,5 @@ function updateScrollbarWidth() {
 .slide-right-enter-from,
 .slide-left-leave-to {
   transform: translateX(#{span(-2)});
-}
-
-// Preview mode indicator
-.preview-indicator {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background-color: #ff3e00;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: bold;
-  z-index: 9999;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.exit-preview-btn {
-  background-color: white;
-  color: #ff3e00;
-  border: none;
-  border-radius: 3px;
-  padding: 3px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  font-weight: bold;
 }
 </style>

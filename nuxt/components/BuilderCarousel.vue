@@ -13,6 +13,7 @@
           0: { slidesPerView: 1.5 },
           768: { slidesPerView: 3 }
         }"
+        :modules="modules"
       >
         <swiper-slide
           v-for="(img, i) in images"
@@ -45,6 +46,7 @@
           :pagination="{ clickable: true }"
           :navigation="true"
           class="carousel-swiper-fullscreen"
+          :modules="modules"
         >
           <swiper-slide
             v-for="(img, i) in images"
@@ -63,11 +65,12 @@
 <script setup>
 import { ref } from 'vue';
 import { Swiper, SwiperSlide } from 'swiper/vue';
+import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import SwiperCore, { Navigation, Pagination } from 'swiper';
-SwiperCore.use([Navigation, Pagination]);
+
+const modules = [Navigation, Pagination];
 
 const props = defineProps({
   images: {

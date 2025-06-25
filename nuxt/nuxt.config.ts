@@ -20,10 +20,8 @@ export default defineNuxtConfig({
         apiVersion: '2023-05-03',
         useCdn: process.env.NODE_ENV === 'production',
       },
-      sanityPreviewSecret: process.env.SANITY_STUDIO_PREVIEW_SECRET_TOKEN || '',
       siteUrl: process.env.SITE_URL || 'https://samherwig.dev'
-    },
-    sanityApiToken: process.env.SANITY_STUDIO_API || '',
+    }
   },
   //
   // SSR + Target
@@ -79,6 +77,10 @@ export default defineNuxtConfig({
           additionalData: '@import "~/assets/styles/_base.scss";'
         }
       }
+    },
+    // Optimize dependencies
+    optimizeDeps: {
+      include: ['swiper/vue', 'swiper/modules']
     }
   },
   //
@@ -88,8 +90,7 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@nuxtjs/sanity',
     '@nuxtjs/sitemap',
-    'nuxt-gtag',
-    '@sanity/visual-editing/nuxt'
+    'nuxt-gtag'
   ],
   //
   // Gtag
@@ -104,18 +105,7 @@ export default defineNuxtConfig({
     projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'e9e9e25h',
     dataset: process.env.SANITY_DATASET || 'production',
     apiVersion: '2023-05-03',
-    useCdn: process.env.NODE_ENV === 'production',
-    token: process.env.SANITY_STUDIO_API || '',
-    additionalClients: {
-      preview: {
-        projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'e9e9e25h',
-        dataset: process.env.SANITY_DATASET || 'production',
-        apiVersion: '2023-05-03',
-        useCdn: false,
-        withCredentials: true,
-        token: process.env.SANITY_STUDIO_API || '',
-      }
-    }
+    useCdn: process.env.NODE_ENV === 'production'
   },
   // Configure sitemap module
   sitemap: {

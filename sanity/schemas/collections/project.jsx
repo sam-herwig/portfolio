@@ -136,7 +136,9 @@ export default defineType({
         {
           type: 'videoPlayer'
         },
-        { type: 'carousel' }
+        { type: 'carousel' },
+        { type: 'masonryWall' },
+        { type: 'circularText' }
       ]
     })
   ],

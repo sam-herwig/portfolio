@@ -6,44 +6,18 @@
         <canvas ref="gradientCanvas"></canvas>
       </div>
       
-      <!-- Explosion Container -->
-      <div class="explosion-container" ref="explosionContainer" @click="resetAllMedia">
-        <!-- Center image -->
-        <div 
-          class="center-image" 
-          ref="centerImageEl" 
-          @click.stop="bringToCenter($event, 'center')"
-          :class="{ 'centered': centeredMediaIndex === 'center' }"
-        >
-          <img v-if="centerImage && centerImage.src" :src="centerImage.src" :alt="centerImage.alt || 'Center Image'" class="responsive-image" />
+      <!-- Content Container -->
+      <div class="content-container" ref="contentContainer">
+        <!-- Center image (optional) -->
+        <div v-if="centerImage && centerImage.src" class="center-image" ref="centerImageEl">
+          <img :src="centerImage.src" :alt="centerImage.alt || 'Center Image'" class="responsive-image" />
         </div>
-        <!-- Explosion media (combined images and videos) -->
-        <template v-if="combinedMedia.length > 0">
-          <template v-for="(item, index) in combinedMedia">
-            <div 
-              v-if="item.type === 'image'" 
-              :key="`img-${index}`" 
-              class="explosion-media explosion-image" 
-              :ref="setExplosionMediaRef(index)" 
-              @click.stop="bringToCenter($event, index)"
-              :class="{ 'centered': centeredMediaIndex === index }"
-            >
-              <img v-if="item.src" :src="item.src" :alt="item.alt || `Explosion Image ${index + 1}`" class="responsive-image" />
-            </div>
-            <div 
-              v-if="item.type === 'video'" 
-              :key="`vid-${index}`" 
-              class="explosion-media explosion-video" 
-              :ref="setExplosionMediaRef(index)" 
-              @click.stop="bringToCenter($event, index)"
-              :class="{ 'centered': centeredMediaIndex === index }"
-            >
-              <video v-if="item.src" :src="item.src" autoplay muted playsinline class="responsive-video"></video>
-            </div>
-          </template>
-        </template>
-        <div v-else style="color: red; text-align: center; margin-top: 2rem;">
-          No explosion media found. Check if explosionImages or explosionVideos are being passed as props.
+        
+        <!-- Text Content (fades in) -->
+        <div class="text-content" ref="textContent">
+          <h1 v-if="title" class="hero-title">{{ title }}</h1>
+          <div v-if="text" class="hero-text" v-html="text"></div>
+          <a v-if="linkUrl" :href="linkUrl" class="hero-link" target="_blank" rel="noopener noreferrer" >{{ linkText || 'Learn More' }}</a>
         </div>
       </div>
     </client-only>
@@ -59,30 +33,32 @@ let dat;
 // --- Props ---
 const props = defineProps({
   centerImage: Object,
-  explosionImages: { type: Array, default: () => [] },
-  explosionVideos: { type: Array, default: () => [] },
-  animationDuration: { type: Number, default: 1.5 },
-  staggerDelay: { type: Number, default: 0.05 },
+  title: String,
+  text: String,
+  linkUrl: String,
+  linkText: String,
+  fadeInDelay: { type: Number, default: 2 }
 });
 
-// --- Explosion State ---
-const explosionContainer = ref(null);
+// --- Refs ---
+const heroContainer = ref(null);
+const contentContainer = ref(null);
 const centerImageEl = ref(null);
-const explosionMediaRefs = ref([]);
-const combinedMedia = ref([]);
-
-// --- Click Interaction State ---
-const originalPositions = ref(new Map());
-const explodedPositions = ref(new Map());
-const isAnyMediaCentered = ref(false);
-const centeredMediaIndex = ref(null);
+const textContent = ref(null);
 
 // --- Animation Control State ---
 const animationParams = ref({
-  animationSpeed: 0.02,
-  waterIntensity: 0.01,
-  colorSaturation: 1.0,
-  isAnimationPaused: false
+  animationSpeed: 0.087,
+  flowSpeed: 3.0,
+  flowIntensity: 0.095,
+  colorSaturation: 1.6,
+  colorShift: 1.3,
+  vignette: 0.7,
+  isAnimationPaused: false,
+  color1: { r: 0.0, g: 0.0, b: 0.0 },  // Deep blue
+  color2: { r: 0.0, g: 0.0, b: 0.0 },
+  color3: { r: 0.0, g: 0.0, b: 0.0 },  // Pink
+  color4: { r: 1.0, g: 1.0, b: 1.0 }   // Cyan
 });
 
 // --- Three.js Gradient State ---
@@ -91,23 +67,6 @@ let scene, camera, renderer, geometry, material, mesh;
 let animationFrameId = null;
 let gui;
 
-// --- Helper: Collect explosion media refs robustly ---
-function setExplosionMediaRef(index) {
-  return (el) => {
-    if (el) explosionMediaRefs.value[index] = el;
-  };
-}
-
-// --- Helper: Shuffle array ---
-function shuffleArray(array) {
-  const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  return newArray;
-}
-
 // --- Animation Control Functions ---
 const updateAnimationSpeed = () => {
   if (material && material.uniforms.animationSpeed) {
@@ -115,15 +74,73 @@ const updateAnimationSpeed = () => {
   }
 };
 
-const updateWaterIntensity = () => {
-  if (material && material.uniforms.waterIntensity) {
-    material.uniforms.waterIntensity.value = animationParams.value.waterIntensity;
+const updateFlowSpeed = () => {
+  if (material && material.uniforms.flowSpeed) {
+    material.uniforms.flowSpeed.value = animationParams.value.flowSpeed;
+  }
+};
+
+const updateFlowIntensity = () => {
+  if (material && material.uniforms.flowIntensity) {
+    material.uniforms.flowIntensity.value = animationParams.value.flowIntensity;
   }
 };
 
 const updateColorSaturation = () => {
   if (material && material.uniforms.colorSaturation) {
     material.uniforms.colorSaturation.value = animationParams.value.colorSaturation;
+  }
+};
+
+const updateColorShift = () => {
+  if (material && material.uniforms.colorShift) {
+    material.uniforms.colorShift.value = animationParams.value.colorShift;
+  }
+};
+
+const updateVignette = () => {
+  if (material && material.uniforms.vignette) {
+    material.uniforms.vignette.value = animationParams.value.vignette;
+  }
+};
+
+const updateColor1 = () => {
+  if (material && material.uniforms.color1) {
+    material.uniforms.color1.value.set(
+      animationParams.value.color1.r,
+      animationParams.value.color1.g,
+      animationParams.value.color1.b
+    );
+  }
+};
+
+const updateColor2 = () => {
+  if (material && material.uniforms.color2) {
+    material.uniforms.color2.value.set(
+      animationParams.value.color2.r,
+      animationParams.value.color2.g,
+      animationParams.value.color2.b
+    );
+  }
+};
+
+const updateColor3 = () => {
+  if (material && material.uniforms.color3) {
+    material.uniforms.color3.value.set(
+      animationParams.value.color3.r,
+      animationParams.value.color3.g,
+      animationParams.value.color3.b
+    );
+  }
+};
+
+const updateColor4 = () => {
+  if (material && material.uniforms.color4) {
+    material.uniforms.color4.value.set(
+      animationParams.value.color4.r,
+      animationParams.value.color4.g,
+      animationParams.value.color4.b
+    );
   }
 };
 
@@ -143,104 +160,35 @@ const resetAnimation = () => {
   if (material && material.uniforms.time) {
     material.uniforms.time.value = 0;
   }
-  animationParams.value.animationSpeed = 0.02;
-  animationParams.value.waterIntensity = 0.01;
-  animationParams.value.colorSaturation = 1.0;
+  animationParams.value.animationSpeed = 0.67;
+  animationParams.value.flowSpeed = 3.0;
+  animationParams.value.flowIntensity = 0.095;
+  animationParams.value.colorSaturation = 1.6;
+  animationParams.value.colorShift = 1.3;
+  animationParams.value.vignette = 0.7;
+  
+  // Reset colors
+  animationParams.value.color1 = { r: 0, g: 0, b: 0 };
+  animationParams.value.color2 = { r: 0, g: 0, b: 0};
+  animationParams.value.color3 = { r: 0, g: 0, b: 0 };
+  animationParams.value.color4 = { r: 1.0, g: 1.0, b: 1.0 };
+  
+  // Update all uniforms
   updateAnimationSpeed();
-  updateWaterIntensity();
+  updateFlowSpeed();
+  updateFlowIntensity();
   updateColorSaturation();
+  updateColorShift();
+  updateVignette();
+  updateColor1();
+  updateColor2();
+  updateColor3();
+  updateColor4();
   
   // Update GUI values
   if (gui) {
     gui.updateDisplay();
   }
-};
-
-// --- Click Interaction Functions ---
-const bringToCenter = (event, index) => {
-  if (!process.client) return;
-  
-  const targetElement = index === 'center' ? centerImageEl.value : explosionMediaRefs.value[index];
-  if (!targetElement) return;
-  
-  // If this element is already centered, reset it
-  if (centeredMediaIndex.value === index) {
-    resetToOriginalPosition(index);
-    return;
-  }
-  
-  // Store original position if not already stored
-  if (!originalPositions.value.has(index)) {
-    const rect = targetElement.getBoundingClientRect();
-    const containerRect = explosionContainer.value.getBoundingClientRect();
-    originalPositions.value.set(index, {
-      x: rect.left - containerRect.left + rect.width / 2,
-      y: rect.top - containerRect.top + rect.height / 2,
-      scale: gsap.getProperty(targetElement, 'scale') || 1
-    });
-  }
-  
-  // Reset any previously centered media
-  if (isAnyMediaCentered.value && centeredMediaIndex.value !== null) {
-    resetToOriginalPosition(centeredMediaIndex.value);
-  }
-  
-  // Animate to center with linear easing
-  gsap.to(targetElement, {
-    x: 0,
-    y: 0,
-    scale: 1.2,
-    duration: 0.8,
-    ease: "none", // Linear transition
-    onComplete: () => {
-      isAnyMediaCentered.value = true;
-      centeredMediaIndex.value = index;
-    }
-  });
-};
-
-const resetToOriginalPosition = (index) => {
-  const targetElement = index === 'center' ? centerImageEl.value : explosionMediaRefs.value[index];
-  if (!targetElement) return;
-  // Use exploded position if available, else fallback to original
-  const position = explodedPositions.value.get(index) || originalPositions.value.get(index);
-  
-  gsap.to(targetElement, {
-    x: position.x,
-    y: position.y,
-    scale: position.scale,
-    duration: 0.6,
-    ease: "none", // Linear transition
-    onComplete: () => {
-      if (centeredMediaIndex.value === index) {
-        isAnyMediaCentered.value = false;
-        centeredMediaIndex.value = null;
-      }
-    }
-  });
-};
-
-const resetAllMedia = () => {
-  if (!isAnyMediaCentered.value) return;
-  
-  // Reset all media to their original positions
-  originalPositions.value.forEach((position, index) => {
-    resetToOriginalPosition(index);
-  });
-  
-  // Reset center image if it was centered
-  if (centeredMediaIndex.value === 'center' && centerImageEl.value) {
-    gsap.to(centerImageEl.value, {
-      x: 0,
-      y: 0,
-      scale: 1,
-      duration: 0.6,
-      ease: "none"
-    });
-  }
-  
-  isAnyMediaCentered.value = false;
-  centeredMediaIndex.value = null;
 };
 
 // --- Three.js Gradient Background ---
@@ -264,7 +212,7 @@ const initThree = () => {
   // Geometry
   geometry = new THREE.PlaneGeometry(2, 2);
   
-  // Shader material with watery glossy gradient
+  // Shader material with enhanced gradient
   const vertexShader = `
     varying vec2 vUv;
     void main() {
@@ -276,8 +224,15 @@ const initThree = () => {
   const fragmentShader = `
     uniform float time;
     uniform float animationSpeed;
-    uniform float waterIntensity;
+    uniform float flowSpeed;
+    uniform float flowIntensity;
     uniform float colorSaturation;
+    uniform float colorShift;
+    uniform float vignette;
+    uniform vec3 color1;
+    uniform vec3 color2;
+    uniform vec3 color3;
+    uniform vec3 color4;
     varying vec2 vUv;
     
     // Noise function
@@ -314,63 +269,76 @@ const initThree = () => {
       return value;
     }
     
-    // Watery glossy effect
+    // Iridescent effect
     void main() {
       vec2 uv = vUv;
       
-      // Animate the UV coordinates for flowing water effect
+      // Create flowing animation for the UV coordinates with adjustable speed
       vec2 animatedUV = uv + vec2(
-        sin(time * animationSpeed * 0.3 + uv.y * 3.0) * waterIntensity,
-        cos(time * animationSpeed * 0.2 + uv.x * 2.0) * waterIntensity
+        sin(time * animationSpeed * flowSpeed * 0.2 + uv.y * 4.0) * flowIntensity,
+        cos(time * animationSpeed * flowSpeed * 0.1 + uv.x * 3.0) * flowIntensity
       );
       
-      // Create multiple layers of noise for depth
-      float noise1 = fractalNoise(animatedUV * 2.0 + time * animationSpeed * 0.1);
-      float noise2 = fractalNoise(animatedUV * 4.0 + time * animationSpeed * 0.15);
-      float noise3 = fractalNoise(animatedUV * 8.0 + time * animationSpeed * 0.2);
+      // Create multiple layers of noise with different frequencies
+      float noise1 = fractalNoise(animatedUV * 3.0 + time * animationSpeed * 0.1);
+      float noise2 = fractalNoise(animatedUV * 6.0 + time * animationSpeed * 0.15);
+      float noise3 = fractalNoise(animatedUV * 12.0 + time * animationSpeed * 0.2);
       
-      // Combine noise layers for watery texture
-      float waterNoise = (noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2);
+      // Combine noise layers for texture
+      float noisePattern = (noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2);
       
-      // Create glossy gradient with water effect
-      float gradient = uv.x + waterNoise * 0.3;
-      gradient = smoothstep(0.0, 1.0, gradient);
+      // Create base gradient
+      float gradient = smoothstep(0.0, 1.0, uv.y + noisePattern * 0.3);
       
-      // Watery glossy colors (deep blue to light cyan)
-      vec3 deepBlue = vec3(0.1, 0.3, 0.8);
-      vec3 lightCyan = vec3(0.4, 0.8, 1.0);
-      vec3 glossyWhite = vec3(0.9, 0.95, 1.0);
+      // Create iridescent effect by mixing colors based on noise and time with color shift control
+      float t1 = sin(time * animationSpeed * 0.3 * colorShift + noisePattern * 5.0) * 0.5 + 0.5;
+      float t2 = cos(time * animationSpeed * 0.2 * colorShift + noisePattern * 3.0) * 0.5 + 0.5;
       
-      // Mix colors based on gradient and noise
-      vec3 baseColor = mix(deepBlue, lightCyan, gradient);
+      // Mix colors based on noise and time
+      vec3 iridColor1 = mix(color1, color2, t1);
+      vec3 iridColor2 = mix(color3, color4, t2);
+      vec3 baseColor = mix(iridColor1, iridColor2, gradient);
       
-      // Add glossy highlights
-      float highlight = pow(waterNoise, 2.0) * 0.8;
-      baseColor = mix(baseColor, glossyWhite, highlight * 0.3);
+      // Add highlights
+      float highlight = pow(noisePattern, 3.0) * 0.8;
+      vec3 highlightColor = vec3(0.9, 0.95, 1.0);
+      baseColor = mix(baseColor, highlightColor, highlight * 0.4);
       
       // Add depth with darker areas
-      float depth = 1.0 - waterNoise * 0.2;
+      float depth = 1.0 - noisePattern * 0.3;
       baseColor *= depth;
       
       // Add subtle color variation
-      baseColor += vec3(0.1, 0.2, 0.3) * waterNoise * 0.1;
+      baseColor += vec3(0.05, 0.1, 0.15) * noisePattern * 0.2;
       
       // Apply color saturation
-      baseColor = mix(vec3(dot(baseColor, vec3(0.299, 0.587, 0.114))), baseColor, colorSaturation);
+      vec3 luminance = vec3(dot(baseColor, vec3(0.299, 0.587, 0.114)));
+      baseColor = mix(luminance, baseColor, colorSaturation);
+      
+      // Add adjustable vignette effect
+      float vignetteEffect = 1.0 - smoothstep(0.5, 1.5, length(uv - 0.5) * vignette * 1.5);
+      baseColor *= vignetteEffect * 1.1;
       
       gl_FragColor = vec4(baseColor, 1.0);
     }
   `;
   
-  // Create material with uniforms
+  // Create material with enhanced uniforms
   material = new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
     uniforms: {
       time: { value: 0 },
       animationSpeed: { value: animationParams.value.animationSpeed },
-      waterIntensity: { value: animationParams.value.waterIntensity },
-      colorSaturation: { value: animationParams.value.colorSaturation }
+      flowSpeed: { value: animationParams.value.flowSpeed },
+      flowIntensity: { value: animationParams.value.flowIntensity },
+      colorSaturation: { value: animationParams.value.colorSaturation },
+      colorShift: { value: animationParams.value.colorShift },
+      vignette: { value: animationParams.value.vignette },
+      color1: { value: new THREE.Color(animationParams.value.color1.r, animationParams.value.color1.g, animationParams.value.color1.b) },
+      color2: { value: new THREE.Color(animationParams.value.color2.r, animationParams.value.color2.g, animationParams.value.color2.b) },
+      color3: { value: new THREE.Color(animationParams.value.color3.r, animationParams.value.color3.g, animationParams.value.color3.b) },
+      color4: { value: new THREE.Color(animationParams.value.color4.r, animationParams.value.color4.g, animationParams.value.color4.b) }
     }
   });
   
@@ -399,7 +367,7 @@ const onWindowResize = () => {
   renderer.setSize(gradientCanvas.value.offsetWidth, gradientCanvas.value.offsetHeight);
 };
 
-// --- dat.GUI Setup ---
+// --- dat.GUI Setup with Enhanced Controls ---
 const initDatGUI = () => {
   if (!process.client || !dat) return;
   
@@ -413,41 +381,73 @@ const initDatGUI = () => {
   guiContainer.style.zIndex = '1000';
   document.body.appendChild(guiContainer);
   
-  // Add controls
-  const animationFolder = gui.addFolder('Background Animation');
+  // Add animation controls
+  const animationFolder = gui.addFolder('Animation Controls');
   
   animationFolder.add(animationParams.value, 'animationSpeed', 0, 0.1, 0.001)
     .name('Animation Speed')
     .onChange(updateAnimationSpeed);
+    
+  animationFolder.add(animationParams.value, 'flowSpeed', 0.1, 3, 0.1)
+    .name('Flow Speed')
+    .onChange(updateFlowSpeed);
   
-  animationFolder.add(animationParams.value, 'waterIntensity', 0, 0.05, 0.001)
-    .name('Water Intensity')
-    .onChange(updateWaterIntensity);
-  
-  animationFolder.add(animationParams.value, 'colorSaturation', 0.5, 2, 0.1)
-    .name('Color Saturation')
-    .onChange(updateColorSaturation);
+  animationFolder.add(animationParams.value, 'flowIntensity', 0, 0.1, 0.001)
+    .name('Flow Intensity')
+    .onChange(updateFlowIntensity);
+    
+  animationFolder.add(animationParams.value, 'colorShift', 0, 2, 0.1)
+    .name('Color Shift')
+    .onChange(updateColorShift);
   
   animationFolder.add(animationParams.value, 'isAnimationPaused')
     .name('Pause Animation')
     .onChange(toggleAnimation);
   
-  animationFolder.add({ reset: resetAnimation }, 'reset')
-    .name('Reset Animation');
+  // Add color controls
+  const colorFolder = gui.addFolder('Color Controls');
+  
+  colorFolder.add(animationParams.value, 'colorSaturation', 0.5, 3, 0.1)
+    .name('Color Saturation')
+    .onChange(updateColorSaturation);
+    
+  colorFolder.add(animationParams.value, 'vignette', 0, 2, 0.1)
+    .name('Vignette')
+    .onChange(updateVignette);
+  
+  // Color 1 controls
+  const color1Folder = colorFolder.addFolder('Color 1 (Deep Blue)');
+  color1Folder.add(animationParams.value.color1, 'r', 0, 1, 0.01).name('Red').onChange(updateColor1);
+  color1Folder.add(animationParams.value.color1, 'g', 0, 1, 0.01).name('Green').onChange(updateColor1);
+  color1Folder.add(animationParams.value.color1, 'b', 0, 1, 0.01).name('Blue').onChange(updateColor1);
+  
+  // Color 2 controls
+  const color2Folder = colorFolder.addFolder('Color 2 (Purple)');
+  color2Folder.add(animationParams.value.color2, 'r', 0, 1, 0.01).name('Red').onChange(updateColor2);
+  color2Folder.add(animationParams.value.color2, 'g', 0, 1, 0.01).name('Green').onChange(updateColor2);
+  color2Folder.add(animationParams.value.color2, 'b', 0, 1, 0.01).name('Blue').onChange(updateColor2);
+  
+  // Color 3 controls
+  const color3Folder = colorFolder.addFolder('Color 3 (Pink)');
+  color3Folder.add(animationParams.value.color3, 'r', 0, 1, 0.01).name('Red').onChange(updateColor3);
+  color3Folder.add(animationParams.value.color3, 'g', 0, 1, 0.01).name('Green').onChange(updateColor3);
+  color3Folder.add(animationParams.value.color3, 'b', 0, 1, 0.01).name('Blue').onChange(updateColor3);
+  
+  // Color 4 controls
+  const color4Folder = colorFolder.addFolder('Color 4 (Cyan)');
+  color4Folder.add(animationParams.value.color4, 'r', 0, 1, 0.01).name('Red').onChange(updateColor4);
+  color4Folder.add(animationParams.value.color4, 'g', 0, 1, 0.01).name('Green').onChange(updateColor4);
+  color4Folder.add(animationParams.value.color4, 'b', 0, 1, 0.01).name('Blue').onChange(updateColor4);
+  
+  // Reset button
+  gui.add({ reset: resetAnimation }, 'reset')
+    .name('Reset All');
   
   animationFolder.open();
 };
 
-// --- Explosion Animation ---
-let timeline = null;
-
 // --- Mount Logic ---
 onMounted(async () => {
-  // Prepare explosion media
-  const validImages = (props.explosionImages || []).filter(img => img && img.src).map(img => ({ ...img, type: 'image' }));
-  const validVideos = (props.explosionVideos || []).filter(vid => vid && vid.src).map(vid => ({ ...vid, type: 'video' }));
-  combinedMedia.value = shuffleArray([...validImages, ...validVideos]);
-
   // Dynamic import Three.js and dat.GUI
   if (process.client) {
     const threeModule = await import('three');
@@ -460,89 +460,25 @@ onMounted(async () => {
       initThree();
       initDatGUI();
     });
-  }
-
-  // Explosion animation logic (after DOM update)
-  nextTick(() => {
-    if (combinedMedia.value.length > 0 && explosionMediaRefs.value.length > 0) {
-      if (timeline) timeline.kill();
-      timeline = gsap.timeline({
-        paused: true
+    
+    // Fade in text content after delay
+    if (textContent.value) {
+      // Initially hide the text content
+      gsap.set(textContent.value, { opacity: 0, y: 30 });
+      
+      // Fade in after specified delay
+      gsap.to(textContent.value, {
+        opacity: 1,
+        y: 0,
+        duration: 1.2,
+        ease: "power2.out",
+        delay: props.fadeInDelay
       });
-      
-      const containerWidth = explosionContainer.value.offsetWidth;
-      const containerHeight = explosionContainer.value.offsetHeight;
-      const maxX = containerWidth * 0.45;
-      const maxY = containerHeight * 0.45;
-      const placedItems = [];
-      
-      const checkOverlap = (newX, newY, newScale, mediaEl) => {
-        const elWidth = mediaEl.offsetWidth * newScale;
-        const elHeight = mediaEl.offsetHeight * newScale;
-        if (!elWidth || !elHeight) return true;
-        const maxOverlapPercent = 0.15;
-        const itemArea = elWidth * elHeight;
-        const maxOverlapArea = itemArea * maxOverlapPercent;
-        for (const item of placedItems) {
-          const overlapWidth = Math.max(0, Math.min(newX + elWidth/2, item.x + item.width/2) - Math.max(newX - elWidth/2, item.x - item.width/2));
-          const overlapHeight = Math.max(0, Math.min(newY + elHeight/2, item.y + item.height/2) - Math.max(newY - elHeight/2, item.y - item.height/2));
-          const overlapArea = overlapWidth * overlapHeight;
-          if (overlapArea > maxOverlapArea) return false;
-        }
-        return true;
-      };
-      
-      const getQuadrantPosition = (quadrant, mediaEl) => {
-        const quadrantAngles = {
-          topLeft: { min: Math.PI * 0.75, max: Math.PI * 1.25 },
-          topRight: { min: Math.PI * 0.25, max: Math.PI * 0.75 },
-          bottomRight: { min: -Math.PI * 0.25, max: Math.PI * 0.25 },
-          bottomLeft: { min: Math.PI * 1.25, max: Math.PI * 1.75 }
-        };
-        const angles = quadrantAngles[quadrant];
-        for (let attempt = 0; attempt < 10; attempt++) {
-          const angle = angles.min + Math.random() * (angles.max - angles.min);
-          const distanceFactor = 0.4 + Math.random() * 0.6;
-          const x = Math.cos(angle) * maxX * distanceFactor;
-          const y = Math.sin(angle) * maxY * distanceFactor;
-          const scale = 0.3 + Math.random() * 0.7;
-          if (checkOverlap(x, y, scale, mediaEl)) {
-            placedItems.push({ x, y, width: mediaEl.offsetWidth * scale, height: mediaEl.offsetHeight * scale });
-            return { x, y, scale };
-          }
-        }
-        const angle = angles.min + Math.random() * (angles.max - angles.min);
-        const distanceFactor = 0.4 + Math.random() * 0.6;
-        const x = Math.cos(angle) * maxX * distanceFactor;
-        const y = Math.sin(angle) * maxY * distanceFactor;
-        const scale = 0.3 + Math.random() * 0.7;
-        placedItems.push({ x, y, width: mediaEl.offsetWidth * scale, height: mediaEl.offsetHeight * scale });
-        return { x, y, scale };
-      };
-      
-      const quadrants = ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'];
-      explosionMediaRefs.value.forEach((mediaEl, index) => {
-        gsap.set(mediaEl, { x: 0, y: 0, scale: 0.5, opacity: 0 });
-      });
-      
-      explosionMediaRefs.value.forEach((mediaEl, index) => {
-        const quadrant = quadrants[index % quadrants.length];
-        const { x, y, scale } = getQuadrantPosition(quadrant, mediaEl);
-        timeline.to(mediaEl, { x, y, scale, opacity: 1, duration: props.animationDuration, ease: "none",
-          onComplete: () => {
-            // Store exploded position after animation
-            explodedPositions.value.set(index, { x, y, scale });
-          }
-        }, index * props.staggerDelay);
-      });
-      
-      timeline.play();
     }
-  });
+  }
 });
 
 onBeforeUnmount(() => {
-  if (timeline) timeline.kill();
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
   window.removeEventListener('resize', onWindowResize);
   if (geometry) geometry.dispose();
@@ -557,22 +493,23 @@ onBeforeUnmount(() => {
 <style lang="scss">
 .builder-hero-explosion {
   position: relative;
-  width: 100vw;
-  height: 100vh;
-  min-height: 100vh;
+  width: 100%;
+  height: 100svh;
+  min-height: 100svh;
+  max-height: 100svh;
   overflow: hidden;
 
   .gradient-canvas-container {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 1;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
     pointer-events: none;
     canvas {
-      width: 100vw !important;
-      height: 100vh !important;
+      width: 100% !important;
+      height: 100% !important;
       display: block !important;
       position: absolute !important;
       top: 0 !important;
@@ -580,89 +517,94 @@ onBeforeUnmount(() => {
     }
   }
 
-  .explosion-container {
+  .content-container {
     position: absolute;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     overflow: hidden;
     z-index: 10;
-    cursor: pointer;
   }
 
   .center-image {
     position: relative;
     width: 50%;
     max-width: 350px;
-    z-index: 12;
-    margin: 0 auto;
-    cursor: pointer;
-    transition: transform 0.3s ease;
+    margin: 0 auto 2rem;
     
-    &:hover {
-      transform: scale(1.05);
+    img {
+      width: 100%;
+      height: auto;
+      object-fit: cover;
     }
     
-    &.centered {
-      z-index: 20;
-    }
-  }
-
-  .explosion-media {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 50%;
-    max-width: 450px;
-    z-index: 11;
-    will-change: transform, opacity;
-    cursor: pointer;
-    transition: transform 0.3s ease;
-    
-    &:hover {
-      transform: translate(-50%, -50%) scale(1.05);
-    }
-    
-    &.centered {
-      z-index: 20;
-    }
-  }
-  
-  .explosion-video {
-    overflow: hidden;
-  }
-  
-  img, video {
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-  }
-
-  // Responsive styles
-  @media (max-width: 900px) {
-    .center-image {
+    @media (max-width: 900px) {
       width: 70%;
       max-width: 250px;
     }
-    .explosion-media {
-      width: 70%;
-      max-width: 300px;
+    
+    @media (max-width: 600px) {
+      width: 90%;
+      max-width: 180px;
     }
   }
   
-  @media (max-width: 600px) {
-    .center-image {
-      width: 90%;
-      max-width: 180px;
+  .text-content {
+    text-align: center;
+    color: white;
+    padding: 2rem;
+    max-width: 800px;
+    z-index: 20;
+    
+    .hero-title {
+      font-family: $poppins-extra-bold;
+      font-size: 4rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.1;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      
+      @media (max-width: 768px) {
+        font-size: 2.5rem;
+      }
     }
-    .explosion-media {
-      width: 90%;
-      max-width: 180px;
+    
+    .hero-text {
+      font-family: $poppins;
+      font-size: 1.5rem;
+      line-height: 1.5;
+      margin-bottom: 2rem;
+      text-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+      
+      @media (max-width: 768px) {
+        font-size: 1.2rem;
+      }
+    }
+    
+    .hero-link {
+      display: inline-block;
+      font-family: $poppins-semi-bold;
+      font-size: 1.2rem;
+      background-color: white;
+      color: black;
+      padding: 0.8rem 2rem;
+      border-radius: 50px;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+      }
+      
+      @media (max-width: 768px) {
+        font-size: 1rem;
+        padding: 0.6rem 1.5rem;
+      }
     }
   }
 }

@@ -55,18 +55,31 @@
         <BuilderHeroExplosion
           v-if="block.type === 'heroExplosion'"
           :centerImage="block.centerImage"
-          :explosionImages="block.explosionImages"
-          :explosionVideos="block.explosionVideos"
-          :animationDuration="block.animationDuration"
-          :staggerDelay="block.staggerDelay"
+          :title="block.title"
+          :text="block.text"
+          :linkUrl="block.linkUrl"
+          :linkText="block.linkText"
+          :fadeInDelay="block.fadeInDelay"
+        />
+        <!-- Masonry Wall component -->
+        <BuilderMasonryWall
+          v-if="block.type === 'masonryWall'"
+          :items="block.items"
+          :columnWidth="block.columnWidth"
+          :gapSize="block.gapSize"
+        />
+        <!-- Circular Text component -->
+        <BuilderCircularText
+          v-if="block.type === 'circularText'"
+          :circularText="block.circularText"
+          :centerImage="block.centerImage"
+          :centerText="block.centerText"
+          :rotationSpeed="block.rotationSpeed"
+          :direction="block.direction"
+          :fontSize="block.fontSize"
+          :textColor="block.textColor"
         />
       </template>
-      
-      <!-- Preview Mode Banner -->
-      <div v-if="isPreview" class="preview-banner">
-        <p>Preview Mode Active</p>
-        <button @click="exitPreview">Exit Preview</button>
-      </div>
       
       <!-- Up Next Section -->
       <section v-if="validNextProject" class="up-next-section">
@@ -84,17 +97,20 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { useSiteStore } from '~/stores/store';
 import { imageProps } from '~/utils/groq-common';
 import BuilderCarousel from '~/components/BuilderCarousel.vue';
+import BuilderMasonryWall from '~/components/BuilderMasonryWall.vue';
+import BuilderCircularText from '~/components/BuilderCircularText.vue';
 
 const route = useRoute();
-const router = useRouter();
 const store = useSiteStore();
 const params = { slug: route.params.slug };
-const isPreview = ref(false);
 const pageData = ref(null);
+
+// Debug route params
+console.log('Slug page - route params:', route.params);
 
 // Query for all projects to get the next one
 const allProjectsQuery = groq`*[_type == 'project'] | order(title asc) {
@@ -116,69 +132,102 @@ const pageQuery = groq`*[( _type == 'project') && slug.current == $slug][0]{
   },
   blocks[] {
     _type == 'textBlock' => {
-      'type': _type,
+      "type": _type,
       headline,
       richtext
     },
     _type == 'pullQuote' => {
-      'type': _type,
+      "type": _type,
       title,
       citee
     },
     _type == 'singleImage' => {
-      'type': _type,
+      "type": _type,
       image ${imageProps}
     },
     _type == 'videoLoop' => {
-      'type': _type,
+      "type": _type,
       vimeo
     },
     _type == 'videoPlayer' => {
-      'type': _type,
+      "type": _type,
       vimeo
     },
     _type == 'heroExplosion' => {
-      'type': _type,
-      'centerImage': {
-        'src': centerImage.asset->url,
-        'alt': centerImage.asset->altText,
-        'width': centerImage.asset->metadata.dimensions.width,
-        'height': centerImage.asset->metadata.dimensions.height
+      "type": _type,
+      "centerImage": centerImage.asset->{
+        "src": url,
+        "alt": altText,
+        "width": metadata.dimensions.width,
+        "height": metadata.dimensions.height
       },
-      'explosionImages': explosionImages[].asset->{
-        'src': url,
-        'alt': altText,
-        'width': metadata.dimensions.width,
-        'height': metadata.dimensions.height
-      },
-      'explosionVideos': explosionVideos[].asset->{
-        'src': url,
-        'width': metadata.dimensions.width,
-        'height': metadata.dimensions.height
-      },
-      animationDuration,
-      staggerDelay
+      title,
+      text,
+      linkUrl,
+      linkText,
+      fadeInDelay
     },
     // Carousel block support
     _type == 'carousel' => {
-      'type': _type,
+      "type": _type,
       images[] {
-        'src': asset->url,
-        'alt': alt
+        "src": asset->url,
+        "alt": alt
       }
     },
+    _type == 'masonryWall' => {
+      "type": _type,
+      title,
+      columnWidth,
+      gapSize,
+      "items": items[] {
+        _type == 'imageItem' => {
+          "type": "image",
+          "src": image.asset->url,
+          "alt": alt,
+          "aspectRatio": aspectRatio
+        },
+        _type == 'videoItem' => {
+          "type": "video",
+          "src": video.asset->url,
+          "poster": poster.asset->url,
+          autoplay,
+          loop,
+          muted,
+          "aspectRatio": aspectRatio
+        }
+      }
+    },
+    _type == 'circularText' => {
+      "type": _type,
+      circularText,
+      "centerImage": centerImage.asset->{
+        "src": url,
+        "alt": altText,
+        "width": metadata.dimensions.width,
+        "height": metadata.dimensions.height
+      },
+      centerText,
+      rotationSpeed,
+      direction,
+      fontSize,
+      textColor
+    }
   }
 }`;
 
 // Function to fetch data
 const fetchData = async () => {
-  isPreview.value = route.query.preview === 'true';
-  
   try {
+    console.log('Fetching data for slug:', params.slug);
+    
     const [data, allProjects] = await Promise.all([
-      useSanityData({ query: pageQuery, params: params, preview: isPreview.value }),
-      useSanityData({ query: allProjectsQuery, preview: isPreview.value })
+      useSanityData({ query: pageQuery, params: params }),
+      useSanityData({ query: allProjectsQuery })
     ]);
+    
+    console.log('Fetched page data:', data);
+    console.log('Fetched all projects:', allProjects);
     
     pageData.value = data;
     
@@ -215,76 +264,15 @@ const fetchData = async () => {
 const validNextProject = ref(null);
 await fetchData();
 
-// Set up live preview updates
-onMounted(() => {
-  if (isPreview.value && process.client) {
-    // Set up listener for content changes if in preview mode
-    const { $sanity } = useNuxtApp();
-    if ($sanity && $sanity.client) {
-      const subscription = $sanity.client
-        .listen(pageQuery, params)
-        .subscribe(update => {
-          if (update.result) {
-            pageData.value = update.result;
-          }
-        });
-      
-      // Clean up subscription on component unmount
-      onBeforeUnmount(() => {
-        if (subscription && typeof subscription.unsubscribe === 'function') {
-          subscription.unsubscribe();
-        }
-      });
-    }
-  }
-});
-
 // Watch for route changes to update data
 watch(() => route.params.slug, async () => {
   params.slug = route.params.slug;
   await fetchData();
 });
-
-// Exit preview mode
-const exitPreview = () => {
-  const currentPath = route.path;
-  router.replace(currentPath);
-};
 </script>
 
 <style lang='scss'>
 .case-study-page {
-  .preview-banner {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: rgba($black, 0.8);
-    color: $white;
-    padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 1000;
-    
-    p {
-      margin: 0;
-    }
-    
-    button {
-      background-color: $red;
-      color: $white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      
-      &:hover {
-        background-color: darken($red, 10%);
-      }
-    }
-  }
-
   .up-next-section {
     padding: 4rem 0;
     background-color: $dark-black;

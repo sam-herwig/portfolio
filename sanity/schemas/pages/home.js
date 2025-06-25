@@ -4,7 +4,7 @@ import { HomeIcon } from '@sanity/icons';
 
 export default defineType({
   name: 'home',
-  title: 'Home',
+  title: 'Home Page',
   type: 'document',
   singleton: true,
   icon: HomeIcon,
@@ -26,20 +26,26 @@ export default defineType({
     defineField({
       fieldset: 'hero',
       name: 'heroImage',
-      title: 'Image',
-      type: 'image'
+      title: 'Hero Image',
+      type: 'image',
+      options: {
+        hotspot: true
+      },
+      description: 'Main image for the hero section'
     }),
     defineField({
       fieldset: 'hero',
       name: 'heroTitle',
-      title: 'Title',
+      title: 'Hero Title',
       type: 'string',
+      description: 'Title for the hero section'
     }),
     defineField({
       fieldset: 'hero',
       name: 'heroSubtitle',
-      title: 'Subtitle',
-      type: 'string'
+      title: 'Hero Subtitle',
+      type: 'string',
+      description: 'Subtitle for the hero section'
     }), 
     defineField({
       fieldset: 'work',
@@ -63,7 +69,7 @@ export default defineType({
     defineField({
       fieldset: 'projects',
       name: 'projects',
-      title: 'Projects',
+      title: 'Featured Projects',
       type: 'array',
       validation: [
         Rule => Rule.required().unique().error('Must include at least 1 project')
@@ -73,7 +79,24 @@ export default defineType({
           type: 'reference',
           to: [{ type: 'project' }]
         }
-      ]
+      ],
+      description: 'Select projects to feature on the home page'
+    }),
+    defineField({
+      name: 'flowingMenu',
+      title: 'Flowing Menu Section',
+      type: 'flowingMenu',
+      description: 'Configure the flowing menu section'
     })
-  ]
+  ],
+  preview: {
+    select: {
+      title: 'heroTitle'
+    },
+    prepare({ title }) {
+      return {
+        title: title || 'Home Page'
+      }
+    }
+  }
 });

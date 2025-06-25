@@ -19,13 +19,11 @@ export const typeFilter = function(type, slug) {
   }
 };
 
-export const imageProps = `
-  {
-    'src': asset->url,
-    'dataFilename': asset->originalFilename,
-    'dataTitle': asset->title,
-    'dataAlt': asset->altText,
-    'width': asset->metadata.dimensions.width,
-    'height': asset->metadata.dimensions.height
-  }
-`;
+export const imageProps = `{
+  "src": asset->url,
+  "dataFilename": asset->originalFilename,
+  "dataTitle": asset->title,
+  "dataAlt": asset->altText,
+  "width": asset->metadata.dimensions.width,
+  "height": asset->metadata.dimensions.height
+}`;

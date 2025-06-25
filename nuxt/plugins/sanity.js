@@ -21,16 +21,6 @@ export default defineNuxtPlugin((nuxtApp) => {
   // Create regular client
   const client = createClient(config);
 
-  // Create preview client (for draft content)
-  const previewClient = createClient({
-    ...config,
-    useCdn: false,
-    token: runtimeConfig.sanityApiToken,
-  });
-
-  // Use the preview client if preview mode is enabled
-  const getClient = (usePreview = false) => usePreview ? previewClient : client;
-
   // Set up image URL builder
   const builder = imageUrlBuilder(client);
   const urlFor = (source) => {
@@ -43,8 +33,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     provide: {
       sanity: {
         client,
-        previewClient,
-        getClient,
+        getClient: () => client,
         urlFor,
       },
     },

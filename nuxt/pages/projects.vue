@@ -6,7 +6,7 @@
       :text="block.text"
     />
     <section class="projects-section">
-      <div class="projects-header">
+      <div class="projects-header-title">
         <h2 class="projects-title">PROJECTS</h2>
       </div>
       <div class="projects-divider"></div>
@@ -63,7 +63,7 @@ const projects = pageData?.projects || [];
   padding: 4rem 0;
   background-color: $dark-black;
   color: $white;
-  .projects-header {
+  .projects-header-title {
     display: flex;
     justify-content: center;
     align-items: center;

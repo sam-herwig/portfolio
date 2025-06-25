@@ -16,6 +16,9 @@ import singleImage from './shared/builder/single-image';
 import heroExplosion from './shared/builder/hero-explosion';
 import generalBlock from './shared/builder/general-block';
 import carousel from './shared/builder/carousel';
+import masonryWall from './shared/builder/masonry-wall';
+import circularText from './shared/builder/circular-text';
+import flowingMenu from './shared/builder/flowing-menu';
 
 // Shared 
 import videoLoop from './shared/video-loop';
@@ -34,5 +37,8 @@ export const schemaTypes = [
   generalBlock,
   videoLoop, 
   videoPlayer,
-  carousel
+  carousel,
+  masonryWall,
+  circularText,
+  flowingMenu
 ];
