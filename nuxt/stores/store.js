@@ -5,7 +5,7 @@ export const useSiteStore = defineStore('site', {
   state: () => ({
     accessibility: false,
     loading: true,
-    site_name: '',
+    site_name: 'Portfolio',
     site_seo_description: '',
     site_seo_image: '',
     header_title: '',
@@ -45,45 +45,45 @@ export const useSiteStore = defineStore('site', {
       this.menu_open = false;
     },
     async fetchSiteContent() {
-      const siteQuery = groq` {
-        'site': ${typeFilter('site')} {
-          siteName,
-          headerTitle,
-          footerTitle,
-          generalLabel,
-          businessLabel,
-          address,
-          addressLink
+      try {
+        const siteQuery = groq` {
+          'site': ${typeFilter('site')} {
+            siteName,
+            headerTitle,
+            footerTitle,
+            generalLabel,
+            businessLabel,
+            generalEmail,
+            address,
+            addressLink
+          }
+        }`;
+        
+        // Use the composable instead of useSanityQuery
+        const data = await useSanityData({ query: siteQuery });
+        
+        console.log('Site data fetched:', data);
+
+        // Check if data and data.site exist before accessing properties
+        if (data && data.site) {
+          // Site settings
+          this.site_name = data.site.siteName || this.site_name;
+          this.header_title = data.site.headerTitle || '';
+          this.footer_title = data.site.footerTitle || '';
+          this.general_label = data.site.generalLabel || '';
+          this.business_label = data.site.businessLabel || '';
+          this.general_email = data.site.generalEmail || '';
+          this.address = data.site.address || '';
+          this.address_link = data.site.addressLink || '';
+        } else {
+          console.warn('No site data found in Sanity response');
         }
-      }`;
-      const { data, error } = await useSanityQuery(siteQuery);
-
-      // console.log(data.value)
-
-      const site_data = data.value.site || {};
-      // const home_data = data.value.home;
-
-
-      // Site settings
-      this.site_name = site_data.siteName;
-      // this.site_seo_description = site_data.seoSocial?.description;
-      // this.site_seo_image = site_data.seoSocial?.image;
-
-      // Header setings...
-      this.header_title = site_data.headerTitle;
-
-      // Footer setings...
-      this.footer_title = site_data.footerTitle;
-      this.general_label = site_data.generalLabel;
-      this.business_label = site_data.businessLabel;
-
-      // Contact settings...
-      this.general_email = site_data.generalEmail;
-      this.address = site_data.address;
-      this.addressLink = site_data.addressLink;
-
-      // Case Studies...
-      // this.case_studies = home_data.caseStudies;
+        
+        this.loading = false;
+      } catch (error) {
+        console.error('Error fetching site content:', error);
+        this.loading = false;
+      }
     }
   }
 })

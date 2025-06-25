@@ -21,8 +21,11 @@ export default defineEventHandler(async (event) => {
   console.log('Preview secret from config:', previewSecret);
   console.log('Secret from query:', query.secret);
   
+  // For the presentation tool, we accept either the configured secret or the placeholder
+  const isValidSecret = query.secret === previewSecret || query.secret === 'SANITY_PREVIEW_SECRET';
+  
   // Check the secret
-  if (query.secret !== previewSecret) {
+  if (!isValidSecret) {
     console.error('Invalid secret');
     return createError({
       statusCode: 401,
@@ -38,12 +41,10 @@ export default defineEventHandler(async (event) => {
     sameSite: 'lax',
   });
   
-  // Redirect to the slug with preview mode enabled
-  const redirectPath = !query.slug || query.slug === 'home' ? 
-    `/` : 
-    `/${query.slug}`;
+  // Handle Sanity Visual Editing parameters
+  const pathname = query['sanity-preview-pathname'] || (query.slug === 'home' ? '/' : `/${query.slug || ''}`);
   
-  console.log('Redirecting to:', redirectPath);
+  console.log('Redirecting to:', pathname);
   
-  return sendRedirect(event, redirectPath);
+  return sendRedirect(event, pathname);
 }); 

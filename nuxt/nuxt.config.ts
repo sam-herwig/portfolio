@@ -88,7 +88,8 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@nuxtjs/sanity',
     '@nuxtjs/sitemap',
-    'nuxt-gtag'
+    'nuxt-gtag',
+    '@sanity/visual-editing/nuxt'
   ],
   //
   // Gtag

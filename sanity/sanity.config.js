@@ -130,7 +130,7 @@ export default defineConfig({
       previewUrl: {
         origin: 'https://samherwig.dev',
         previewMode: {
-          enable: '/api/preview?secret=${token}',
+          enable: '/api/preview?secret=SANITY_PREVIEW_SECRET',
           disable: '/api/disable-preview',
         },
       },

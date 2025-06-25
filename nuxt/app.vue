@@ -18,6 +18,7 @@
     <!-- Preview mode indicator -->
     <div v-if="isPreviewMode" class="preview-indicator">
       Preview Mode
+      <button @click="exitPreview" class="exit-preview-btn">Exit</button>
     </div>
   </div>
 </template>
@@ -30,6 +31,7 @@ const store = useSiteStore();
 const config = useRuntimeConfig();
 const previewCookie = useCookie('preview');
 const isPreviewMode = computed(() => previewCookie.value === 'true');
+const router = useRouter();
 
 // Debug runtime config
 console.log('Runtime config:', {
@@ -45,12 +47,27 @@ useSeoMeta({
   description: store.site_seo_description,
   ogDescription: store.site_seo_description,
   ogImage: store.site_seo_image
-})
+});
+
+// Exit preview mode
+const exitPreview = async () => {
+  try {
+    await $fetch('/api/disable-preview');
+    previewCookie.value = null;
+    // Reload the page to exit preview mode
+    window.location.reload();
+  } catch (error) {
+    console.error('Failed to exit preview mode:', error);
+  }
+};
 
 // Mounted
 onMounted(() => {
   window.addEventListener('resize', onResize);
   onResize();
+  
+  // Initialize store
+  store.fetchSiteContent();
 });
 
 // Before Unmount
@@ -113,5 +130,19 @@ function updateScrollbarWidth() {
   font-weight: bold;
   z-index: 9999;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.exit-preview-btn {
+  background-color: white;
+  color: #ff3e00;
+  border: none;
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: bold;
 }
 </style>
