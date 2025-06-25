@@ -1,6 +1,8 @@
 import { defineConfig } from 'sanity';
 import { structureTool } from 'sanity/structure';
 import { schemaTypes } from './schemas';
+import { presentationTool } from 'sanity/presentation';
+import resolveProductionUrl from './lib/presentation/resolve-production-url';
 
 import { media } from 'sanity-plugin-media';
 import { vimeoField } from 'sanity-plugin-vimeo-field';
@@ -20,41 +22,66 @@ const singletonListItem = (S, typeName, title) => {
   return S.listItem()
     .title(title || typeName)
     .id(typeName)
-    .child(S.document().schemaType(typeName).documentId(typeName).views([S.view.form(), S.view.component(Iframe).options({
+    .child(S.document().schemaType(typeName).documentId(typeName).views([
+      S.view.form(),
+      S.view.component(Iframe).options({
         url: (doc) => resolvePageUrl(doc),
         showDisplayUrl: false,
         defaultSize: 'desktop',
         reload: { button: true }
       })
       .icon(EyeOpenIcon)
-      .title('Preview')])
-    );
+      .title('Preview')
+    ]));
 };
 
 // Iframe previews...
 function resolvePageUrl(doc) {
-  let baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://omelet.netlify.app',
-      slug = doc._type === 'home' ? '' : doc._type;
-
-  return `${baseUrl}/${slug}?preview=true`;
+  // Get the hostname - use the actual domain in production
+  const hostname = window.location.hostname;
+  // Use a relative URL for the API endpoint to avoid cross-origin issues
+  const previewPath = '/api/preview';
+  const previewSecret = process.env.SANITY_STUDIO_PREVIEW_SECRET_TOKEN || '';
+  
+  if (doc._type === 'home') {
+    return `${previewPath}?secret=${previewSecret}&slug=home`;
+  }
+  
+  // Handle projects and other document types
+  if (doc._type === 'project' && doc?.slug?.current) {
+    return `${previewPath}?secret=${previewSecret}&slug=${doc.slug.current}`;
+  }
+  
+  // Handle other page types
+  return `${previewPath}?secret=${previewSecret}&slug=${doc._type}`;
 }
 
 function resolveCaseStudyUrl(doc) {
-  let baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://omelet.netlify.app',
-      slug = doc?.slug?.current ? doc.slug.current : false;
+  // Use a relative URL for the API endpoint to avoid cross-origin issues
+  const previewPath = '/api/preview';
+  const previewSecret = process.env.SANITY_STUDIO_PREVIEW_SECRET_TOKEN || '';
+  const slug = doc?.slug?.current ? doc.slug.current : false;
 
-  return slug ? `${baseUrl}/${doc.slug.current}?preview=true` : `${baseUrl}?preview=true`;
+  return slug ? `${previewPath}?secret=${previewSecret}&slug=${doc.slug.current}` : `${previewPath}?secret=${previewSecret}&slug=home`;
 }
 
 const defaultDocumentNode = (S, { schemaType }) => {
-  return S.document().views([S.view.form(), S.view.component(Iframe).options({
-    url: (doc) => schemaType === 'caseStudy' ? resolveCaseStudyUrl(doc) : resolvePageUrl(doc),
-    showDisplayUrl: false,
-    defaultSize: 'desktop',
-    reload: { button: true }
-  })
-  .icon(EyeOpenIcon)
-  .title('Preview')]);
+  // Only show preview pane on documents that have a slug field
+  if (['project', 'home', 'contact', 'projectsPage'].includes(schemaType)) {
+    return S.document().views([
+      S.view.form(),
+      S.view.component(Iframe).options({
+        url: (doc) => schemaType === 'project' ? resolveCaseStudyUrl(doc) : resolvePageUrl(doc),
+        showDisplayUrl: false,
+        defaultSize: 'desktop',
+        reload: { button: true }
+      })
+      .icon(EyeOpenIcon)
+      .title('Preview')
+    ]);
+  }
+  
+  return S.document().views([S.view.form()]);
 };
 
 export default defineConfig({
@@ -69,7 +96,6 @@ export default defineConfig({
     newDocumentOptions: (prev, { currentUser, creationContext }) => {
       if (creationContext.type === 'global') {
         return [];
-      // } else if (creationContext.type === 'document' && creationContext.schemaType === 'caseStudies') {
       } else if (creationContext.type === 'document') {
         return [];
       }
@@ -99,6 +125,16 @@ export default defineConfig({
               )
           ])
     }),
+    presentationTool({
+      resolve: resolveProductionUrl,
+      previewUrl: {
+        origin: 'https://samherwig.dev',
+        previewMode: {
+          enable: '/api/preview?secret=${token}',
+          disable: '/api/disable-preview',
+        },
+      },
+    }),
     media(),
     vimeoField({
       accessToken: process.env.SANITY_STUDIO_VIMEO_ACCESS_TOKEN
@@ -106,9 +142,9 @@ export default defineConfig({
   ],
   schema: {
     types: schemaTypes,
-    // Filter out types from the global “New document” menu options
+    // Filter out types from the global "New document" menu options
     templates: (templates) => {
       return templates.filter(({ schemaType }) => ![...singletonTypes].includes(schemaType))
     }
   }
-})
+});

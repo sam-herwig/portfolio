@@ -115,7 +115,7 @@ export default defineType({
     }),
     defineField({
       name: 'blocks',
-      title: 'Content Blocks',
+      title: 'Page Builder Blocks',
       type: 'array',
       of: [
         {
@@ -135,7 +135,8 @@ export default defineType({
         },
         {
           type: 'videoPlayer'
-        }
+        },
+        { type: 'carousel' }
       ]
     })
   ],

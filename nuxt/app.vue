@@ -14,13 +14,29 @@
       <Menu v-if="store.menu_open" />
     </transition> -->
     <NuxtPage />
+    
+    <!-- Preview mode indicator -->
+    <div v-if="isPreviewMode" class="preview-indicator">
+      Preview Mode
+    </div>
   </div>
 </template>
 
 <script setup>
 import { useSiteStore } from '~/stores/store';
+import { useCookie } from '#app';
 
 const store = useSiteStore();
+const config = useRuntimeConfig();
+const previewCookie = useCookie('preview');
+const isPreviewMode = computed(() => previewCookie.value === 'true');
+
+// Debug runtime config
+console.log('Runtime config:', {
+  projectId: config.public.sanity?.projectId,
+  siteUrl: config.public.siteUrl,
+  isDev: config.public.isDev
+});
 
 // Composables
 useSeoMeta({
@@ -82,5 +98,20 @@ function updateScrollbarWidth() {
 .slide-right-enter-from,
 .slide-left-leave-to {
   transform: translateX(#{span(-2)});
+}
+
+// Preview mode indicator
+.preview-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #ff3e00;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 </style>

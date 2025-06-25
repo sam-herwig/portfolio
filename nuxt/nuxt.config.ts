@@ -1,25 +1,34 @@
 const site_name = 'portfolio';
-const site_url = 'https://vocal-hamster-363b22.netlify.app/'
+const site_url = 'samherwig.dev'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
-  devtools: { enabled: false },
+  devtools: { enabled: true },
   nitro: {
     preset: 'netlify-static'
   },
+  // Environment variables are handled via runtimeConfig in Nuxt 3
   //
   // Runtime config
   //
   runtimeConfig: {
     public: {
-      isDev: process.env.NODE_ENV === 'development'
-    }
+      isDev: process.env.NODE_ENV === 'development',
+      sanity: {
+        projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'e9e9e25h',
+        dataset: process.env.SANITY_DATASET || 'production',
+        apiVersion: '2023-05-03',
+        useCdn: process.env.NODE_ENV === 'production',
+      },
+      sanityPreviewSecret: process.env.SANITY_STUDIO_PREVIEW_SECRET_TOKEN || '',
+      siteUrl: process.env.SITE_URL || 'https://samherwig.dev'
+    },
+    sanityApiToken: process.env.SANITY_STUDIO_API || '',
   },
   //
   // SSR + Target
   //
   ssr: true,
-  target: 'static',
   //
   // Sourcemap https://nuxtseo.com/sitemap/getting-started/installation
   //
@@ -44,24 +53,11 @@ export default defineNuxtConfig({
       },
       title: site_name,
       meta: [
-        { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' },
-        { property: 'og:type', content: 'website' },
-        { property: 'og:site_name', content: site_name },
-        { hid: 'description', name: 'description', content: '' },
-        { hid: 'og:title', property: 'og:title', content: site_name },
-        { hid: 'og:description', property: 'og:description', content: '' },
-        { hid: 'og:url', property: 'og:url', content: site_url },
-        { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'msapplication-TileColor', content:'#ffffff' },
-        { name: 'theme-color', content:'#ffffff' }
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'format-detection', content: 'telephone=no' }
       ],
       link: [
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
-        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
-        { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
-        { rel: 'mask-icon', href: '/safari-pinned-tab.svg', color: '#000000' },
-        { rel: 'manifest', href: '/site.webmanifest' }
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
       ]
     },
     pageTransition: {
@@ -80,55 +76,49 @@ export default defineNuxtConfig({
     css: {
       preprocessorOptions: {
         scss: {
-          additionalData: `
-            @import '~/assets/styles/_vars.scss';
-            @import '~/assets/styles/_mixins.scss';
-          `
+          additionalData: '@import "~/assets/styles/_base.scss";'
         }
       }
     }
   },
   //
-  // Build modules
-  //
-  buildModules: [
-    '@nuxtjs/dotenv'
-  ],
-  //
   // Modules
   //
   modules: [
+    '@pinia/nuxt',
     '@nuxtjs/sanity',
     '@nuxtjs/sitemap',
-    '@pinia/nuxt',
     'nuxt-gtag'
   ],
   //
   // Gtag
   //
-  // gtag: {
-  //   enabled: process.env.NODE_ENV === 'production',
-  //   id: 'G-TP7N3YB342'
-  // },
+  gtag: {
+    id: process.env.GTAG_ID || ''
+  },
   //
   // Sanity
   //
-  
   sanity: {
     projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'e9e9e25h',
-    dataset: 'production',
-    apiVersion: '2022-03-07',
-    useCdn: false,
-    minimal: false,
+    dataset: process.env.SANITY_DATASET || 'production',
+    apiVersion: '2023-05-03',
+    useCdn: process.env.NODE_ENV === 'production',
+    token: process.env.SANITY_STUDIO_API || '',
     additionalClients: {
       preview: {
         projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'e9e9e25h',
-        dataset: 'production',
-        apiVersion: '2022-03-07',
+        dataset: process.env.SANITY_DATASET || 'production',
+        apiVersion: '2023-05-03',
         useCdn: false,
-        perspective: 'previewDrafts',
-        withCredentials: true
+        withCredentials: true,
+        token: process.env.SANITY_STUDIO_API || '',
       }
     }
+  },
+  // Configure sitemap module
+  sitemap: {
+    urls: [],
+    // The sitemap module will use the siteUrl from public runtime config
   }
 });

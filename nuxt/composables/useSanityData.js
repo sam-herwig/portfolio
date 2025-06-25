@@ -1,30 +1,30 @@
-import debounce from 'debounce';
+import { useRoute } from 'vue-router';
+import { useNuxtApp } from '#app';
+import { useCookie } from '#app';
 
-export default async function ({ query, params }) {
+export const useSanityData = async ({ query, params = {}, preview = false }) => {
   const route = useRoute();
-  const isPreview = route.query && route.query.preview === 'true' ? true : false;
-  const sanityClient = isPreview
-    ? {
-        client: 'preview',
-        server: false,
-        initialCache: false
-      }
-    : undefined;
-
-  onMounted(() => {
-    if (isPreview) {
-      const sanity = useSanity('preview');
-      const debouncedRefresh = debounce(refresh, 1000);
-
-      sanity.client.listen(query, params, { includeResult: true }).subscribe((event) => {
-        if (event.result) {
-          debouncedRefresh();
-        }
-      });
+  const { $sanity } = useNuxtApp();
+  
+  // Check if preview mode is enabled from URL or cookie
+  const previewCookie = useCookie('preview');
+  const isPreview = preview || route.query.preview === 'true' || previewCookie.value === 'true';
+  
+  try {
+    if (!$sanity || !$sanity.getClient) {
+      console.error('Sanity client not available');
+      return null;
     }
-  });
-
-  const { data, refresh } = await useLazySanityQuery(query, params, sanityClient);
-
-  return data;
-}
+    
+    // Use the appropriate client based on preview mode
+    const client = $sanity.getClient(isPreview);
+    
+    // Fetch data
+    const data = await client.fetch(query, params);
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching Sanity data:', error);
+    return null;
+  }
+};
