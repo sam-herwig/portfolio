@@ -14,6 +14,7 @@ import textBlock from './shared/builder/text-block';
 import pullQuote from './shared/builder/pull-quote';
 import singleImage from './shared/builder/single-image';
 import heroExplosion from './shared/builder/hero-explosion';
+import heroText from './shared/builder/hero-text';
 import generalBlock from './shared/builder/general-block';
 import carousel from './shared/builder/carousel';
 import masonryWall from './shared/builder/masonry-wall';
@@ -34,6 +35,7 @@ export const schemaTypes = [
   pullQuote, 
   singleImage, 
   heroExplosion,
+  heroText,
   generalBlock,
   videoLoop, 
   videoPlayer,

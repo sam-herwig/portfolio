@@ -131,6 +131,9 @@ export default defineType({
           type: 'heroExplosion'
         },
         {
+          type: 'heroText'
+        },
+        {
           type: 'videoLoop'
         },
         {

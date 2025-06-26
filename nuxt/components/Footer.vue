@@ -17,10 +17,11 @@
 <style lang="scss" scoped>
 .footer {
   background-color: $red;
-  padding: $space-m 0;
+  padding: $space-m span(1);
   color: $black;
   width: 100%;
   border-top: 3px solid $black;
+  //  padding: 0 span(1);
 }
 
 .footer-container {
@@ -35,6 +36,7 @@
   
   @include respond-to($tablet) {
     flex-direction: row;
+   
   }
 }
 

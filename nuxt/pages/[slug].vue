@@ -61,6 +61,22 @@
           :linkText="block.linkText"
           :fadeInDelay="block.fadeInDelay"
         />
+        <!-- Hero Text component -->
+        <BuilderHeroText
+          v-if="block.type === 'heroText'"
+          :title="block.title"
+          :subtitle="block.subtitle"
+          :circularText="block.circularText"
+          :centerText="block.centerText"
+          :centerImage="block.centerImage"
+          :linkUrl="block.linkUrl"
+          :linkText="block.linkText"
+          :backgroundColor="block.backgroundColor"
+          :textColor="block.textColor"
+          :rotationSpeed="block.rotationSpeed"
+          :direction="block.direction"
+          :fontSize="block.fontSize"
+        />
         <!-- Masonry Wall component -->
         <BuilderMasonryWall
           v-if="block.type === 'masonryWall'"
@@ -103,6 +119,7 @@ import { imageProps } from '~/utils/groq-common';
 import BuilderCarousel from '~/components/BuilderCarousel.vue';
 import BuilderMasonryWall from '~/components/BuilderMasonryWall.vue';
 import BuilderCircularText from '~/components/BuilderCircularText.vue';
+import BuilderHeroText from '~/components/BuilderHeroText.vue';
 
 const route = useRoute();
 const store = useSiteStore();
@@ -166,6 +183,26 @@ const pageQuery = groq`*[( _type == 'project') && slug.current == $slug][0]{
       linkUrl,
       linkText,
       fadeInDelay
+    },
+    _type == 'heroText' => {
+      "type": _type,
+      title,
+      subtitle,
+      circularText,
+      centerText,
+      "centerImage": centerImage.asset->{
+        "src": url,
+        "alt": altText,
+        "width": metadata.dimensions.width,
+        "height": metadata.dimensions.height
+      },
+      linkUrl,
+      linkText,
+      backgroundColor,
+      textColor,
+      rotationSpeed,
+      direction,
+      fontSize
     },
     // Carousel block support
     _type == 'carousel' => {

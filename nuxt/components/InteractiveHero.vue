@@ -31,6 +31,14 @@
               textColor="#000000"
               :minFontSize="80"
               className="first-name"
+              parentClassName="first-name-wrapper"
+              encryptedClassName="encrypted"
+              animateOn="hover"
+              :sequential="true"
+              revealDirection="end"
+              :speed="30"
+              :autoAnimate="true"
+              :autoAnimateInterval="4000"
             />
           </div>
           
@@ -44,6 +52,14 @@
               textColor="#000000"
               :minFontSize="80"
               className="last-name"
+              parentClassName="last-name-wrapper"
+              encryptedClassName="encrypted"
+              animateOn="hover"
+              :sequential="true"
+              revealDirection="start"
+              :speed="30"
+              :autoAnimate="true"
+              :autoAnimateInterval="5000"
             />
           </div>
         </div>
@@ -84,10 +100,13 @@ import BuilderCircularText from './BuilderCircularText.vue';
     position: absolute;
     top: 50%;
     left:50%;
-     transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
     width: 300px;
     height: 300px;
     z-index: 1;
+    display: flex; 
+    align-items: center;
+    justify-content: center;
 
     .builder-circular-text.pad-bl {
       padding: 0;
@@ -96,6 +115,7 @@ import BuilderCircularText from './BuilderCircularText.vue';
     @media (min-width: 768px) {
       width: 400px;
       height: 400px;
+     
     }
   }
 
@@ -117,25 +137,45 @@ import BuilderCircularText from './BuilderCircularText.vue';
 
   .first-name-container {
     position: relative;
-    height: 120px;
+    // height: 120px;
+    margin-bottom: 12px;
     width: auto;
     z-index: 2;
+    display: flex;
+    align-items: center;
     
     @media (min-width: 768px) {
       height: 140px;
+    }
+    
+    .first-name-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
     }
   }
 
   .last-name-container {
     position: relative;
-    height: 120px;
+    // height: 120px;
     width: auto;
     z-index: 2;
+    margin-bottom: 12px;
     margin-top: -20px; /* Overlap the names slightly */
+    display: flex;
+    align-items: center;
     
     @media (min-width: 768px) {
-      height: 140px;
-      margin-top: -30px;
+      // height: 140px;
+      // margin-top: -30px;
+    }
+    
+    .last-name-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
     }
   }
 
@@ -205,15 +245,22 @@ import BuilderCircularText from './BuilderCircularText.vue';
       flex-direction: column;
       align-items: flex-start;
       gap: $space-xs;
+      width: calc(100% - #{$space-m * 2}); /* Full width minus padding */
     }
 
     .first-name-container,
     .last-name-container {
-      height: 80px;
+      height: 70px;
+      width: 100%; /* Full width on mobile */
+      margin-bottom: 12px;
     }
 
     .last-name-container {
-      margin-top: 0;
+      margin-top: -10px; /* Smaller overlap on mobile */
+    }
+    
+    .names-stack {
+      width: 100%; /* Full width on mobile */
     }
 
     .job-title {

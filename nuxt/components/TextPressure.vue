@@ -1,38 +1,25 @@
 <template>
-  <div
+  <span 
     ref="containerRef"
-    class="text-pressure-container"
-  >
-    <h1
-      ref="titleRef"
-      :class="`text-pressure-title ${dynamicClassName}`"
-      :style="{
-        textTransform: 'uppercase',
-        fontSize: `${fontSize}px`,
-        lineHeight,
-        transform: `scale(1, ${scaleY})`,
-        transformOrigin: 'center top',
-        margin: 0,
-        textAlign: 'left',
-        userSelect: 'none',
-        whiteSpace: 'nowrap',
-        width: '100%',
-      }"
+    class="decrypted-text-wrapper"
+    :class="parentClassName"
+    @mouseenter="animateOn === 'hover' ? setIsHovering(true) : null"
+    @mouseleave="animateOn === 'hover' ? setIsHovering(false) : null"
+    :style="{
+      fontSize: `${fontSize}px`
+    }"
     >
+    <span class="sr-only">{{ text }}</span>
+    <span aria-hidden="true">
       <span
-        v-for="(char, i) in chars"
-        :key="i"
-        :ref="el => { if (el) spansRef[i] = el }"
-        :data-char="char"
-        :style="{
-          display: 'inline-block',
-          color: textColor
-        }"
+        v-for="(char, index) in displayText.split('')"
+        :key="index"
+        :class="revealedIndices.has(index) || !isScrambling || !isHovering ? className : encryptedClassName"
       >
         {{ char }}
       </span>
-    </h1>
-  </div>
+    </span>
+  </span>
 </template>
 
 <script setup>
@@ -41,220 +28,500 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 const props = defineProps({
   text: {
     type: String,
-    default: 'Compressa'
+    required: true
   },
-  width: {
-    type: Boolean,
-    default: true
+  speed: {
+    type: Number,
+    default: 20
   },
-  weight: {
-    type: Boolean,
-    default: true
+  maxIterations: {
+    type: Number,
+    default: 1000
   },
-  italic: {
-    type: Boolean,
-    default: true
-  },
-  alpha: {
+  sequential: {
     type: Boolean,
     default: false
   },
-  flex: {
-    type: Boolean,
-    default: true
-  },
-  stroke: {
-    type: Boolean,
-    default: false
-  },
-  scale: {
-    type: Boolean,
-    default: false
-  },
-  textColor: {
+  revealDirection: {
     type: String,
-    default: '#000000'
+    default: 'start',
+    validator: (value) => ['start', 'end', 'center'].includes(value)
+  },
+  useOriginalCharsOnly: {
+    type: Boolean,
+    default: false
+  },
+  characters: {
+    type: String,
+    default: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()_+'
   },
   className: {
     type: String,
     default: ''
   },
+  parentClassName: {
+    type: String,
+    default: ''
+  },
+  encryptedClassName: {
+    type: String,
+    default: ''
+  },
+  animateOn: {
+    type: String,
+    default: 'hover',
+    validator: (value) => ['hover', 'view'].includes(value)
+  },
+  textColor: {
+    type: String,
+    default: '#000000'
+  },
   minFontSize: {
     type: Number,
-    default: 24
+    default: 48
+  },
+  width: {
+    type: Boolean,
+    default: false
+  },
+  weight: {
+    type: Boolean,
+    default: false
+  },
+  autoAnimate: {
+    type: Boolean,
+    default: true
+  },
+  autoAnimateInterval: {
+    type: Number,
+    default: 2000 // 2 seconds in milliseconds
   }
 });
 
+const displayText = ref(props.text);
+const isHovering = ref(false);
+const isScrambling = ref(false);
+const revealedIndices = ref(new Set());
+const hasAnimated = ref(false);
 const containerRef = ref(null);
-const titleRef = ref(null);
-const spansRef = ref([]);
-
-const mouseRef = ref({ x: 0, y: 0 });
-const cursorRef = ref({ x: 0, y: 0 });
-
 const fontSize = ref(props.minFontSize);
-const scaleY = ref(1);
-const lineHeight = ref(1);
 
-const chars = computed(() => props.text.split(''));
+let interval = null;
+let currentIteration = 0;
+let autoAnimateInterval = null; // For periodic animation
 
-const dynamicClassName = computed(() => {
-  return [props.className, props.flex ? 'flex' : '', props.stroke ? 'stroke' : '']
-    .filter(Boolean)
-    .join(' ');
-});
-
-const dist = (a, b) => {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  return Math.sqrt(dx * dx + dy * dy);
-};
-
-const setSize = () => {
-  if (!containerRef.value || !titleRef.value) return;
-
-  const { width: containerW, height: containerH } = containerRef.value.getBoundingClientRect();
-
-  let newFontSize = containerW / (chars.value.length / 1.5);
-  newFontSize = Math.max(newFontSize, props.minFontSize);
-
-  fontSize.value = newFontSize;
-  scaleY.value = 1;
-  lineHeight.value = 1;
-
-  requestAnimationFrame(() => {
-    if (!titleRef.value) return;
-    const textRect = titleRef.value.getBoundingClientRect();
-
-    if (props.scale && textRect.height > 0) {
-      const yRatio = containerH / textRect.height;
-      scaleY.value = yRatio;
-      lineHeight.value = yRatio;
-    }
-  });
-};
-
-let animationFrameId = null;
-
-const animate = () => {
-  mouseRef.value.x += (cursorRef.value.x - mouseRef.value.x) / 15;
-  mouseRef.value.y += (cursorRef.value.y - mouseRef.value.y) / 15;
-
-  if (titleRef.value) {
-    const titleRect = titleRef.value.getBoundingClientRect();
-    const maxDist = titleRect.width / 2;
-
-    spansRef.value.forEach((span) => {
-      if (!span) return;
-
-      const rect = span.getBoundingClientRect();
-      const charCenter = {
-        x: rect.x + rect.width / 2,
-        y: rect.y + rect.height / 2,
-      };
-
-      const d = dist(mouseRef.value, charCenter);
-
-      const getAttr = (distance, minVal, maxVal) => {
-        const val = maxVal - Math.abs((maxVal * distance) / maxDist);
-        return Math.max(minVal, val + minVal);
-      };
-
-      // Calculate scale based on distance - max scale of 1.2x
-      const scale = props.width ? getAttr(d, 1.0, 1.2) : 1.0;
-      
-      // Apply alpha if enabled
-      const alphaVal = props.alpha ? getAttr(d, 0, 1).toFixed(2) : 1;
-
-      // Apply the effects
-      span.style.opacity = alphaVal;
-      span.style.transform = `scale(${scale})`;
-      span.style.color = props.textColor;
-      span.style.transition = 'transform 0.1s ease-out';
-      span.style.display = 'inline-block';
-      span.style.transformOrigin = 'center';
-    });
+// Calculate appropriate font size based on container width
+const calculateFontSize = () => {
+  if (!containerRef.value) return;
+  
+  const containerWidth = containerRef.value.offsetWidth;
+  const textLength = props.text.length;
+  const windowWidth = window.innerWidth;
+  
+  // Calculate font size based on container width and text length
+  let calculatedSize;
+  
+  // Different scaling factors based on screen size
+  if (windowWidth < 768) { // Mobile
+    // For short text, use higher divisor to prevent excessive size
+    const divisor = textLength <= 2 ? 1.5 : 0.8;
+    calculatedSize = containerWidth / (textLength * divisor);
+    console.log(`Mobile calculation: ${containerWidth} / (${textLength} * ${divisor}) = ${calculatedSize}`);
+  } 
+  else if (windowWidth < 1024) { // Tablet
+    const divisor = textLength <= 2 ? 1.2 : 0.7;
+    calculatedSize = containerWidth / (textLength * divisor);
+    console.log(`Tablet calculation: ${containerWidth} / (${textLength} * ${divisor}) = ${calculatedSize}`);
   }
-
-  animationFrameId = requestAnimationFrame(animate);
+  else if (windowWidth < 1440) { // Desktop
+    const divisor = textLength <= 2 ? 1.0 : 0.6;
+    calculatedSize = containerWidth / (textLength * divisor);
+    console.log(`Desktop calculation: ${containerWidth} / (${textLength} * ${divisor}) = ${calculatedSize}`);
+  }
+  else { // Large Desktop
+    const divisor = textLength <= 2 ? 0.9 : 0.5;
+    calculatedSize = containerWidth / (textLength * divisor);
+    console.log(`Large Desktop calculation: ${containerWidth} / (${textLength} * ${divisor}) = ${calculatedSize}`);
+  }
+  
+  // Apply min constraints
+  const minSize = props.minFontSize;
+  if (calculatedSize < minSize) {
+    console.log(`Applying min constraint: ${calculatedSize} → ${minSize}`);
+    calculatedSize = minSize;
+  }
+  
+  // Cap font sizes based on screen size
+  let maxSize;
+  if (windowWidth < 768) {
+    maxSize = 80;
+  } else if (windowWidth < 1024) {
+    maxSize = 120;
+  } else if (windowWidth < 1440) {
+    maxSize = 130;
+  } else {
+    maxSize = 140;
+  }
+  
+  if (calculatedSize > maxSize) {
+    console.log(`Applying max constraint: ${calculatedSize} → ${maxSize}`);
+    calculatedSize = maxSize;
+  }
+  
+  // Set the font size
+  fontSize.value = calculatedSize;
+  
+  console.log(`Final font size: ${fontSize.value}, Container width: ${containerWidth}, Text length: ${textLength}, Window width: ${windowWidth}`);
 };
 
-let handleMouseMove;
-let handleTouchMove;
+const getNextIndex = (revealedSet) => {
+  const textLength = props.text.length;
+  switch (props.revealDirection) {
+    case 'start':
+      return revealedSet.size;
+    case 'end':
+      return textLength - 1 - revealedSet.size;
+    case 'center': {
+      const middle = Math.floor(textLength / 2);
+      const offset = Math.floor(revealedSet.size / 2);
+      const nextIndex =
+        revealedSet.size % 2 === 0
+          ? middle + offset
+          : middle - offset - 1;
+
+      if (nextIndex >= 0 && nextIndex < textLength && !revealedSet.has(nextIndex)) {
+        return nextIndex;
+      }
+
+      for (let i = 0; i < textLength; i++) {
+        if (!revealedSet.has(i)) return i;
+      }
+      return 0;
+    }
+    default:
+      return revealedSet.size;
+  }
+};
+
+const shuffleText = (originalText, currentRevealed) => {
+  const availableChars = props.useOriginalCharsOnly
+    ? Array.from(new Set(originalText.split(''))).filter((char) => char !== ' ')
+    : props.characters.split('');
+
+  if (props.useOriginalCharsOnly) {
+    const positions = originalText.split('').map((char, i) => ({
+      char,
+      isSpace: char === ' ',
+      index: i,
+      isRevealed: currentRevealed.has(i),
+    }));
+
+    const nonSpaceChars = positions
+      .filter((p) => !p.isSpace && !p.isRevealed)
+      .map((p) => p.char);
+
+    for (let i = nonSpaceChars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [nonSpaceChars[i], nonSpaceChars[j]] = [nonSpaceChars[j], nonSpaceChars[i]];
+    }
+
+    let charIndex = 0;
+    return positions
+      .map((p) => {
+        if (p.isSpace) return ' ';
+        if (p.isRevealed) return originalText[p.index];
+        return nonSpaceChars[charIndex++];
+      })
+      .join('');
+  } else {
+    return originalText
+      .split('')
+      .map((char, i) => {
+        if (char === ' ') return ' ';
+        if (currentRevealed.has(i)) return originalText[i];
+        return availableChars[Math.floor(Math.random() * availableChars.length)];
+      })
+      .join('');
+  }
+};
+
+const setIsHovering = (value) => {
+  isHovering.value = value;
+  
+  // Immediately trigger animation when hovering starts
+  if (value) {
+    startAnimation();
+  } else {
+    stopAnimation();
+  }
+};
+
+const startAnimation = () => {
+  isScrambling.value = true;
+  currentIteration = 0;
+  
+  if (interval) {
+    clearInterval(interval);
+  }
+  
+  // Make animation last 3x longer by slowing down the interval
+  // Original speed is multiplied by 3
+  const animationSpeed = props.speed * 3;
+  
+  interval = setInterval(() => {
+    if (props.sequential) {
+      if (revealedIndices.value.size < props.text.length) {
+        const nextIndex = getNextIndex(revealedIndices.value);
+        const newRevealed = new Set(revealedIndices.value);
+        newRevealed.add(nextIndex);
+        revealedIndices.value = newRevealed;
+        displayText.value = shuffleText(props.text, newRevealed);
+      } else {
+        clearInterval(interval);
+        isScrambling.value = false;
+      }
+    } else {
+      displayText.value = shuffleText(props.text, revealedIndices.value);
+      currentIteration++;
+      if (currentIteration >= props.maxIterations) {
+        clearInterval(interval);
+        isScrambling.value = false;
+        displayText.value = props.text;
+      }
+    }
+  }, animationSpeed);
+};
+
+const stopAnimation = () => {
+  if (interval) {
+    clearInterval(interval);
+  }
+  displayText.value = props.text;
+  revealedIndices.value = new Set();
+  isScrambling.value = false;
+};
+
+// Function to run animation automatically
+const setupAutoAnimation = () => {
+  // Only set up if autoAnimate is true
+  if (!props.autoAnimate) return;
+  
+  // Clear any existing interval
+  if (autoAnimateInterval) {
+    clearInterval(autoAnimateInterval);
+  }
+  
+  // Set up new interval to trigger animation every X milliseconds (default 2000ms)
+  autoAnimateInterval = setInterval(() => {
+    // Only trigger if not already animating
+    if (!isScrambling.value) {
+      // Run animation
+      setIsHovering(true);
+      
+      // Reset after animation completes
+      const totalDuration = props.sequential 
+        ? props.text.length * props.speed * 3 + 200 // Add buffer time
+        : props.maxIterations * props.speed * 3 + 200;
+        
+      setTimeout(() => {
+        // Only reset if not currently being hovered
+        if (!containerRef.value?.matches(':hover')) {
+          setIsHovering(false);
+        }
+      }, totalDuration);
+    }
+  }, props.autoAnimateInterval);
+};
 
 onMounted(() => {
-  handleMouseMove = (e) => {
-    cursorRef.value.x = e.clientX;
-    cursorRef.value.y = e.clientY;
-  };
+  // Calculate font size
+  calculateFontSize();
   
-  handleTouchMove = (e) => {
-    const t = e.touches[0];
-    cursorRef.value.x = t.clientX;
-    cursorRef.value.y = t.clientY;
-  };
-
-  window.addEventListener('mousemove', handleMouseMove);
-  window.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-  if (containerRef.value) {
-    const { left, top, width, height } = containerRef.value.getBoundingClientRect();
-    mouseRef.value.x = left + width / 2;
-    mouseRef.value.y = top + height / 2;
-    cursorRef.value.x = mouseRef.value.x;
-    cursorRef.value.y = mouseRef.value.y;
+  // Use resize observer instead of window resize event for better performance
+  if (window.ResizeObserver) {
+    const resizeObserver = new ResizeObserver(debounce(() => {
+      calculateFontSize();
+    }, 100));
+    
+    if (containerRef.value) {
+      resizeObserver.observe(containerRef.value);
+    }
+    
+    // Also observe window resize for orientation changes
+    window.addEventListener('resize', debounce(() => {
+      calculateFontSize();
+    }, 100));
+    
+    // Handle orientation change specifically
+    window.addEventListener('orientationchange', () => {
+      // Wait for orientation change to complete
+      setTimeout(() => {
+        calculateFontSize();
+      }, 200);
+    });
+  } else {
+    // Fallback to window resize event
+    window.addEventListener('resize', calculateFontSize);
   }
-
-  setSize();
-  window.addEventListener('resize', setSize);
   
-  animationFrameId = requestAnimationFrame(animate);
+  // Always trigger initial animation on mount with a short delay
+  setTimeout(() => {
+    setIsHovering(true);
+    
+    // For view-based animations, mark as animated
+    if (props.animateOn === 'view') {
+      hasAnimated.value = true;
+    }
+    // For hover-based animations, reset after animation completes
+    else if (props.animateOn === 'hover') {
+      // Calculate total animation time based on sequential or not
+      const totalDuration = props.sequential 
+        ? props.text.length * props.speed * 3 + 500 // Add buffer time
+        : props.maxIterations * props.speed * 3 + 500;
+        
+      setTimeout(() => {
+        // Only reset if not currently being hovered
+        if (!containerRef.value?.matches(':hover')) {
+          setIsHovering(false);
+        }
+      }, totalDuration);
+    }
+    
+    // Set up automatic animation
+    setupAutoAnimation();
+  }, 500);
+  
+  // Set up intersection observer for view-based animations
+  if (props.animateOn === 'view') {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !hasAnimated.value) {
+            setIsHovering(true);
+            hasAnimated.value = true;
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1,
+      }
+    );
+
+    if (containerRef.value) {
+      observer.observe(containerRef.value);
+    }
+
+    return () => {
+      if (containerRef.value) {
+        observer.unobserve(containerRef.value);
+      }
+    };
+  }
 });
 
-watch(() => props.text, setSize);
-watch(() => props.scale, setSize);
+// Simple debounce function to limit resize calculations
+function debounce(fn, delay) {
+  let timer = null;
+  return function() {
+    const context = this;
+    const args = arguments;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn.apply(context, args);
+    }, delay);
+  };
+}
 
 onBeforeUnmount(() => {
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
+  if (interval) {
+    clearInterval(interval);
   }
   
-  window.removeEventListener('mousemove', handleMouseMove);
-  window.removeEventListener('touchmove', handleTouchMove);
-  window.removeEventListener('resize', setSize);
+  // Clean up auto animation interval
+  if (autoAnimateInterval) {
+    clearInterval(autoAnimateInterval);
+  }
+  
+  // Clean up event listeners
+  window.removeEventListener('resize', calculateFontSize);
+  window.removeEventListener('orientationchange', calculateFontSize);
+});
+
+// Reset animation when text changes
+watch(() => props.text, (newText) => {
+  displayText.value = newText;
+  revealedIndices.value = new Set();
+  calculateFontSize();
+  if (isHovering.value) {
+    startAnimation();
+  }
 });
 </script>
 
 <style lang="scss" scoped>
-.text-pressure-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: transparent;
-}
-
-.text-pressure-title {
-  color: v-bind(textColor);
+.decrypted-text-wrapper {
+  display: inline-block;
+  white-space: nowrap; /* Prevent text from wrapping */
   font-family: $poppins-extra-bold;
+  color: v-bind(textColor);
+  text-transform: uppercase;
+  line-height: 1;
+  width: 100%;
+  cursor: pointer;
+  overflow: visible; /* Allow characters to overflow if needed */
+  
+  span {
+    display: inline-block;
+    transition: color 0.5s ease-out, transform 0.5s ease-out, opacity 0.5s ease-out;
+  }
 }
 
-.flex {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.stroke span {
-  position: relative;
-}
-
-.stroke span::after {
-  content: attr(data-char);
+.sr-only {
   position: absolute;
-  left: 0;
-  top: 0;
-  color: transparent;
-  z-index: -1;
-  -webkit-text-stroke-width: 3px;
-  -webkit-text-stroke-color: #FF0000;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+// Default styles for revealed characters
+.first-name, .last-name {
+  color: v-bind(textColor);
+  font-weight: bold;
+  transform: scale(1);
+  opacity: 1;
+}
+
+// Styles for encrypted characters
+.encrypted {
+  color: $red;
+  opacity: 0.8;
+  transform: scale(1.1);
+  text-shadow: 0 0 5px rgba(255, 0, 0, 0.3);
+}
+
+// Media query for tablet and up
+@media (min-width: 768px) {
+  .decrypted-text-wrapper {
+    letter-spacing: 0.02em;
+  }
+  
+  .encrypted {
+    transform: scale(1.15);
+    text-shadow: 0 0 8px rgba(255, 0, 0, 0.4);
+  }
+}
+
+// Mobile specific styles
+@media (max-width: 767px) {
+  .decrypted-text-wrapper {
+    letter-spacing: -0.02em; /* Tighten letter spacing on mobile */
+    max-width: 100%; /* Ensure it doesn't exceed container width */
+  }
 }
 </style> 
