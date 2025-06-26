@@ -7,15 +7,15 @@ export default defineType({
   fields: [
     defineField({
       name: 'title',
-      title: 'Section Title',
+      title: 'Title',
       type: 'string',
-      description: 'Title displayed above the flowing menu',
-      validation: Rule => Rule.required()
+      description: 'Title displayed above the flowing menu'
     }),
     defineField({
       name: 'backgroundColor',
       title: 'Background Color',
       type: 'string',
+      description: 'Background color of the flowing menu',
       options: {
         list: [
           { title: 'Black', value: 'black' },
@@ -23,23 +23,20 @@ export default defineType({
           { title: 'Red', value: 'red' },
           { title: 'White', value: 'white' }
         ]
-      },
-      description: 'Background color for the flowing menu section',
-      initialValue: 'black'
+      }
     }),
     defineField({
       name: 'textColor',
       title: 'Text Color',
       type: 'string',
+      description: 'Text color of the menu items',
       options: {
         list: [
-          { title: 'White', value: 'white' },
           { title: 'Black', value: 'black' },
+          { title: 'White', value: 'white' },
           { title: 'Red', value: 'red' }
         ]
-      },
-      description: 'Text color for the flowing menu items',
-      initialValue: 'white'
+      }
     }),
     defineField({
       name: 'projects',
@@ -56,24 +53,16 @@ export default defineType({
     }),
     defineField({
       name: 'enableTags',
-      title: 'Enable Tag Filtering',
+      title: 'Enable Tags',
       type: 'boolean',
-      description: 'Enable filtering projects by tags',
+      description: 'Enable filtering by tags',
       initialValue: true
     }),
     defineField({
       name: 'height',
-      title: 'Section Height',
+      title: 'Menu Height',
       type: 'string',
-      options: {
-        list: [
-          { title: 'Small (50vh)', value: '50vh' },
-          { title: 'Medium (70vh)', value: '70vh' },
-          { title: 'Large (90vh)', value: '90vh' },
-          { title: 'Full Screen (100vh)', value: '100vh' }
-        ]
-      },
-      description: 'Height of the flowing menu section',
+      description: 'Height of the menu (e.g., 70vh, 500px)',
       initialValue: '70vh'
     })
   ],
@@ -85,7 +74,7 @@ export default defineType({
     prepare({ title, projectCount = 0 }) {
       return {
         title: title || 'Flowing Menu',
-        subtitle: `${projectCount} project${projectCount === 1 ? '' : 's'}`
+        subtitle: `Projects menu with ${projectCount} items`
       };
     }
   }

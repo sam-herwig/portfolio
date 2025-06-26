@@ -101,9 +101,12 @@
       <section v-if="validNextProject" class="up-next-section">
         <div class="gutter">
           <h2 class="up-next-title">Up Next</h2>
-          <NuxtLink :to="`/${validNextProject.slug.current}`" class="up-next-link">
-            <h3 class="next-project-title">{{ validNextProject.title }}</h3>
-          </NuxtLink>
+          <MarqueeItem
+            :text="validNextProject.title"
+            :linkTo="`/${validNextProject.slug.current}`"
+            textColor="white"
+            class="up-next-item"
+          />
         </div>
       </section>
       
@@ -120,6 +123,7 @@ import BuilderCarousel from '~/components/BuilderCarousel.vue';
 import BuilderMasonryWall from '~/components/BuilderMasonryWall.vue';
 import BuilderCircularText from '~/components/BuilderCircularText.vue';
 import BuilderHeroText from '~/components/BuilderHeroText.vue';
+import MarqueeItem from '~/components/MarqueeItem.vue';
 
 const route = useRoute();
 const store = useSiteStore();
@@ -323,27 +327,18 @@ watch(() => route.params.slug, async () => {
       text-align: center;
     }
     
-    .up-next-link {
-      text-decoration: none;
-      color: inherit;
-      display: block;
-      text-align: center;
-      
-      &:hover {
-        .next-project-title {
-          color: $red;
-        }
-      }
-    }
-    
-    .next-project-title {
-      font-family: $poppins-extra-bold;
-      font-size: 3rem;
-      line-height: 1;
-      transition: color 0.3s ease;
+    .up-next-item {
+      height: 120px;
       
       @media (max-width: 768px) {
-        font-size: 2rem;
+        height: 80px;
+      }
+      
+      // Override marquee-item styles for this specific use
+      :deep(.marquee-item__link) {
+        &:hover {
+          color: $red !important;
+        }
       }
     }
   }

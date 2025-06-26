@@ -26,9 +26,11 @@ export default defineType({
       of: [
         {
           type: 'generalBlock'
+        },
+        {
+          type: 'flowingMenu'
         }
-      ],
-      validation: Rule => Rule.max(1)
+      ]
     }),
     defineField({
       fieldset: 'content',

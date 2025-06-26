@@ -5,6 +5,15 @@
       :title="block.title"
       :text="block.text"
     />
+    <BuilderHeroText
+      :title="'contact'"
+      :circularText="'Fill Out Form *PLEASE* '"
+      :backgroundColor="red"
+      :textColor="black"
+      :rotationSpeed="20"
+      :direction="clockwise"
+      :fontSize="5"
+    />
     <section class="container mx-auto px-4 py-12">
       <ContactForm />
     </section>

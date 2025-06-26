@@ -14,7 +14,7 @@
           className="hero-title"
           parentClassName="hero-title-wrapper"
           encryptedClassName="encrypted"
-          animateOn="view"
+          animateOn="hover"
           :sequential="true"
           revealDirection="start"
           :speed="30"
@@ -36,7 +36,7 @@
           className="hero-subtitle"
           parentClassName="hero-subtitle-wrapper"
           encryptedClassName="encrypted"
-          animateOn="view"
+          animateOn="hover"
           :sequential="true"
           revealDirection="start"
           :speed="20"
@@ -160,6 +160,7 @@ onMounted(() => {
     justify-content: center;
     width: 100%;
     padding: $space-l;
+    padding-top: 80px;
     gap: 2rem;
   }
   
@@ -203,6 +204,9 @@ onMounted(() => {
     height: 300px;
     z-index: 1;
     margin: 2rem 0;
+    display: flex; 
+    justify-content: center;
+    align-items: center;
     
     @media (min-width: 768px) {
       width: 400px;
