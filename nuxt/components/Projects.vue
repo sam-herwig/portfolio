@@ -130,7 +130,8 @@ const updateCursorPosition = throttle((e) => {
 const changeCursor = (imageUrl) => {
   // Only apply custom cursor on desktop
   if (window.innerWidth >= 768) {
-    document.body.style.cursor = 'none';
+    // Use pointer cursor instead of hiding it to maintain clickability
+    document.body.style.cursor = 'pointer';
     if (cursorImage.value) {
       cursorImage.value.style.backgroundImage = `url(${imageUrl})`;
       cursorImage.value.style.display = 'block';
@@ -227,6 +228,9 @@ const resetCursor = () => {
         text-decoration: none;
         color: inherit;
         display: block;
+        position: relative;
+        z-index: 10;
+        cursor: pointer;
       }
       
       .project-title {
