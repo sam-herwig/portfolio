@@ -24,7 +24,7 @@
     <nav class="menu">
       <MarqueeItem
         v-for="(item, idx) in filteredItems" 
-        :key="idx"
+        :key="item.link || idx"
         :text="item.text"
         :linkTo="item.link"
         :image="item.image"
@@ -39,6 +39,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { gsap } from 'gsap';
+import { throttle } from 'lodash';
 import MarqueeItem from './MarqueeItem.vue';
 
 const props = defineProps({
@@ -121,7 +122,7 @@ const filteredItems = computed(() => {
   );
 });
 
-const handleScroll = () => {
+const handleScroll = throttle(() => {
   if (!isMobile.value || !menuWrap.value || !menuItems.value.length) return;
   
   const currentScrollY = window.scrollY;
@@ -164,7 +165,7 @@ const handleScroll = () => {
     
     activeMarqueeIndex.value = mostVisibleIdx;
   }
-};
+}, 100); // Throttle to 100ms for smooth scrolling performance
 
 const checkIfMobile = () => {
   isMobile.value = window.innerWidth <= 768;

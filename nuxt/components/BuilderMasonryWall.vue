@@ -5,7 +5,7 @@
       <div class="masonry-grid" ref="masonryGrid">
         <div 
           v-for="(item, index) in items" 
-          :key="index" 
+          :key="item.src || index" 
           class="masonry-item"
           :class="{ 'is-video': item.type === 'video' }"
           ref="masonryItems"
@@ -98,10 +98,8 @@ const onMediaLoaded = (index) => {
   if (!loadedItemsMap.value[index]) {
     loadedItemsMap.value[index] = true;
     loadedItems.value++;
-    console.log(`Item ${index} loaded. Progress: ${loadedItems.value}/${totalItems.value}`);
     
     if (loadedItems.value >= totalItems.value) {
-      console.log('All items loaded, applying final layout');
       applyMasonryLayout();
       layoutApplied.value = true;
     }
@@ -112,13 +110,7 @@ const onMediaLoaded = (index) => {
 const applyMasonryLayout = () => {
   if (!masonryGrid.value || !masonryItems.value.length) return;
   
-  // Debug logs
-  console.log('Applying masonry layout with:', {
-    itemsCount: masonryItems.value.length,
-    containerWidth: masonryGrid.value.offsetWidth,
-    columnWidth: props.columnWidth,
-    gapSize: props.gapSize
-  });
+  // Apply masonry layout
   
   const containerWidth = masonryGrid.value.offsetWidth;
   
@@ -143,7 +135,7 @@ const applyMasonryLayout = () => {
   
   const gap = props.gapSize;
   
-  console.log(`Calculated ${numColumns} columns with width ${columnWidth}px`);
+  // Calculated columns and width
   
   // Initialize column heights
   const columnHeights = Array(numColumns).fill(0);
@@ -166,14 +158,7 @@ const applyMasonryLayout = () => {
     // Get custom aspect ratio if specified
     const customAspectRatio = props.items[index].aspectRatio;
     
-    // Debug item positioning
-    console.log(`Item ${index}:`, {
-      column: shortestColumnIndex,
-      x,
-      y,
-      aspectRatio: customAspectRatio || 'default',
-      itemHeight: item.offsetHeight
-    });
+    // Item positioning
     
     // Apply custom aspect ratio if provided
     if (customAspectRatio) {
@@ -197,7 +182,6 @@ const applyMasonryLayout = () => {
   
   // Set container height to the height of the tallest column
   const maxHeight = Math.max(...columnHeights);
-  console.log('Column heights:', columnHeights, 'Max height:', maxHeight);
   
   // Set explicit height with a small buffer to prevent overflow
   if (maxHeight > 0) {
@@ -210,7 +194,6 @@ const applyMasonryLayout = () => {
 // Check if all items are loaded and apply layout
 const checkAllItemsLoaded = () => {
   if (loadedItems.value >= totalItems.value && !layoutApplied.value) {
-    console.log('All items loaded, applying final layout');
     applyMasonryLayout();
     layoutApplied.value = true;
   }
@@ -244,7 +227,6 @@ const setupMediaLoadHandlers = () => {
   // Set up a fallback timer to ensure layout is applied even if some images fail to load
   setTimeout(() => {
     if (!layoutApplied.value) {
-      console.log('Applying layout after timeout');
       applyMasonryLayout();
       layoutApplied.value = true;
     }
@@ -319,7 +301,7 @@ const setupVideos = () => {
         const observer = new IntersectionObserver((entries) => {
           entries.forEach(entry => {
             if (entry.isIntersecting) {
-              video.play().catch(e => console.log('Video play prevented:', e));
+              video.play().catch(() => {});
             } else {
               video.pause();
             }
@@ -337,7 +319,6 @@ const handleResize = () => {
   // Use a debounced version to avoid too many recalculations
   clearTimeout(resizeTimeout);
   resizeTimeout = setTimeout(() => {
-    console.log('Window resized, recalculating layout');
     
     // Force recalculation of container dimensions
     if (masonryGrid.value) {
@@ -370,7 +351,6 @@ onMounted(async () => {
       
       // Set up resize observer
       resizeObserver = new ResizeObserver(() => {
-        console.log('Container size changed');
         handleResize();
       });
       
@@ -391,7 +371,6 @@ onMounted(async () => {
       mutationObserver = new MutationObserver((mutations) => {
         // Check if we need to reapply layout
         if (masonryGrid.value && mutations.some(m => m.type === 'childList' || m.type === 'attributes')) {
-          console.log('DOM mutation detected, reapplying layout');
           applyMasonryLayout();
         }
       });
@@ -410,7 +389,6 @@ onMounted(async () => {
       
       // Also listen for orientation changes specifically for mobile
       window.addEventListener('orientationchange', () => {
-        console.log('Orientation changed, recalculating layout');
         // Wait a bit for the browser to settle after orientation change
         setTimeout(() => {
           // Reset any inline width that might have been set

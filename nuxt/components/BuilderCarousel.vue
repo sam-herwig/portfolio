@@ -17,7 +17,7 @@
       >
         <swiper-slide
           v-for="(img, i) in images"
-          :key="i"
+          :key="img.src || i"
           class="carousel-slide"
           :class="{ 'active': i === currentIndex }"
           @click="openFullscreen(i)"
@@ -28,7 +28,7 @@
       <div class="carousel-index">
         <span
           v-for="(img, i) in images"
-          :key="i"
+          :key="`dot-${img.src || i}`"
           class="carousel-dot"
           :class="{ 'active': i === currentIndex }"
           @click="goTo(i)"
@@ -50,7 +50,7 @@
         >
           <swiper-slide
             v-for="(img, i) in images"
-            :key="i"
+            :key="`fullscreen-${img.src || i}`"
             class="carousel-slide-fullscreen"
           >
             <img :src="img.src" :alt="img.alt || 'Carousel Image'" />

@@ -26,8 +26,8 @@
     
     <div class="projects-grid">
       <div 
-        v-for="(project, index) in filteredProjects" 
-        :key="index" 
+        v-for="project in filteredProjects" 
+        :key="project.slug?.current || project._id" 
         class="project-item"
         @mouseover="changeCursor(project.cursorImage)"
         @mouseleave="resetCursor()"
@@ -43,6 +43,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { throttle } from 'lodash';
 
 // Props
 const props = defineProps({
@@ -52,18 +53,7 @@ const props = defineProps({
   }
 });
 
-// Debug logging
-console.log('Projects component received:', props.projects);
-if (props.projects) {
-  props.projects.forEach((project, index) => {
-    console.log(`Project ${index} in component:`, {
-      title: project.title,
-      slug: project.slug,
-      slugCurrent: project.slug?.current,
-      linkTo: `/${project.slug?.current}`
-    });
-  });
-}
+// Debug logging removed for production
 
 // Tag filtering
 const activeTag = ref(null);
@@ -128,14 +118,13 @@ onUnmounted(() => {
   resetCursor();
 });
 
-// Update cursor position to follow mouse
-const updateCursorPosition = (e) => {
+// Update cursor position to follow mouse - throttled for performance
+const updateCursorPosition = throttle((e) => {
   if (cursorImage.value) {
     cursorImage.value.style.left = `${e.clientX}px`;
     cursorImage.value.style.top = `${e.clientY}px`;
-    
   }
-};
+}, 16); // ~60fps
 
 // Change cursor when hovering over a project
 const changeCursor = (imageUrl) => {

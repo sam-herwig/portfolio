@@ -369,7 +369,8 @@ const onWindowResize = () => {
 
 // --- dat.GUI Setup with Enhanced Controls ---
 const initDatGUI = () => {
-  if (!process.client || !dat) return;
+  // Only load dat.GUI in development mode
+  if (!process.client || !dat || process.env.NODE_ENV !== 'development') return;
   
   gui = new dat.GUI({ autoPlace: false });
   
@@ -453,8 +454,11 @@ onMounted(async () => {
     const threeModule = await import('three');
     THREE = threeModule;
     
-    const datModule = await import('dat.gui');
-    dat = datModule.default;
+    // Only load dat.GUI in development mode
+    if (process.env.NODE_ENV === 'development') {
+      const datModule = await import('dat.gui');
+      dat = datModule.default;
+    }
     
     nextTick(() => {
       initThree();
