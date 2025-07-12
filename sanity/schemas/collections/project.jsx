@@ -102,9 +102,9 @@ export default defineType({
             list: [
               { title: 'Web', value: 'WEB' },
               { title: 'Interactive', value: 'Interactive' },
-              { title: 'Three.JS', value: 'Three.JS' }, 
+              { title: 'Three.JS', value: 'Three.JS' },
               { title: 'New Belgium', value: 'New Belgium' },
-              { title: 'Fresh Build', value: 'freshBuild' }
+              { title: 'Fresh Build', value: 'Fresh Build' }
             ]
           }
         }
@@ -126,7 +126,7 @@ export default defineType({
         },
         {
           type: 'singleImage'
-        }, 
+        },
         {
           type: 'heroExplosion'
         },

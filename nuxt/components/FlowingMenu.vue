@@ -94,7 +94,12 @@ const availableTags = computed(() => {
   const tags = new Set();
   props.projects.forEach(project => {
     if (project.tags && Array.isArray(project.tags)) {
-      project.tags.forEach(tag => tags.add(tag));
+      project.tags.forEach(tag => {
+        // Exclude "Climber" tag from the menu
+        if (tag !== 'Climber') {
+          tags.add(tag);
+        }
+      });
     }
   });
   return Array.from(tags);
