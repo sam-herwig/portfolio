@@ -106,9 +106,10 @@ const hasAnimated = ref(false);
 const containerRef = ref(null);
 const fontSize = ref(props.minFontSize);
 
-let interval = null;
+let animationId = null;
 let currentIteration = 0;
 let autoAnimateInterval = null; // For periodic animation
+let lastFrameTime = 0;
 
 // Calculate appropriate font size based on container width
 const calculateFontSize = () => {
@@ -126,28 +127,23 @@ const calculateFontSize = () => {
     // For short text, use higher divisor to prevent excessive size
     const divisor = textLength <= 2 ? 1.5 : 0.8;
     calculatedSize = containerWidth / (textLength * divisor);
-    console.log(`Mobile calculation: ${containerWidth} / (${textLength} * ${divisor}) = ${calculatedSize}`);
   } 
   else if (windowWidth < 1024) { // Tablet
     const divisor = textLength <= 2 ? 1.2 : 0.7;
     calculatedSize = containerWidth / (textLength * divisor);
-    console.log(`Tablet calculation: ${containerWidth} / (${textLength} * ${divisor}) = ${calculatedSize}`);
   }
   else if (windowWidth < 1440) { // Desktop
     const divisor = textLength <= 2 ? 1.0 : 0.6;
     calculatedSize = containerWidth / (textLength * divisor);
-    console.log(`Desktop calculation: ${containerWidth} / (${textLength} * ${divisor}) = ${calculatedSize}`);
   }
   else { // Large Desktop
     const divisor = textLength <= 2 ? 0.9 : 0.5;
     calculatedSize = containerWidth / (textLength * divisor);
-    console.log(`Large Desktop calculation: ${containerWidth} / (${textLength} * ${divisor}) = ${calculatedSize}`);
   }
   
   // Apply min constraints
   const minSize = props.minFontSize;
   if (calculatedSize < minSize) {
-    console.log(`Applying min constraint: ${calculatedSize} → ${minSize}`);
     calculatedSize = minSize;
   }
   
@@ -164,14 +160,11 @@ const calculateFontSize = () => {
   }
   
   if (calculatedSize > maxSize) {
-    console.log(`Applying max constraint: ${calculatedSize} → ${maxSize}`);
     calculatedSize = maxSize;
   }
   
   // Set the font size
   fontSize.value = calculatedSize;
-  
-  console.log(`Final font size: ${fontSize.value}, Container width: ${containerWidth}, Text length: ${textLength}, Window width: ${windowWidth}`);
 };
 
 const getNextIndex = (revealedSet) => {
@@ -259,42 +252,60 @@ const setIsHovering = (value) => {
 const startAnimation = () => {
   isScrambling.value = true;
   currentIteration = 0;
+  lastFrameTime = 0;
   
-  if (interval) {
-    clearInterval(interval);
+  if (animationId) {
+    cancelAnimationFrame(animationId);
   }
   
   // Make animation last 3x longer by slowing down the interval
   // Original speed is multiplied by 3
   const animationSpeed = props.speed * 3;
   
-  interval = setInterval(() => {
-    if (props.sequential) {
-      if (revealedIndices.value.size < props.text.length) {
-        const nextIndex = getNextIndex(revealedIndices.value);
-        const newRevealed = new Set(revealedIndices.value);
-        newRevealed.add(nextIndex);
-        revealedIndices.value = newRevealed;
-        displayText.value = shuffleText(props.text, newRevealed);
+  const animate = (timestamp) => {
+    if (!lastFrameTime) lastFrameTime = timestamp;
+    const elapsed = timestamp - lastFrameTime;
+    
+    // Only update if enough time has passed based on animation speed
+    if (elapsed >= animationSpeed) {
+      lastFrameTime = timestamp;
+      
+      if (props.sequential) {
+        if (revealedIndices.value.size < props.text.length) {
+          const nextIndex = getNextIndex(revealedIndices.value);
+          const newRevealed = new Set(revealedIndices.value);
+          newRevealed.add(nextIndex);
+          revealedIndices.value = newRevealed;
+          displayText.value = shuffleText(props.text, newRevealed);
+          animationId = requestAnimationFrame(animate);
+        } else {
+          isScrambling.value = false;
+          animationId = null;
+        }
       } else {
-        clearInterval(interval);
-        isScrambling.value = false;
+        displayText.value = shuffleText(props.text, revealedIndices.value);
+        currentIteration++;
+        if (currentIteration >= props.maxIterations) {
+          isScrambling.value = false;
+          displayText.value = props.text;
+          animationId = null;
+        } else {
+          animationId = requestAnimationFrame(animate);
+        }
       }
     } else {
-      displayText.value = shuffleText(props.text, revealedIndices.value);
-      currentIteration++;
-      if (currentIteration >= props.maxIterations) {
-        clearInterval(interval);
-        isScrambling.value = false;
-        displayText.value = props.text;
-      }
+      // Continue animation even if we haven't hit the speed threshold
+      animationId = requestAnimationFrame(animate);
     }
-  }, animationSpeed);
+  };
+  
+  animationId = requestAnimationFrame(animate);
 };
 
 const stopAnimation = () => {
-  if (interval) {
-    clearInterval(interval);
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
   }
   displayText.value = props.text;
   revealedIndices.value = new Set();
@@ -435,8 +446,9 @@ function debounce(fn, delay) {
 }
 
 onBeforeUnmount(() => {
-  if (interval) {
-    clearInterval(interval);
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
   }
   
   // Clean up auto animation interval

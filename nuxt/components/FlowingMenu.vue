@@ -77,7 +77,6 @@ const containerStyles = computed(() => {
 const getColorValue = (colorName) => {
   const colorMap = {
     'black': '#000000',
-    'dark-black': '#1a1a1a',
     'red': '#e94234',
     'white': '#ffffff'
   };
@@ -203,7 +202,6 @@ watch(() => filteredItems.value, () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background-color: $black; /* Default, will be overridden by inline style */
 }
 
 .menu-header {

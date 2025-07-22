@@ -19,7 +19,7 @@ export default defineType({
       options: {
         list: [
           { title: 'Black', value: 'black' },
-          { title: 'Dark Black', value: 'dark-black' },
+          { title: 'Dark Black', value: 'black' },
           { title: 'Red', value: 'red' },
           { title: 'White', value: 'white' }
         ]

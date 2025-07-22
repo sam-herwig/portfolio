@@ -316,7 +316,7 @@ watch(() => route.params.slug, async () => {
 .case-study-page {
   .up-next-section {
     padding: 4rem 0;
-    background-color: $dark-black;
+    background-color: $black;
     color: $white;
     border-top: 1px solid $red;
     

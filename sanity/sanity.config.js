@@ -67,7 +67,7 @@ function resolveCaseStudyUrl(doc) {
 
 const defaultDocumentNode = (S, { schemaType }) => {
   // Only show preview pane on documents that have a slug field
-  if (['project', 'home', 'contact', 'projectsPage'].includes(schemaType)) {
+  if (['project', 'home', 'contact', 'projectsPage', 'aboutPage'].includes(schemaType)) {
     return S.document().views([
       S.view.form(),
       S.view.component(Iframe).options({

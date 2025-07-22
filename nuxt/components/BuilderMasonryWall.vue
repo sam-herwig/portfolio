@@ -9,6 +9,7 @@
           class="masonry-item"
           :class="{ 'is-video': item.type === 'video' }"
           ref="masonryItems"
+          @click="openModal(item)"
         >
           <!-- Image Item -->
           <img 
@@ -36,6 +37,13 @@
         </div>
       </div>
     </div>
+    
+    <!-- Media Modal -->
+    <MediaModal 
+      :is-open="modalOpen" 
+      :media="selectedMedia" 
+      @close="closeModal" 
+    />
   </section>
 </template>
 
@@ -43,6 +51,7 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import MediaModal from './MediaModal.vue';
 
 // Register GSAP plugins
 if (process.client) {
@@ -87,11 +96,47 @@ let resizeObserver = null;
 let scrollTrigger = null;
 let mutationObserver = null;
 
+// Modal state
+const modalOpen = ref(false);
+const selectedMedia = ref({});
+
 // Track loaded media
 const loadedItems = ref(0);
 const totalItems = ref(0);
 const loadedItemsMap = ref({});
 const layoutApplied = ref(false);
+
+// Modal handlers
+const openModal = (item) => {
+  selectedMedia.value = item;
+  modalOpen.value = true;
+  
+  // Pause all background videos when modal opens
+  const videos = masonryGrid.value?.querySelectorAll('video');
+  videos?.forEach(video => {
+    video.pause();
+  });
+};
+
+const closeModal = () => {
+  modalOpen.value = false;
+  
+  // Resume video playback for visible videos
+  if (masonryItems.value) {
+    masonryItems.value.forEach((item, index) => {
+      if (props.items[index].type === 'video') {
+        const video = item.querySelector('video');
+        if (video) {
+          const rect = item.getBoundingClientRect();
+          const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+          if (isVisible) {
+            video.play().catch(() => {});
+          }
+        }
+      }
+    });
+  }
+};
 
 // Media loaded handler
 const onMediaLoaded = (index) => {
@@ -473,6 +518,7 @@ onBeforeUnmount(() => {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transition: box-shadow 0.3s ease;
     display: block; // Ensure block display
+    cursor: pointer;
     
     img, video {
       width: 100%;
@@ -536,6 +582,9 @@ onBeforeUnmount(() => {
       &:nth-child(even):not([style*="aspect-ratio"]) {
         aspect-ratio: 3/4; // Portrait for even items
       }
+      
+      // Add cursor pointer for mobile
+      cursor: pointer;
     }
   }
   

@@ -8,7 +8,7 @@
       </div>
       <nav class="header-nav">
         <ul>
-          <li><NuxtLink to="/projects">Projects</NuxtLink></li>
+          <li><NuxtLink to="/about">About</NuxtLink></li>
           <li><NuxtLink to="/contact">Contact</NuxtLink></li>
         </ul>
       </nav>
@@ -161,7 +161,7 @@ header {
     height: 50px;
     
     .header-content {
-      padding: 0 $space-m;
+      // padding: 0 $space-m;
     }
     
     .logo-container {

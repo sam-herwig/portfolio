@@ -8,7 +8,6 @@ $green: #559b88;
 $orange: #ff5501;
 $purple: #b280c9;
 $black: #000000;
-$dark-black: #1a1a1a; // Dark gray/black variant
 $dark-button: #222222; // Dark button color
 $red: #e94234; // Primary red color
 $ash: #e5e5e5; // equivalent to rgba($black, 0.1)
@@ -50,24 +49,24 @@ $space-xxl: 50px;
 // Easy does it...
 // --------------------------------------------
 
-$ease-out:  cubic-bezier(0.333, 1.000, 0.666, 1.000);
+$ease-out: cubic-bezier(0.333, 1.000, 0.666, 1.000);
 $evil-ease: cubic-bezier(0.666, 0.000, 0.333, 1.000);
 
 // --------------------------------------------
 // Breakpoints...
 // --------------------------------------------
 
-$portrait:           '(orientation: portrait)';
-$landscape:          '(orientation: landscape)';
-$mobile:             '(min-width: 375px)';
-$small-tablet:       '(min-width: 500px)';
-$tablet:             '(min-width: 768px)';
-$large-tablet:       '(min-width: 1024px)';
-$desktop:            '(min-width: 1280px)';
-$average-desktop:    '(min-width: 1440px)';
-$macbook:            '(min-width: 1680px)';
-$retina-macbook:     '(min-width: 1920px)';
-$largest-screens:    '(min-width: 2000px)';
+$portrait: '(orientation: portrait)';
+$landscape: '(orientation: landscape)';
+$mobile: '(min-width: 375px)';
+$small-tablet: '(min-width: 500px)';
+$tablet: '(min-width: 768px)';
+$large-tablet: '(min-width: 1024px)';
+$desktop: '(min-width: 1280px)';
+$average-desktop: '(min-width: 1440px)';
+$macbook: '(min-width: 1680px)';
+$retina-macbook: '(min-width: 1920px)';
+$largest-screens: '(min-width: 2000px)';
 
 // --------------------------------------------
 // Functions...
@@ -78,5 +77,5 @@ $largest-screens:    '(min-width: 2000px)';
 }
 
 @function svgColorMaker($color) {
-  @return '%23' + str-slice('#{$color}', 2, -1);
+  @return '%23'+str-slice('#{$color}', 2, -1);
 }

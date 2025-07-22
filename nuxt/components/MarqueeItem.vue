@@ -15,7 +15,7 @@
     <div class="marquee" ref="marquee">
       <div class="marquee__inner-wrap" ref="marqueeInner">
         <div class="marquee__inner" aria-hidden="true">
-          <template v-for="(_, i) in 4" :key="i">
+          <template v-for="(_, i) in 6" :key="i">
             <span>{{ text }}</span>
             <div
               v-if="image"
@@ -185,7 +185,7 @@ defineExpose({
 
 .marquee__inner-wrap {
   height: 100%;
-  width: 200%;
+  width: 100%;
   display: flex;
 }
 
@@ -194,7 +194,7 @@ defineExpose({
   align-items: center;
   position: relative;
   height: 100%;
-  width: 200%;
+  width: fit-content;
   will-change: transform;
   animation: marquee 15s linear infinite;
 }

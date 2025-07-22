@@ -1,17 +1,26 @@
 <template>
   <section class="builder-circular-text pad-bl" ref="circularTextContainer">
     <div class="circular-text-wrapper">
-      <div class="circular-text" ref="circularText">
-        <div class="text-circle" ref="textCircle">
-          <span v-for="(char, index) in circularTextArray" :key="index" class="char" :style="getCharStyle(index)">
-            {{ char }}
-          </span>
-        </div>
-        <div v-if="centerImage" class="center-image">
-          <img :src="centerImage.src" :alt="centerImage.alt || 'Center image'" />
-        </div>
-        <div v-else-if="centerText" class="center-text">
-          <p>{{ centerText }}</p>
+      <div class="circular-text" :style="circularTextStyle">
+        <!-- SVG implementation for best performance -->
+        <svg class="text-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <path id="circlePath" d="M 250, 250 m -200, 0 a 200,200 0 1,1 400,0 a 200,200 0 1,1 -400,0" />
+          </defs>
+          <text :fill="textColor" :font-size="svgFontSize" text-anchor="middle" :letter-spacing="letterSpacing" dominant-baseline="middle">
+            <textPath href="#circlePath" startOffset="50%">
+              {{ repeatedText }}
+            </textPath>
+          </text>
+        </svg>
+        
+        <!-- Center content -->
+        <div class="center-content">
+          <img v-if="centerImage" 
+               :src="centerImage.src" 
+               :alt="centerImage.alt || 'Center image'" 
+               class="center-image" />
+          <p v-else-if="centerText" class="center-text">{{ centerText }}</p>
         </div>
       </div>
     </div>
@@ -19,8 +28,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { gsap } from 'gsap';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 
 // Props
 const props = defineProps({
@@ -53,7 +61,7 @@ const props = defineProps({
   // Font size as percentage of circle radius
   fontSize: {
     type: Number,
-    default: 5 // Increased from 1.5 to 3
+    default: 4 // 5% of radius
   },
   // Color of the text
   textColor: {
@@ -64,97 +72,66 @@ const props = defineProps({
 
 // Refs
 const circularTextContainer = ref(null);
-const circularText = ref(null);
-const textCircle = ref(null);
+const containerSize = ref(500);
 
-// Split text into array of characters
-const circularTextArray = computed(() => {
-  // Add spaces between characters for better readability
-  return props.circularText.split('');
+// Repeat text to fill the circle
+const repeatedText = computed(() => {
+  const text = props.circularText;
+  // With larger font, we need fewer repetitions
+  const repeatCount = Math.max(1, Math.ceil(200 / text.length));
+  return (text + ' • ').repeat(repeatCount);
 });
 
-// Animation control
-let rotationAnimation = null;
+// Dynamic styles
+const circularTextStyle = computed(() => ({
+  '--rotation-duration': `${props.rotationSpeed}s`,
+  '--rotation-direction': props.direction === 1 ? 'normal' : 'reverse',
+  width: `${containerSize.value}px`,
+  height: `${containerSize.value}px`
+}));
 
-// Calculate position for each character
-const getCharStyle = (index) => {
-  const totalChars = circularTextArray.value.length;
-  // Distribute characters evenly around the circle
-  const angle = (index * 360) / totalChars;
-  
-  return {
-    transform: `rotate(${angle}deg)`,
-    color: props.textColor,
-    transformOrigin: 'center center'
-  };
+// Calculate font size as percentage of radius
+const svgFontSize = computed(() => {
+  // SVG circle radius is 200, so calculate fontSize as percentage
+  const radius = 200;
+  return (radius * props.fontSize / 100) * 3; // Multiply by 3 for 3x larger
+});
+
+// Dynamic letter spacing based on text length
+const letterSpacing = computed(() => {
+  const textLength = props.circularText.length;
+  // Adjust letter spacing inversely to text length
+  if (textLength < 20) return '0.5em';
+  if (textLength < 30) return '0.3em';
+  if (textLength < 40) return '0.2em';
+  return '0.1em';
+});
+
+// Debounced resize handler
+let resizeTimeout;
+const handleResize = () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    if (!circularTextContainer.value) return;
+    
+    const wrapper = circularTextContainer.value.querySelector('.circular-text-wrapper');
+    if (wrapper) {
+      const maxSize = Math.min(wrapper.offsetWidth * 0.9, wrapper.offsetHeight * 0.9, 800);
+      containerSize.value = maxSize;
+    }
+  }, 150);
 };
 
-// Set up the rotation animation
-const setupAnimation = () => {
-  if (rotationAnimation) {
-    rotationAnimation.kill();
-  }
-  
-  // Animate the text circle as a whole, but not the container
-  if (textCircle.value) {
-    rotationAnimation = gsap.to(textCircle.value, {
-      rotation: props.direction * 360,
-      duration: props.rotationSpeed,
-      ease: "linear",
-      repeat: -1,
-      transformOrigin: "center center"
-    });
-  }
-};
-
-// Lifecycle hooks
+// Lifecycle
 onMounted(() => {
-  setupAnimation();
-  
-  // Make responsive to window resize
-  window.addEventListener('resize', onResize);
-  onResize();
+  handleResize();
+  window.addEventListener('resize', handleResize);
 });
 
 onBeforeUnmount(() => {
-  if (rotationAnimation) {
-    rotationAnimation.kill();
-  }
-  window.removeEventListener('resize', onResize);
+  clearTimeout(resizeTimeout);
+  window.removeEventListener('resize', handleResize);
 });
-
-// Watch for prop changes
-watch(() => [props.rotationSpeed, props.direction], () => {
-  setupAnimation();
-});
-
-// Handle resize
-const onResize = () => {
-  if (!circularText.value) return;
-  
-  const containerWidth = circularText.value.offsetWidth;
-  const radius = containerWidth / 2;
-  
-  // Set font size based on radius
-  if (textCircle.value) {
-    // Calculate font size based on circle radius and props.fontSize
-    const calculatedFontSize = Math.max(20, radius * props.fontSize / 100);
-    textCircle.value.style.fontSize = `${calculatedFontSize}px`;
-    
-    // Position each character correctly
-    const chars = textCircle.value.querySelectorAll('.char');
-    chars.forEach((char, index) => {
-      const totalChars = circularTextArray.value.length;
-      const angle = (index * 360) / totalChars;
-      
-      // Set initial position for each character
-      gsap.set(char, {
-        rotation: angle,
-        transformOrigin: 'center center'
-      });
-    });
-  }
-};
 </script>
 
 <style lang="scss">
@@ -165,7 +142,6 @@ const onResize = () => {
     display: flex;
     justify-content: center;
     align-items: center;
-    
   }
   
   .circular-text-wrapper {
@@ -173,83 +149,87 @@ const onResize = () => {
     justify-content: center;
     align-items: center;
     width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .circular-text {
+    position: relative;
+    animation: rotate var(--rotation-duration) linear infinite;
+    animation-direction: var(--rotation-direction);
+    will-change: transform;
+    transform: translateZ(0); // GPU acceleration
     
-    .circular-text {
-      margin: 0 auto;
-      border-radius: 50%;
-      width: 200px;
-      height: 200px;
-      position: relative;
+    @keyframes rotate {
+      from {
+        transform: rotate(0deg) translateZ(0);
+      }
+      to {
+        transform: rotate(360deg) translateZ(0);
+      }
+    }
+    
+    .text-svg {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      
+      text {
+        font-family: $poppins-extra-bold;
+        text-transform: uppercase;
+      }
+    }
+    
+    .center-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60%;
+      height: 60%;
       display: flex;
       justify-content: center;
       align-items: center;
-      transform-origin: 50% 50%;
-      -webkit-transform-origin: 50% 50%;
-      
-      
-      .text-circle {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        transform-origin: center center;
-      }
-      
-      .char {
-        position: absolute;
-        display: inline-block;
-        bottom: 0;
-        height: 100%;
-        transform-origin: center center;
-        font-family: $poppins-extra-bold;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        width: 1em;
-        text-align: center;
-        transition: all 0.5s cubic-bezier(0, 0, 0, 1);
-      }
       
       .center-image {
-        position: relative;
-        width: 60%;
-        height: 60%;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
         border-radius: 50%;
-        overflow: hidden;
-        z-index: 2;
-        
-        img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          border-radius: 50%;
-        }
       }
       
       .center-text {
-        position: relative;
-        width: 60%;
-        height: 60%;
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 2;
+        font-family: $poppins-semi-bold;
+        text-align: center;
+        font-size: 1.5rem;
         
-        p {
-          font-family: $poppins-semi-bold;
-          text-align: center;
-          font-size: 1.5rem;
-          padding: 1rem;
-          
-          @include respond-to($tablet) {
-            font-size: 2rem;
-          }
+        @media #{$tablet} {
+          font-size: 2rem;
         }
       }
     }
   }
+  
+  // Pause animation on hover for better UX
+  .circular-text-wrapper:hover .circular-text {
+    animation-play-state: paused;
+  }
+  
+  // Responsive adjustments
+  @media #{$mobile} {
+    .circular-text {
+      width: 300px !important;
+      height: 300px !important;
+    }
+  }
+  
+  @media #{$tablet} {
+    .circular-text {
+      width: 450px !important;
+      height: 450px !important;
+    }
+  }
 }
-</style> 
+</style>

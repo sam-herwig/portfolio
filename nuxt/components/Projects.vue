@@ -156,7 +156,7 @@ const resetCursor = () => {
 <style lang="scss">
 .projects-section {
   padding: 4rem 0;
-  background-color: $dark-black;
+  background-color: $black;
   color: $white;
   
   .projects-header {

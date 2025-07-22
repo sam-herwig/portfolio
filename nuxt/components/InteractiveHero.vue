@@ -4,7 +4,6 @@
       <div class="job-title">
         <h3>Front End Web Developer<br />& Creative Technologist</h3>
         <div class="hero-links">
-          <NuxtLink to="/projects" class="hero-link">SEE PROJECTS</NuxtLink>
           <NuxtLink to="/contact" class="hero-link">CONTACT ME</NuxtLink>
         </div>
       </div>

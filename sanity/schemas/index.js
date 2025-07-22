@@ -3,8 +3,8 @@ import site from './settings/site';
 
 //Pages
 import home from './pages/home';
-import projectsPage from './pages/projects-page';
 import contactPage from './pages/contact-page';
+import aboutPage from './pages/about-page';
 
 // Collections
 import project from './collections/project';
@@ -28,10 +28,10 @@ import videoPlayer from './shared/video-player';
 export const schemaTypes = [
   site,
   home,
-  projectsPage,
   contactPage,
-  textBlock, 
+  aboutPage,
   project,
+  textBlock, 
   pullQuote, 
   singleImage, 
   heroExplosion,
