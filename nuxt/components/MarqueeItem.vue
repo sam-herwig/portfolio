@@ -165,6 +165,7 @@ defineExpose({
   color: $white;
   font-size: 4vh;
   transition: color 0.3s ease;
+  z-index: 3;
   
   &:hover {
     color: $red !important;
@@ -181,6 +182,7 @@ defineExpose({
   pointer-events: none;
   background: $white;
   transform: translate3d(0, 101%, 0);
+  z-index: 2;
 }
 
 .marquee__inner-wrap {

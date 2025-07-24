@@ -52,22 +52,23 @@
       </section>
 
       <!-- Skills & Expertise Section -->
-      <section v-if="allSkills.length" class="skills-section" ref="skillsSection">
+      <section v-if="allSkills.length" class="skills-section">
         <div class="skills-container">
           <h2 v-if="pageData.skillsSection?.title" class="section-title">
             {{ pageData.skillsSection.title }}
           </h2>
-          <div class="skills-pills">
-            <span
-              v-for="(skill, index) in allSkills"
-              :key="skill"
-              class="skill-pill"
-              :style="skillPositions[index]"
-              :data-index="index"
-            >
-              {{ skill }}
-            </span>
-          </div>
+          <FallingText
+            :text="skillsText"
+            :highlightWords="highlightedSkills"
+            highlightClass="skill-highlight"
+            trigger="scroll"
+            backgroundColor="transparent"
+            :wireframes="false"
+            :gravity="0.56"
+            fontSize="1.2rem"
+            :mouseConstraintStiffness="0.9"
+            className="skills-falling-text"
+          />
         </div>
       </section>
 
@@ -109,20 +110,18 @@
               {{ pageData.ctaSection.heading }}
             </h2>
             <div class="cta-buttons">
-              <NuxtLink
+              <AnimatedButton
                 v-if="pageData.ctaSection.buttonText && pageData.ctaSection.buttonLink"
                 :to="pageData.ctaSection.buttonLink"
-                class="cta-button cta-button--primary"
-              >
-                {{ pageData.ctaSection.buttonText }}
-              </NuxtLink>
-              <NuxtLink
+                :text="pageData.ctaSection.buttonText"
+                variant="primary"
+              />
+              <AnimatedButton
                 v-if="pageData.ctaSection.secondaryLinkText && pageData.ctaSection.secondaryLink"
                 :to="pageData.ctaSection.secondaryLink"
-                class="cta-button cta-button--secondary"
-              >
-                {{ pageData.ctaSection.secondaryLinkText }}
-              </NuxtLink>
+                :text="pageData.ctaSection.secondaryLinkText"
+                variant="secondary"
+              />
             </div>
           </div>
         </div>
@@ -134,12 +133,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed } from 'vue';
 import { imageProps } from '~/utils/groq-common';
 
 const pageData = ref(null);
-const skillsSection = ref(null);
-const skillPositions = ref([]);
 
 const pageQuery = groq`*[_type == 'aboutPage'][0]{
   title,
@@ -192,81 +189,15 @@ const allSkills = computed(() => {
   return pageData.value.skillsSection.skills;
 });
 
-// Function to check if two elements overlap
-const checkOverlap = (pos1, pos2, width1, height1, width2, height2) => {
-  return !(pos1.left + width1 < pos2.left || 
-           pos2.left + width2 < pos1.left || 
-           pos1.top + height1 < pos2.top || 
-           pos2.top + height2 < pos1.top);
-};
+// Create skills text for FallingText
+const skillsText = computed(() => {
+  return allSkills.value.join(' ');
+});
 
-// Function to generate random positions
-const generatePositions = async () => {
-  if (!skillsSection.value || !allSkills.value.length) return;
-  
-  await nextTick();
-  
-  const container = skillsSection.value;
-  const containerRect = container.getBoundingClientRect();
-  const pills = container.querySelectorAll('.skill-pill');
-  const positions = [];
-  const placedPositions = [];
-  
-  pills.forEach((pill, index) => {
-    const pillRect = pill.getBoundingClientRect();
-    const pillWidth = pillRect.width;
-    const pillHeight = pillRect.height;
-    
-    let position;
-    let attempts = 0;
-    const maxAttempts = 50;
-    
-    do {
-      // Random position within container bounds
-      const maxLeft = containerRect.width - pillWidth - 40;
-      const maxTop = containerRect.height - pillHeight - 100; // Leave space for title
-      
-      position = {
-        left: Math.random() * maxLeft + 20,
-        top: Math.random() * maxTop + 80 // Start below title
-      };
-      
-      // Check for overlaps
-      const hasOverlap = placedPositions.some(placed => 
-        checkOverlap(position, placed.position, pillWidth, pillHeight, placed.width, placed.height)
-      );
-      
-      if (!hasOverlap || attempts >= maxAttempts) {
-        placedPositions.push({ position, width: pillWidth, height: pillHeight });
-        break;
-      }
-      
-      attempts++;
-    } while (attempts < maxAttempts);
-    
-    // Random starting position (off-screen)
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 1000;
-    const startX = Math.cos(angle) * distance;
-    const startY = Math.sin(angle) * distance;
-    
-    positions[index] = {
-      '--start-x': `${startX}px`,
-      '--start-y': `${startY}px`,
-      '--end-x': `${position.left}px`,
-      '--end-y': `${position.top}px`,
-      '--delay': `${index * 0.05}s`
-    };
-  });
-  
-  skillPositions.value = positions;
-};
-
-onMounted(() => {
-  generatePositions();
-  
-  // Re-generate positions on window resize
-  window.addEventListener('resize', generatePositions);
+// Define which skills to highlight (you can customize this)
+const highlightedSkills = computed(() => {
+  // Highlight a few key skills - customize as needed
+  return ['react', 'vue', 'typescript', 'node', 'graphql', 'javascript', 'python'];
 });
 </script>
 
@@ -349,68 +280,28 @@ onMounted(() => {
   }
 
   .skills-section {
-    height: 50vh;
+    min-height: 50vh;
     background: $black;
     position: relative;
-    overflow: hidden;
+    padding: 4rem 0;
 
     .skills-container {
-      position: relative;
-      height: 100%;
-      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
     }
 
     .section-title {
-      position: absolute;
-      top: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
       color: $white;
-      z-index: 10;
-      margin: 0;
+      text-align: center;
+      margin-bottom: 3rem;
     }
 
-    .skills-pills {
-      position: relative;
+    .skills-falling-text {
       width: 100%;
-      height: 100%;
-    }
-
-    .skill-pill {
-      position: absolute;
-      display: inline-block;
-      padding: 0.75rem 1.75rem;
-      font-family: $poppins;
-      font-size: 1rem;
-      color: $black;
-      background: $white;
-      border-radius: 50px;
-      white-space: nowrap;
-      animation: slideIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-      animation-delay: var(--delay);
-      transform: translate(var(--start-x), var(--start-y));
-      opacity: 0;
-      transition: all $speed-333 $ease-out;
-
-      &:hover {
-        transform: translate(var(--end-x), var(--end-y)) scale(1.1);
-        box-shadow: 0 8px 24px rgba($white, 0.3);
-        background: $red;
-        color: $white;
-      }
-
-      @keyframes slideIn {
-        0% {
-          opacity: 0;
-          transform: translate(var(--start-x), var(--start-y));
-        }
-        20% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 1;
-          transform: translate(var(--end-x), var(--end-y));
-        }
+      
+      :deep(.falling-text-target) {
+        font-family: $poppins;
       }
     }
   }
@@ -611,35 +502,6 @@ onMounted(() => {
       flex-wrap: wrap;
     }
 
-    .cta-button {
-      display: inline-block;
-      padding: 1.25rem 3rem;
-      font-family: $poppins-semi-bold;
-      font-size: 1.125rem;
-      text-decoration: none;
-      border-radius: 50px;
-      transition: all $speed-333 $ease-out;
-      text-transform: none;
-      letter-spacing: 0.5px;
-      background: transparent;
-      color: $white;
-      border: 3px solid $white;
-
-      &:hover {
-        background: $white;
-        color: $black;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba($black, 0.3);
-      }
-
-      &--primary {
-        // Both buttons now have the same style
-      }
-
-      &--secondary {
-        // Both buttons now have the same style
-      }
-    }
   }
 }
 </style>

@@ -17,7 +17,13 @@
         <div class="text-content" ref="textContent">
           <h1 v-if="title" class="hero-title">{{ title }}</h1>
           <div v-if="text" class="hero-text" v-html="text"></div>
-          <a v-if="linkUrl" :href="linkUrl" class="hero-link" target="_blank" rel="noopener noreferrer" >{{ linkText || 'Learn More' }}</a>
+          <AnimatedButton
+            v-if="linkUrl"
+            :to="linkUrl"
+            :text="linkText || 'Learn More'"
+            variant="primary"
+            class="hero-link"
+          />
         </div>
       </div>
     </client-only>

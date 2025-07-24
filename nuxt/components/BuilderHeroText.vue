@@ -60,9 +60,12 @@
       
       <!-- Link -->
       <div class="hero-link-container" v-if="linkUrl">
-        <a :href="linkUrl" class="hero-link" target="_blank" rel="noopener noreferrer">
-          {{ linkText || 'Learn More' }}
-        </a>
+        <AnimatedButton
+          :to="linkUrl"
+          :text="linkText || 'Learn More'"
+          variant="primary"
+          class="hero-link"
+        />
       </div>
     </div>
   </section>
