@@ -7,7 +7,7 @@ import contactPage from './pages/contact-page';
 import aboutPage from './pages/about-page';
 
 // Collections
-import project from './collections/project';
+import project from './collections/project.jsx';
 
 // Builders
 import textBlock from './shared/builder/text-block';

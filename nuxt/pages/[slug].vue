@@ -98,16 +98,9 @@
       </template>
       
       <!-- Up Next Section -->
-      <section v-if="validNextProject" class="up-next-section">
-        <div class="gutter">
-          <h2 class="up-next-title">Up Next</h2>
-          <MarqueeItem
-            :text="validNextProject.title"
-            :linkTo="`/${validNextProject.slug.current}`"
-            textColor="white"
-            class="up-next-item"
-          />
-        </div>
+      <section v-if="nextProjects.length" class="expandable-gallery-section">
+        <h2 class="section-title">Up Next</h2>
+        <ExpandableGallery :projects="nextProjects" />
       </section>
       
       <Footer />
@@ -116,27 +109,23 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
-import { useSiteStore } from '~/stores/store';
+import { ref, watch } from 'vue';
 import { imageProps } from '~/utils/groq-common';
 import BuilderCarousel from '~/components/BuilderCarousel.vue';
 import BuilderMasonryWall from '~/components/BuilderMasonryWall.vue';
 import BuilderCircularText from '~/components/BuilderCircularText.vue';
 import BuilderHeroText from '~/components/BuilderHeroText.vue';
-import MarqueeItem from '~/components/MarqueeItem.vue';
+import ExpandableGallery from '~/components/ExpandableGallery.vue';
 
 const route = useRoute();
-const store = useSiteStore();
 const params = { slug: route.params.slug };
 const pageData = ref(null);
-
-// Debug route params
-console.log('Slug page - route params:', route.params);
 
 // Query for all projects to get the next one
 const allProjectsQuery = groq`*[_type == 'project'] | order(title asc) {
   title,
-  slug
+  slug,
+  "featuredImage": featuredImage.asset->url
 }`;
 
 const pageQuery = groq`*[( _type == 'project') && slug.current == $slug][0]{
@@ -260,16 +249,11 @@ const pageQuery = groq`*[( _type == 'project') && slug.current == $slug][0]{
 // Function to fetch data
 const fetchData = async () => {
   try {
-    console.log('Fetching data for slug:', params.slug);
-    
     const [data, allProjects] = await Promise.all([
       useSanityData({ query: pageQuery, params: params }),
       useSanityData({ query: allProjectsQuery })
     ]);
-    
-    console.log('Fetched page data:', data);
-    console.log('Fetched all projects:', allProjects);
-    
+
     pageData.value = data;
     
     // Handle different possible data structures for allProjects
@@ -286,23 +270,28 @@ const fetchData = async () => {
       }
     }
     
-    // Find the next project (loop back to first if at the end)
     const currentIndex = projectsArray.findIndex(project => project.slug?.current === route.params.slug);
-    const nextProject = projectsArray.length > 0 
-      ? projectsArray[(currentIndex + 1) % projectsArray.length] 
-      : null;
-    
-    // Validate nextProject has required properties
-    validNextProject.value = nextProject && nextProject.slug && nextProject.slug.current && nextProject.title 
-      ? nextProject 
-      : null;
+    const totalProjects = projectsArray.length;
+    const nextItems = [];
+    const maxItems = Math.min(3, Math.max(0, totalProjects - 1));
+
+    if (totalProjects > 0) {
+      for (let offset = 1; offset <= maxItems; offset += 1) {
+        const nextProject = projectsArray[(currentIndex + offset) % totalProjects];
+        if (nextProject && nextProject.slug?.current && nextProject.title) {
+          nextItems.push(nextProject);
+        }
+      }
+    }
+
+    nextProjects.value = nextItems;
   } catch (error) {
     console.error('Error fetching data:', error);
   }
 };
 
 // Initialize data
-const validNextProject = ref(null);
+const nextProjects = ref([]);
 await fetchData();
 
 // Watch for route changes to update data
@@ -314,31 +303,26 @@ watch(() => route.params.slug, async () => {
 
 <style lang='scss'>
 .case-study-page {
-  .up-next-section {
+  .expandable-gallery-section {
     padding: 4rem 0;
-    background-color: $black;
-    color: $white;
-    border-top: 1px solid $red;
-    
-    .up-next-title {
+    background-color: $white;
+    color: $black;
+    border-top: 1px solid $ash;
+
+    .section-title {
       font-family: $poppins-extra-bold;
-      font-size: 2rem;
-      margin-bottom: 2rem;
+      font-size: 3rem;
       text-align: center;
+      margin-bottom: 3rem;
+      color: $black;
     }
-    
-    .up-next-item {
-      height: 120px;
-      
-      @media (max-width: 768px) {
-        height: 80px;
-      }
-      
-      // Override marquee-item styles for this specific use
-      :deep(.marquee-item__link) {
-        &:hover {
-          color: $red !important;
-        }
+
+    @media (max-width: 768px) {
+      padding: 2rem 0;
+
+      .section-title {
+        font-size: 2rem;
+        margin-bottom: 2rem;
       }
     }
   }

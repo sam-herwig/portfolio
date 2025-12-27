@@ -10,7 +10,7 @@
               :weight="true"
               :italic="false"
               :stroke="false"
-              textColor="white"
+              textColor="black"
               :minFontSize="180"
               className="hero-text-pressure"
               parentClassName="hero-title-wrapper"
@@ -30,7 +30,7 @@
               :rotationSpeed="10"
               :direction="1"
               :fontSize="5"
-              :textColor="'white'"
+              :textColor="'black'"
             />
           </div>
         </div>

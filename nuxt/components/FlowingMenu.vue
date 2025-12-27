@@ -217,15 +217,10 @@ watch(() => filteredItems.value, () => {
     justify-content: center;
     
     .tag {
-      padding: 0.5rem 1rem;
-      border: 1px solid $red;
-      border-radius: 2rem;
       font-family: $poppins-semi-bold;
-      font-size: 0.875rem;
+      @include pill($red, $white);
       cursor: pointer;
       transition: background-color 0.3s, color 0.3s;
-      color: $white;
-      background-color: transparent;
       
       &:hover {
         background-color: rgba($red, 0.1);

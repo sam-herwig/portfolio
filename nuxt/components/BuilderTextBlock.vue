@@ -1,5 +1,5 @@
 <template>
-  <section class="builder-text-block pad-bl">
+  <section class="builder-text-block pad-t pad-bl">
     <div class="cols gutter-lg">
       <!-- <div v-if="headline" class="col">
         <p class="fs-p1">{{ headline }}</p>
@@ -32,6 +32,8 @@ const props = defineProps({
 .builder-text-block {
   .cols {
     .col {
+      text-align: center;
+
       &:not(:first-child) {
         margin-top: $space-l;
       }

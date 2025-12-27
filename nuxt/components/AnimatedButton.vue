@@ -74,14 +74,9 @@ const isExternalLink = computed(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 2rem;
   font-family: $poppins-semi-bold;
-  font-size: 1.125rem;
   text-decoration: none;
-  border: 3px solid $white;
-  border-radius: 50px;
-  background: transparent;
-  color: $white;
+  @include pill($white, $white, transparent, 0.75rem, 2rem, 1.125rem);
   cursor: pointer;
   overflow: hidden;
   transition: all 0.3s ease;

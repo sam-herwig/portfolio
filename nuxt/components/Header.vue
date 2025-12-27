@@ -107,7 +107,6 @@ header {
     width: 100%;
     box-sizing: border-box;
     height: 100%;
-    margin-top: 6px;
   }
   
   .logo-container {

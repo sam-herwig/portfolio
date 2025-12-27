@@ -598,11 +598,7 @@ onBeforeUnmount(() => {
     .hero-link {
       display: inline-block;
       font-family: $poppins-semi-bold;
-      font-size: 1.2rem;
-      background-color: white;
-      color: black;
-      padding: 0.8rem 2rem;
-      border-radius: 50px;
+      @include pill($black, $black, $white, 0.8rem, 2rem, 1.2rem);
       text-decoration: none;
       transition: all 0.3s ease;
       

@@ -66,6 +66,19 @@ export default defineType({
     }),
     defineField({
       fieldset: 'display',
+      name: 'featuredImage',
+      title: 'Featured Image',
+      type: 'image',
+      description: 'Used for gallery and listing modules',
+      options: {
+        hotspot: true
+      },
+      validation: [
+        Rule => Rule.required()
+      ]
+    }),
+    defineField({
+      fieldset: 'display',
       name: 'titleClass',
       title: 'Title Style',
       type: 'string',
