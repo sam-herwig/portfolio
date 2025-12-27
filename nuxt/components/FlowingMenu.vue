@@ -248,6 +248,9 @@ watch(() => filteredItems.value, () => {
 }
 
 .menu__item {
+  position: relative;
+  z-index: 1;
+  
   &:last-child {
     box-shadow: 0 -1px rgba(255, 255, 255, 0.3), 0 1px rgba(255, 255, 255, 0.3);
   }

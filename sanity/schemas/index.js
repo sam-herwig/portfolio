@@ -20,6 +20,7 @@ import carousel from './shared/builder/carousel';
 import masonryWall from './shared/builder/masonry-wall';
 import circularText from './shared/builder/circular-text';
 import flowingMenu from './shared/builder/flowing-menu';
+import expandableGallery from './shared/builder/expandable-gallery';
 
 // Shared 
 import videoLoop from './shared/video-loop';
@@ -42,5 +43,6 @@ export const schemaTypes = [
   carousel,
   masonryWall,
   circularText,
-  flowingMenu
+  flowingMenu,
+  expandableGallery
 ];

@@ -2,24 +2,15 @@
   <div id="home-page" class="page space-t">
     <InteractiveHero />
     
-    <!-- Flowing Menu Section -->
+    <!-- Expandable Gallery Section -->
     <section 
-      class="flowing-menu-section" 
-      v-if="pageData && pageData.flowingMenu"
+      class="expandable-gallery-section" 
+      v-if="pageData && pageData.expandableGallery"
     >
-      <h2 class="section-title">{{ pageData.flowingMenu.title || 'EXPLORE PROJECTS' }}</h2>
-      <div 
-        class="flowing-menu-container"
-        :style="{ height: pageData.flowingMenu.height || '70vh' }"
-      >
-        <FlowingMenu
-          :projects="pageData.flowingMenu.projects || pageData.projects"
-          :backgroundColor="pageData.flowingMenu.backgroundColor || 'black'"
-          :textColor="pageData.flowingMenu.textColor || 'white'"
-          :enableTags="pageData.flowingMenu.enableTags !== false"
-          :height="pageData.flowingMenu.height || '70vh'"
-        />
-      </div>
+      <h2 class="section-title">{{ pageData.expandableGallery.title || 'FEATURED WORK' }}</h2>
+      <ExpandableGallery
+        :projects="expandableGalleryProjects"
+      />
     </section>
 
     <!-- Contact Form Section -->
@@ -39,18 +30,27 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useSiteStore } from '~/stores/store';
 import { smoothScrollTo } from '~/utils/smooth-scroll-to';
 import { typeFilter, imageProps } from '~/utils/groq-common';
-import FlowingMenu from '~/components/FlowingMenu.vue';
 import InteractiveHero from '~/components/InteractiveHero.vue';
+import ExpandableGallery from '~/components/ExpandableGallery.vue';
 
 const route = useRoute();
 const router = useRouter();
 const store = useSiteStore();
 const pageData = ref(null);
 const isPreview = ref(false);
+
+// Computed property for expandable gallery projects
+const expandableGalleryProjects = computed(() => {
+  if (pageData.value && pageData.value.expandableGallery && pageData.value.expandableGallery.projects) {
+    return pageData.value.expandableGallery.projects;
+  }
+  // Fallback to first 5 projects if no specific gallery projects are set
+  return pageData.value?.projects?.slice(0, 5) || [];
+});
 
 const homeQuery = groq`*[(_type == "home")][0]{
   heroImage ${imageProps},
@@ -64,19 +64,12 @@ const homeQuery = groq`*[(_type == "home")][0]{
     "cursorImage": cursorImage.asset->url,
     tags
   },
-  flowingMenu {
+  expandableGallery {
     title,
-    backgroundColor,
-    textColor,
-    enableTags,
-    height,
     projects[]-> {
       title,
-      subtitle,
       slug,
-      titleClass,
-      "cursorImage": cursorImage.asset->url,
-      tags
+      "featuredImage": featuredImage.asset->url
     }
   }
 }`;
@@ -162,9 +155,9 @@ const exitPreview = () => {
   }
 }
 
-.flowing-menu-section {
-  background-color: $black;
-  color: $white;
+.expandable-gallery-section {
+  background-color: $white;
+  color: $black;
   padding: 4rem 0;
   
   .section-title {
@@ -172,13 +165,18 @@ const exitPreview = () => {
     font-size: 3rem;
     text-align: center;
     margin-bottom: 3rem;
+    color: $black;
   }
-  
-  .flowing-menu-container {
-    height: 70vh;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 2rem;
+}
+
+@media (max-width: 768px) {
+  .expandable-gallery-section {
+    padding: 2rem 0;
+    
+    .section-title {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+    }
   }
 }
 </style>

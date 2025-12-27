@@ -83,10 +83,10 @@ export default defineType({
       description: 'Select projects to feature on the home page'
     }),
     defineField({
-      name: 'flowingMenu',
-      title: 'Flowing Menu Section',
-      type: 'flowingMenu',
-      description: 'Configure the flowing menu section'
+      name: 'expandableGallery',
+      title: 'Expandable Gallery Section',
+      type: 'expandableGallery',
+      description: 'Configure the expandable gallery section'
     })
   ],
   preview: {

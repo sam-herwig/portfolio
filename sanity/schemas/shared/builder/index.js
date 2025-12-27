@@ -9,6 +9,7 @@ import pullQuote from './pull-quote'
 import singleImage from './single-image'
 import textBlock from './text-block'
 import flowingMenu from './flowing-menu'
+import expandableGallery from './expandable-gallery'
 
 // Export array of all builder components
 export default [
@@ -21,5 +22,6 @@ export default [
   pullQuote,
   singleImage,
   textBlock,
-  flowingMenu
+  flowingMenu,
+  expandableGallery
 ] 

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImageImpact Agency Logo Variations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 18px;
+        }
+
+        .logo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .logo-card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .logo-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .logo-desc {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .logo-display {
+            margin-bottom: 30px;
+        }
+
+        .logo-variations {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .variation {
+            text-align: center;
+        }
+
+        .variation-label {
+            font-size: 11px;
+            color: #999;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Base logo styles */
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo svg {
+            width: 56px;
+            height: 56px;
+        }
+
+        .logo .text {
+            font-size: 30px;
+            color: #001435;
+        }
+
+        .logo .text .image {
+            font-weight: 300;
+        }
+
+        .logo .text .impact {
+            font-weight: 700;
+        }
+
+        /* Variation 1 - Gradient Frames */
+        .logo-v1 .text .impact {
+            background: linear-gradient(135deg, #0066FF 0%, #00D4FF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Variation 2 - Filled Layers */
+        .logo-v2 .text {
+            color: #0066FF;
+        }
+
+        .logo-v2 .text .impact {
+            color: #001435;
+        }
+
+        /* Variation 3 - Minimalist Lines */
+        .logo-v3 .text {
+            font-weight: 400;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-v3 .text .impact {
+            font-weight: 600;
+        }
+
+        /* Size variations */
+        .small {
+            transform: scale(0.7);
+            transform-origin: center;
+            display: inline-block;
+        }
+
+        .icon-only svg {
+            width: 48px;
+            height: 48px;
+        }
+
+        /* Dark background */
+        .dark-bg {
+            background: #0a0a0a;
+            padding: 20px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .dark-bg .logo .text {
+            color: white;
+        }
+
+        .dark-bg .logo-v1 .text .impact {
+            background: linear-gradient(135deg, #4D8EFF 0%, #3DD9FF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .dark-bg .logo-v2 .text {
+            color: #4D8EFF;
+        }
+
+        .dark-bg .logo-v2 .text .impact {
+            color: white;
+        }
+
+        /* Color swatches */
+        .color-palette {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+
+        .color-label {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #666;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ImageImpact Agency Logo Variations</h1>
+            <p>Three additional interpretations of the layered frames concept for digital marketing agencies</p>
+        </div>
+
+        <div class="logo-grid">
+            <!-- Variation 1: Gradient Frames -->
+            <div class="logo-card">
+                <h3 class="logo-title">Variation 1: Gradient Frames</h3>
+                <p class="logo-desc">Features gradient text on "Impact" and overlapping frames with opacity effects.
+                    Creates depth through transparency and modern gradients.</p>
+
+                <div class="logo-display">
+                    <div class="logo logo-v1">
+                        <svg viewBox="0 0 56 56">
+                            <defs>
+                                <linearGradient id="blue-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#0066FF;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#00D4FF;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <rect x="0" y="0" width="36" height="36" rx="4" fill="none" stroke="#0066FF"
+                                stroke-width="2" opacity="0.8" />
+                            <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#00D4FF"
+                                stroke-width="2" opacity="0.8" />
+                            <rect x="20" y="20" width="36" height="36" rx="4" fill="none" stroke="#001435"
+                                stroke-width="2" />
+                        </svg>
+                        <span class="text"><span class="image">Image</span><span class="impact">Impact</span></span>
+                    </div>
+                </div>
+
+                <div class="logo-variations">
+                    <div class="variation">
+                        <div class="small">
+                            <div class="logo logo-v1">
+                                <svg viewBox="0 0 56 56">
+                                    <rect x="0" y="0" width="36" height="36" rx="4" fill="none" stroke="#0066FF"
+                                        stroke-width="2" opacity="0.8" />
+                                    <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#00D4FF"
+                                        stroke-width="2" opacity="0.8" />
+                                    <rect x="20" y="20" width="36" height="36" rx="4" fill="none" stroke="#001435"
+                                        stroke-width="2" />
+                                </svg>
+                                <span class="text"><span class="image">Image</span><span
+                                        class="impact">Impact</span></span>
+                            </div>
+                        </div>
+                        <div class="variation-label">Small</div>
+                    </div>
+
+                    <div class="variation">
+                        <div class="icon-only">
+                            <svg viewBox="0 0 56 56">
+                                <rect x="0" y="0" width="36" height="36" rx="4" fill="none" stroke="#0066FF"
+                                    stroke-width="2" opacity="0.8" />
+                                <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#00D4FF"
+                                    stroke-width="2" opacity="0.8" />
+                                <rect x="20" y="20" width="36" height="36" rx="4" fill="none" stroke="#001435"
+                                    stroke-width="2" />
+                            </svg>
+                        </div>
+                        <div class="variation-label">Icon Only</div>
+                    </div>
+
+                    <div class="variation">
+                        <div class="dark-bg">
+                            <div class="logo logo-v1">
+                                <svg viewBox="0 0 56 56">
+                                    <rect x="0" y="0" width="36" height="36" rx="4" fill="none" stroke="#4D8EFF"
+                                        stroke-width="2" opacity="0.8" />
+                                    <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#3DD9FF"
+                                        stroke-width="2" opacity="0.8" />
+                                    <rect x="20" y="20" width="36" height="36" rx="4" fill="none" stroke="#ffffff"
+                                        stroke-width="2" />
+                                </svg>
+                                <span class="text"><span class="image">Image</span><span
+                                        class="impact">Impact</span></span>
+                            </div>
+                        </div>
+                        <div class="variation-label">Dark Mode</div>
+                    </div>
+                </div>
+
+                <div class="color-palette">
+                    <div class="color-swatch" style="background: #0066FF;">
+                        <span class="color-label">#0066FF</span>
+                    </div>
+                    <div class="color-swatch" style="background: #00D4FF;">
+                        <span class="color-label">#00D4FF</span>
+                    </div>
+                    <div class="color-swatch" style="background: #001435;">
+                        <span class="color-label">#001435</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Variation 2: Filled Layers -->
+            <div class="logo-card">
+                <h3 class="logo-title">Variation 2: Filled Layers</h3>
+                <p class="logo-desc">Uses filled rectangles with varying opacity to create a stacked paper effect. More
+                    substantial and grounded feeling.</p>
+
+                <div class="logo-display">
+                    <div class="logo logo-v2">
+                        <svg viewBox="0 0 56 56">
+                            <rect x="0" y="0" width="36" height="36" rx="4" fill="#0066FF" opacity="0.2" />
+                            <rect x="10" y="10" width="36" height="36" rx="4" fill="#00D4FF" opacity="0.3" />
+                            <rect x="20" y="20" width="36" height="36" rx="4" fill="#001435" opacity="0.1" />
+                            <rect x="20" y="20" width="36" height="36" rx="4" fill="none" stroke="#001435"
+                                stroke-width="2" />
+                        </svg>
+                        <span class="text"><span class="image">Image</span><span class="impact">Impact</span></span>
+                    </div>
+                </div>
+
+                <div class="logo-variations">
+                    <div class="variation">
+                        <div class="small">
+                            <div class="logo logo-v2">
+                                <svg viewBox="0 0 56 56">
+                                    <rect x="0" y="0" width="36" height="36" rx="4" fill="#0066FF" opacity="0.2" />
+                                    <rect x="10" y="10" width="36" height="36" rx="4" fill="#00D4FF" opacity="0.3" />
+                                    <rect x="20" y="20" width="36" height="36" rx="4" fill="#001435" opacity="0.1" />
+                                    <rect x="20" y="20" width="36" height="36" rx="4" fill="none" stroke="#001435"
+                                        stroke-width="2" />
+                                </svg>
+                                <span class="text"><span class="image">Image</span><span
+                                        class="impact">Impact</span></span>
+                            </div>
+                        </div>
+                        <div class="variation-label">Small</div>
+                    </div>
+
+                    <div class="variation">
+                        <div class="icon-only">
+                            <svg viewBox="0 0 56 56">
+                                <rect x="0" y="0" width="36" height="36" rx="4" fill="#0066FF" opacity="0.2" />
+                                <rect x="10" y="10" width="36" height="36" rx="4" fill="#00D4FF" opacity="0.3" />
+                                <rect x="20" y="20" width="36" height="36" rx="4" fill="#001435" opacity="0.1" />
+                                <rect x="20" y="20" width="36" height="36" rx="4" fill="none" stroke="#001435"
+                                    stroke-width="2" />
+                            </svg>
+                        </div>
+                        <div class="variation-label">Icon Only</div>
+                    </div>
+
+                    <div class="variation">
+                        <div class="dark-bg">
+                            <div class="logo logo-v2">
+                                <svg viewBox="0 0 56 56">
+                                    <rect x="0" y="0" width="36" height="36" rx="4" fill="#4D8EFF" opacity="0.3" />
+                                    <rect x="10" y="10" width="36" height="36" rx="4" fill="#3DD9FF" opacity="0.4" />
+                                    <rect x="20" y="20" width="36" height="36" rx="4" fill="#ffffff" opacity="0.1" />
+                                    <rect x="20" y="20" width="36" height="36" rx="4" fill="none" stroke="#ffffff"
+                                        stroke-width="2" />
+                                </svg>
+                                <span class="text"><span class="image">Image</span><span
+                                        class="impact">Impact</span></span>
+                            </div>
+                        </div>
+                        <div class="variation-label">Dark Mode</div>
+                    </div>
+                </div>
+
+                <div class="color-palette">
+                    <div class="color-swatch" style="background: #0066FF;">
+                        <span class="color-label">#0066FF</span>
+                    </div>
+                    <div class="color-swatch" style="background: #00D4FF;">
+                        <span class="color-label">#00D4FF</span>
+                    </div>
+                    <div class="color-swatch" style="background: #001435;">
+                        <span class="color-label">#001435</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Variation 3: Minimalist Lines -->
+            <div class="logo-card">
+                <h3 class="logo-title">Variation 3: Minimalist Lines</h3>
+                <p class="logo-desc">Ultra-clean with single-weight lines and monochromatic color scheme. Maximum
+                    sophistication through simplicity.</p>
+
+                <div class="logo-display">
+                    <div class="logo logo-v3">
+                        <svg viewBox="0 0 56 56">
+                            <rect x="2" y="2" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                stroke-width="1.5" />
+                            <rect x="12" y="12" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                stroke-width="1.5" />
+                            <rect x="22" y="22" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                stroke-width="1.5" />
+                        </svg>
+                        <span class="text"><span class="image">Image</span><span class="impact">Impact</span></span>
+                    </div>
+                </div>
+
+                <div class="logo-variations">
+                    <div class="variation">
+                        <div class="small">
+                            <div class="logo logo-v3">
+                                <svg viewBox="0 0 56 56">
+                                    <rect x="2" y="2" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                        stroke-width="1.5" />
+                                    <rect x="12" y="12" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                        stroke-width="1.5" />
+                                    <rect x="22" y="22" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                        stroke-width="1.5" />
+                                </svg>
+                                <span class="text"><span class="image">Image</span><span
+                                        class="impact">Impact</span></span>
+                            </div>
+                        </div>
+                        <div class="variation-label">Small</div>
+                    </div>
+
+                    <div class="variation">
+                        <div class="icon-only">
+                            <svg viewBox="0 0 56 56">
+                                <rect x="2" y="2" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                    stroke-width="1.5" />
+                                <rect x="12" y="12" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                    stroke-width="1.5" />
+                                <rect x="22" y="22" width="32" height="32" rx="2" fill="none" stroke="#001435"
+                                    stroke-width="1.5" />
+                            </svg>
+                        </div>
+                        <div class="variation-label">Icon Only</div>
+                    </div>
+
+                    <div class="variation">
+                        <div class="dark-bg">
+                            <div class="logo logo-v3">
+                                <svg viewBox="0 0 56 56">
+                                    <rect x="2" y="2" width="32" height="32" rx="2" fill="none" stroke="#ffffff"
+                                        stroke-width="1.5" />
+                                    <rect x="12" y="12" width="32" height="32" rx="2" fill="none" stroke="#ffffff"
+                                        stroke-width="1.5" />
+                                    <rect x="22" y="22" width="32" height="32" rx="2" fill="none" stroke="#ffffff"
+                                        stroke-width="1.5" />
+                                </svg>
+                                <span class="text"><span class="image">Image</span><span
+                                        class="impact">Impact</span></span>
+                            </div>
+                        </div>
+                        <div class="variation-label">Dark Mode</div>
+                    </div>
+                </div>
+
+                <div class="color-palette">
+                    <div class="color-swatch" style="background: #001435;">
+                        <span class="color-label">#001435</span>
+                    </div>
+                    <div class="color-swatch" style="background: #ffffff; border: 1px solid #ddd;">
+                        <span class="color-label">#FFFFFF</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

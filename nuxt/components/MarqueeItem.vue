@@ -165,7 +165,7 @@ defineExpose({
   color: $white;
   font-size: 4vh;
   transition: color 0.3s ease;
-  z-index: 3;
+  z-index: 10;
   
   &:hover {
     color: $red !important;
