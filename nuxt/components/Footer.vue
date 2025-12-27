@@ -17,7 +17,7 @@
 <style lang="scss" scoped>
 .footer {
   background-color: $red;
-  padding: $space-m span(1);
+  padding: $space-m $space-xl;
   color: $black;
   width: 100%;
   border-top: 3px solid $black;
@@ -32,6 +32,7 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  box-sizing: border-box;
   // padding: 0 $space-m;
   
   @include respond-to($tablet) {
