@@ -19,29 +19,11 @@ const props = defineProps({
 <style lang='scss'>
 .builder-image {
   .image-size {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16/9;
-    background-color: $black;
-    overflow: hidden;
+    @include media-frame;
   }
 
-  @include respond-to($large-tablet) {
-    .gutter {
-      margin: 0 span(1);
-    }
-  }
-
-  @include respond-to($desktop) {
-    .gutter {
-      margin: 0 span(2);
-    }
-  }
-
-  @include respond-to($retina-macbook) {
-    .gutter {
-      margin: 0 span(2.5);
-    }
+  .gutter {
+    @include media-gutter;
   }
 }
 </style>

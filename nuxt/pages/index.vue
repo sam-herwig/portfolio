@@ -4,7 +4,7 @@
     
     <!-- Expandable Gallery Section -->
     <section 
-      class="expandable-gallery-section" 
+      class="expandable-gallery-section section-pad" 
       v-if="pageData && pageData.expandableGallery"
     >
       <h2 class="section-title">{{ pageData.expandableGallery.title || 'FEATURED WORK' }}</h2>
@@ -146,7 +146,7 @@ const exitPreview = () => {
     color: $white;
     border: none;
     padding: 5px 10px;
-    border-radius: 4px;
+    border-radius: $radius-xs;
     cursor: pointer;
     
     &:hover {
@@ -158,25 +158,9 @@ const exitPreview = () => {
 .expandable-gallery-section {
   background-color: $white;
   color: $black;
-  padding: 4rem 0;
-  
   .section-title {
-    font-family: $poppins-extra-bold;
-    font-size: 3rem;
-    text-align: center;
-    margin-bottom: 3rem;
     color: $black;
   }
 }
 
-@media (max-width: 768px) {
-  .expandable-gallery-section {
-    padding: 2rem 0;
-    
-    .section-title {
-      font-size: 2rem;
-      margin-bottom: 2rem;
-    }
-  }
-}
 </style>

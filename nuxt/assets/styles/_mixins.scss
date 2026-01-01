@@ -39,6 +39,75 @@
   background-color: $bg-color;
 }
 
+@mixin section-title(
+  $font-family: $poppins-extra-bold,
+  $font-size: 3rem,
+  $font-size-mobile: 2rem,
+  $margin-bottom: 3rem,
+  $margin-bottom-mobile: 2rem
+) {
+  font-family: $font-family;
+  font-size: $font-size;
+  text-align: center;
+  margin-bottom: $margin-bottom;
+
+  @media (max-width: 768px) {
+    font-size: $font-size-mobile;
+    margin-bottom: $margin-bottom-mobile;
+  }
+}
+
+@mixin block-outer {
+  padding-top: span(2);
+  padding-bottom: span(2);
+
+  @include respond-to($tablet) {
+    padding-top: span(3);
+    padding-bottom: span(3);
+  }
+
+  @include respond-to($desktop) {
+    padding-top: span(4);
+    padding-bottom: span(4);
+  }
+}
+
+@mixin block-inner {
+  width: 100%;
+  max-width: span(12);
+  margin: 0 auto;
+
+  @include respond-to($tablet) {
+    max-width: span(10);
+  }
+
+  @include respond-to($desktop) {
+    max-width: span(8);
+  }
+}
+
+@mixin media-gutter {
+  @include respond-to($large-tablet) {
+    margin: 0 span(1);
+  }
+
+  @include respond-to($desktop) {
+    margin: 0 span(2);
+  }
+
+  @include respond-to($retina-macbook) {
+    margin: 0 span(2.5);
+  }
+}
+
+@mixin media-frame($bg-color: $black) {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background-color: $bg-color;
+  overflow: hidden;
+}
+
 // --------------------------------------------
 // SVG icons
 // --------------------------------------------

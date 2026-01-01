@@ -103,28 +103,11 @@ const toggleFullscreen = () => {
 
 .builder-carousel {
   &.block-outer {
-    padding-top: span(2);
-    padding-bottom: span(2);
-    @include respond-to($tablet) {
-      padding-top: span(3);
-      padding-bottom: span(3);
-    }
-    @include respond-to($desktop) {
-      padding-top: span(4);
-      padding-bottom: span(4);
-    }
+    @include block-outer;
   }
   .block-inner {
-    width: 100%;
-    max-width: span(12);
-    margin: 0 auto;
     text-align: center;
-    @include respond-to($tablet) {
-      max-width: span(10);
-    }
-    @include respond-to($desktop) {
-      max-width: span(8);
-    }
+    @include block-inner;
   }
   .carousel-swiper {
     width: 100%;
@@ -140,7 +123,7 @@ const toggleFullscreen = () => {
         width: 100%;
         height: auto;
         object-fit: cover;
-        border-radius: $space-xs;
+        border-radius: $radius-xs;
       }
     }
   }
@@ -163,7 +146,7 @@ const toggleFullscreen = () => {
     background: $black;
     color: $white;
     border: none;
-    border-radius: $space-xs;
+    border-radius: $radius-xs;
     padding: $space-xs $space-m;
     cursor: pointer;
     font-family: $poppins-semi-bold;
@@ -189,7 +172,7 @@ const toggleFullscreen = () => {
           width: 100%;
           height: auto;
           object-fit: contain;
-          border-radius: $space-xs;
+          border-radius: $radius-xs;
         }
       }
     }

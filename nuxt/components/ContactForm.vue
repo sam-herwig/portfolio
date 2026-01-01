@@ -156,7 +156,6 @@ const handleSubmit = async () => {
 
 <style lang="scss" scoped>
 // Variables
-$border-radius: 4px;
 $transition-normal: all 0.3s ease;
 
 .contact-section {
@@ -256,7 +255,7 @@ $transition-normal: all 0.3s ease;
           flex: 1;
           padding: 0.75rem 1rem;
           border: 1px solid $black;
-          border-radius: $border-radius;
+          border-radius: $radius-xs;
           background: transparent;
           font-size: 1.1rem;
           color: $black;
@@ -281,7 +280,7 @@ $transition-normal: all 0.3s ease;
           flex: 1;
           padding: 0.75rem 1rem;
           border: 1px solid $black;
-          border-radius: $border-radius;
+          border-radius: $radius-xs;
           font-size: 1.1rem;
           max-width: 300px;
           margin: 0 1rem;
@@ -311,7 +310,7 @@ $transition-normal: all 0.3s ease;
           max-width: 300px;
           flex: 1;
           margin: 0 1rem;
-          border-radius: $border-radius;
+          border-radius: $radius-xs;
           overflow: hidden;
 
           @media (max-width: 768px) {
@@ -366,15 +365,10 @@ $transition-normal: all 0.3s ease;
         }
 
         button {
-          background-color: $black;
-          color: $white;
+          @include pill($black, $white, $black, 0.75rem, 2.5rem, 1rem, 0);
           font-weight: 500;
-          padding: 0.75rem 2.5rem;
-          border-radius: 2rem;
-          border: none;
           cursor: pointer;
           transition: $transition-normal;
-          font-size: 1rem;
           text-transform: uppercase;
 
           &:hover {
@@ -399,7 +393,7 @@ $transition-normal: all 0.3s ease;
           font-weight: 500;
           background-color: rgba($black, 0.7);
           padding: 0.75rem 1rem;
-          border-radius: $border-radius;
+          border-radius: $radius-xs;
         }
 
         .error-message {
@@ -407,7 +401,7 @@ $transition-normal: all 0.3s ease;
           font-weight: 500;
           background-color: rgba($black, 0.7);
           padding: 0.75rem 1rem;
-          border-radius: $border-radius;
+          border-radius: $radius-xs;
         }
       }
     }

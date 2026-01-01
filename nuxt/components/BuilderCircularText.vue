@@ -137,8 +137,7 @@ onBeforeUnmount(() => {
 <style lang="scss">
 .builder-circular-text {
   &.pad-bl {
-    padding-top: span(2);
-    padding-bottom: span(2);
+    @include block-outer;
     display: flex;
     justify-content: center;
     align-items: center;

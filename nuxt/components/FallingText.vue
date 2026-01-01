@@ -304,10 +304,7 @@ onBeforeUnmount(() => {
       margin: 0.25rem;
       cursor: grab;
       pointer-events: auto;
-      padding: 0.5rem 1rem;
-      // background: rgba(255, 255, 255, 0.1);
-      border-radius: 50px;
-      color: $white;
+      @include pill($white, $white, transparent, 0.5rem, 1rem, inherit, 0);
       font-family: inherit;
       transition: color 333ms ease-in-out;
       

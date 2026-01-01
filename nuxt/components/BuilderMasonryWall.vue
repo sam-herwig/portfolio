@@ -476,9 +476,7 @@ onBeforeUnmount(() => {
 <style lang="scss">
 .builder-masonry-wall {
   &.pad-bl {
-    padding-top: span(2);
-    padding-bottom: span(2);
-    
+    @include block-outer;
   }
   
   .gutter-lg {
@@ -512,7 +510,7 @@ onBeforeUnmount(() => {
   .masonry-item {
     position: absolute;
     overflow: hidden;
-    border-radius: 4px;
+    border-radius: $radius-xs;
     transform-origin: center;
     will-change: transform, opacity;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);

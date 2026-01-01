@@ -18,28 +18,11 @@ const props = defineProps({
 .builder-general-block {
   // Outer block padding using span units
   &.block-outer {
-    padding-top: span(2);
-    padding-bottom: span(2);
-    @include respond-to($tablet) {
-      padding-top: span(3);
-      padding-bottom: span(3);
-    }
-    @include respond-to($desktop) {
-      padding-top: span(4);
-      padding-bottom: span(4);
-    }
+    @include block-outer;
   }
   .block-inner {
-    width: 100%;
-    max-width: span(12);
-    margin: 0 auto;
     text-align: center;
-    @include respond-to($tablet) {
-      max-width: span(10);
-    }
-    @include respond-to($desktop) {
-      max-width: span(8);
-    }
+    @include block-inner;
   }
   .general-title {
     font-family: $poppins-extra-bold;

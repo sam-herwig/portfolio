@@ -58,7 +58,7 @@ const hoveredIndex = ref(null);
   height: 100%;
   cursor: pointer;
   overflow: hidden;
-  border-radius: 1rem;
+  border-radius: $radius-m;
   transition: flex 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   
   &:hover {
@@ -109,7 +109,7 @@ const hoveredIndex = ref(null);
   }
   
   .gallery-item {
-    border-radius: 0.5rem;
+    border-radius: $radius-s;
     
     &:hover {
       flex: 2;

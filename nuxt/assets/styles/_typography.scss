@@ -149,3 +149,7 @@ h4 {
     line-height: 1.1em;
   }
 }
+
+.section-title {
+  @include section-title();
+}

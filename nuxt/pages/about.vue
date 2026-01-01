@@ -39,7 +39,7 @@
       <!-- Personal Section -->
       <section 
         v-if="pageData.personalSection?.content" 
-        :class="['personal-section', `personal-section--${pageData.personalSection.backgroundColor || 'orange'}`]"
+        :class="['personal-section', 'section-pad', `personal-section--${pageData.personalSection.backgroundColor || 'orange'}`]"
       >
         <div class="gutter">
           <h2 v-if="pageData.personalSection.title" class="section-title">
@@ -52,7 +52,7 @@
       </section>
 
       <!-- Skills & Expertise Section -->
-      <section v-if="allSkills.length" class="skills-section">
+      <section v-if="allSkills.length" class="skills-section section-pad">
         <div class="skills-container">
           <h2 v-if="pageData.skillsSection?.title" class="section-title">
             {{ pageData.skillsSection.title }}
@@ -73,7 +73,7 @@
       </section>
 
       <!-- Experience Timeline -->
-      <section v-if="pageData.experienceTimeline?.experiences?.length" class="experience-section">
+      <section v-if="pageData.experienceTimeline?.experiences?.length" class="experience-section section-pad">
         <div class="gutter">
           <h2 v-if="pageData.experienceTimeline.title" class="section-title">
             {{ pageData.experienceTimeline.title }}
@@ -103,7 +103,7 @@
       </section>
 
       <!-- CTA Section -->
-      <section v-if="pageData.ctaSection" class="cta-section">
+      <section v-if="pageData.ctaSection" class="cta-section section-pad">
         <div class="gutter">
           <div class="cta-content">
             <h2 v-if="pageData.ctaSection.heading" class="cta-heading">
@@ -268,22 +268,13 @@ const highlightedSkills = computed(() => {
 
 
   .section-title {
-    font-family: $poppins-semi-bold;
-    font-size: 2.5rem;
-    text-align: center;
-    margin-bottom: 3rem;
-
-    @media #{$tablet} {
-      font-size: 1.75rem;
-      margin-bottom: 2rem;
-    }
+    @include section-title($poppins-semi-bold, 2.5rem, 1.75rem);
   }
 
   .skills-section {
     min-height: 50vh;
     background: $black;
     position: relative;
-    padding: 4rem 0;
 
     .skills-container {
       max-width: 1200px;
@@ -293,8 +284,6 @@ const highlightedSkills = computed(() => {
 
     .section-title {
       color: $white;
-      text-align: center;
-      margin-bottom: 3rem;
     }
 
     .skills-falling-text {
@@ -307,7 +296,6 @@ const highlightedSkills = computed(() => {
   }
 
   .experience-section {
-    padding: 4rem 0;
     background: $white;
 
     .timeline {
@@ -389,7 +377,7 @@ const highlightedSkills = computed(() => {
     .timeline-content {
       background: $ash;
       padding: 2rem;
-      border-radius: 8px;
+      border-radius: $radius-s;
     }
 
     .timeline-company {
@@ -437,7 +425,6 @@ const highlightedSkills = computed(() => {
   }
 
   .personal-section {
-    padding: 4rem 0;
     color: $white;
     position: relative;
     overflow: hidden;
@@ -480,7 +467,6 @@ const highlightedSkills = computed(() => {
   }
 
   .cta-section {
-    padding: 4rem 0;
     background: $black;
     text-align: center;
 

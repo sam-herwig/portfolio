@@ -124,7 +124,7 @@ const isExternalLink = computed(() => {
   width: 8px;
   height: 8px;
   background: $white;
-  border-radius: 4px;
+  border-radius: $radius-xs;
   transition: transform 0.3s ease;
 }
 

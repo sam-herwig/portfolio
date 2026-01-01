@@ -219,3 +219,11 @@ a {
     padding-bottom: span(1);
   }
 }
+
+.section-pad {
+  padding: 4rem 0;
+
+  @media (max-width: 768px) {
+    padding: 2rem 0;
+  }
+}

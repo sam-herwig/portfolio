@@ -98,7 +98,7 @@
       </template>
       
       <!-- Up Next Section -->
-      <section v-if="nextProjects.length" class="expandable-gallery-section">
+      <section v-if="nextProjects.length" class="expandable-gallery-section section-pad">
         <h2 class="section-title">Up Next</h2>
         <ExpandableGallery :projects="nextProjects" />
       </section>
@@ -304,26 +304,12 @@ watch(() => route.params.slug, async () => {
 <style lang='scss'>
 .case-study-page {
   .expandable-gallery-section {
-    padding: 4rem 0;
     background-color: $white;
     color: $black;
     border-top: 1px solid $ash;
 
     .section-title {
-      font-family: $poppins-extra-bold;
-      font-size: 3rem;
-      text-align: center;
-      margin-bottom: 3rem;
       color: $black;
-    }
-
-    @media (max-width: 768px) {
-      padding: 2rem 0;
-
-      .section-title {
-        font-size: 2rem;
-        margin-bottom: 2rem;
-      }
     }
   }
 }
