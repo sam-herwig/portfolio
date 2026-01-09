@@ -60,7 +60,7 @@ const hoveredIndex = ref(null);
   overflow: hidden;
   border-radius: $radius-m;
   transition: flex 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   &:hover {
     flex: 3;
   }
@@ -104,16 +104,17 @@ const hoveredIndex = ref(null);
   }
   
   .gallery-container {
-    height: 300px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 220px;
+    height: auto;
     gap: 0.25rem;
   }
   
   .gallery-item {
     border-radius: $radius-s;
-    
-    &:hover {
-      flex: 2;
-    }
+    flex: initial;
+    transition: none;
   }
   
   .gallery-overlay {

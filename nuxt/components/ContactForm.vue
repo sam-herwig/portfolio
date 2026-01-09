@@ -18,11 +18,12 @@
         >
           <input type="hidden" name="form-name" value="contact" />
           <div class="hidden">
-            <label>Don't fill this out if you're human: <input name="bot-field" /></label>
+            <label for="bot-field">Don't fill this out if you're human:</label>
+            <input id="bot-field" name="bot-field" />
           </div>
 
           <div class="form-row">
-            <label>My name is</label>
+            <label for="name">My name is</label>
             <input
                 type="text"
                 id="name"
@@ -35,9 +36,14 @@
           </div>
 
           <div class="form-row">
-            <span>I want some help with</span>
+            <span id="project-type-label">I want some help with</span>
             <div class="dropdown-wrapper project-type">
-              <select name="project_type" v-model="formData.projectType" required>
+              <select
+                name="project_type"
+                v-model="formData.projectType"
+                required
+                aria-labelledby="project-type-label"
+              >
                 <option value="" disabled selected>Project type</option>
                 <option value="website">Website</option>
                 <option value="branding">Branding</option>
@@ -46,13 +52,13 @@
                 <option value="other">Other</option>
               </select>
             </div>
-            <label>My budget is</label>
+            <label for="budget">My budget is</label>
           </div>
 
           <div class="form-row">
            
             <div class="dropdown-wrapper">
-              <select name="budget" v-model="formData.budget" required>
+              <select id="budget" name="budget" v-model="formData.budget" required>
                 <option value="" disabled selected>$1,000,000</option>
                 <option value="less_than_5k">Less than $5,000</option>
                 <option value="5k_to_10k">$5,000 - $10,000</option>
@@ -62,7 +68,7 @@
                 <option value="more_than_100k">More than $100,000</option>
               </select>
             </div>
-            <label>reach me at</label>
+            <label for="email">reach me at</label>
           </div>
 
        

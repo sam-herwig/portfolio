@@ -1,10 +1,17 @@
 <template>
   <Teleport to="body">
     <Transition name="modal-fade">
-      <div v-if="isOpen" class="media-modal" @click="handleBackdropClick">
+      <div
+        v-if="isOpen"
+        class="media-modal"
+        @click="handleBackdropClick"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="mediaLabel"
+      >
         <div class="media-modal__backdrop"></div>
-        <div class="media-modal__content" @click.stop>
-          <button class="media-modal__close" @click="close" aria-label="Close modal">
+        <div class="media-modal__content" @click.stop tabindex="-1" ref="modalContent">
+          <button class="media-modal__close" @click="close" aria-label="Close modal" ref="closeButton">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
@@ -13,7 +20,7 @@
           <img
             v-if="media.type === 'image'"
             :src="media.src"
-            :alt="media.alt || ''"
+            :alt="media.alt || 'Selected media'"
             class="media-modal__media"
           />
           
@@ -33,7 +40,7 @@
 </template>
 
 <script setup>
-import { watch, onMounted, onUnmounted } from 'vue'
+import { watch, onMounted, onUnmounted, ref, computed, nextTick } from 'vue'
 
 const props = defineProps({
   isOpen: {
@@ -47,6 +54,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+const modalContent = ref(null)
+const closeButton = ref(null)
+const previouslyFocused = ref(null)
+const mediaLabel = computed(() => {
+  if (props.media?.alt) return props.media.alt
+  if (props.media?.type === 'video') return 'Video modal'
+  return 'Image modal'
+})
 
 const close = () => {
   // Pause video if playing
@@ -67,13 +82,36 @@ const handleKeydown = (e) => {
   if (e.key === 'Escape' && props.isOpen) {
     close()
   }
+
+  if (e.key === 'Tab' && props.isOpen && modalContent.value) {
+    const focusable = modalContent.value.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (!focusable.length) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
 }
 
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
+    previouslyFocused.value = document.activeElement
     document.body.style.overflow = 'hidden'
+    nextTick(() => {
+      closeButton.value?.focus()
+    })
   } else {
     document.body.style.overflow = ''
+    if (previouslyFocused.value?.focus) {
+      previouslyFocused.value.focus()
+    }
   }
 })
 

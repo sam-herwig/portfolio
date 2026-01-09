@@ -1,5 +1,6 @@
 <template>
-  <span 
+  <component 
+    :is="as"
     ref="containerRef"
     class="decrypted-text-wrapper"
     :class="parentClassName"
@@ -19,7 +20,7 @@
         {{ char }}
       </span>
     </span>
-  </span>
+  </component>
 </template>
 
 <script setup>
@@ -29,6 +30,10 @@ const props = defineProps({
   text: {
     type: String,
     required: true
+  },
+  as: {
+    type: String,
+    default: 'span'
   },
   speed: {
     type: Number,
@@ -105,6 +110,7 @@ const revealedIndices = ref(new Set());
 const hasAnimated = ref(false);
 const containerRef = ref(null);
 const fontSize = ref(props.minFontSize);
+const prefersReducedMotion = ref(false);
 
 let animationId = null;
 let currentIteration = 0;
@@ -165,6 +171,12 @@ const calculateFontSize = () => {
   
   // Set the font size
   fontSize.value = calculatedSize;
+};
+
+const checkReducedMotion = () => {
+  if (!process.client) return;
+  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+  prefersReducedMotion.value = media.matches;
 };
 
 const getNextIndex = (revealedSet) => {
@@ -250,6 +262,12 @@ const setIsHovering = (value) => {
 };
 
 const startAnimation = () => {
+  if (prefersReducedMotion.value) {
+    displayText.value = props.text;
+    isScrambling.value = false;
+    revealedIndices.value = new Set();
+    return;
+  }
   isScrambling.value = true;
   currentIteration = 0;
   lastFrameTime = 0;
@@ -315,7 +333,7 @@ const stopAnimation = () => {
 // Function to run animation automatically
 const setupAutoAnimation = () => {
   // Only set up if autoAnimate is true
-  if (!props.autoAnimate) return;
+  if (!props.autoAnimate || prefersReducedMotion.value) return;
   
   // Clear any existing interval
   if (autoAnimateInterval) {
@@ -345,8 +363,13 @@ const setupAutoAnimation = () => {
 };
 
 onMounted(() => {
+  checkReducedMotion();
   // Calculate font size
   calculateFontSize();
+  if (process.client) {
+    window.matchMedia('(prefers-reduced-motion: reduce)')
+      .addEventListener?.('change', checkReducedMotion);
+  }
   
   // Use resize observer instead of window resize event for better performance
   if (window.ResizeObserver) {
@@ -375,35 +398,37 @@ onMounted(() => {
     window.addEventListener('resize', calculateFontSize);
   }
   
-  // Always trigger initial animation on mount with a short delay
-  setTimeout(() => {
-    setIsHovering(true);
-    
-    // For view-based animations, mark as animated
-    if (props.animateOn === 'view') {
-      hasAnimated.value = true;
-    }
-    // For hover-based animations, reset after animation completes
-    else if (props.animateOn === 'hover') {
-      // Calculate total animation time based on sequential or not
-      const totalDuration = props.sequential 
-        ? props.text.length * props.speed * 3 + 500 // Add buffer time
-        : props.maxIterations * props.speed * 3 + 500;
-        
-      setTimeout(() => {
-        // Only reset if not currently being hovered
-        if (!containerRef.value?.matches(':hover')) {
-          setIsHovering(false);
-        }
-      }, totalDuration);
-    }
-    
-    // Set up automatic animation
-    setupAutoAnimation();
-  }, 500);
+  if (!prefersReducedMotion.value) {
+    // Always trigger initial animation on mount with a short delay
+    setTimeout(() => {
+      setIsHovering(true);
+      
+      // For view-based animations, mark as animated
+      if (props.animateOn === 'view') {
+        hasAnimated.value = true;
+      }
+      // For hover-based animations, reset after animation completes
+      else if (props.animateOn === 'hover') {
+        // Calculate total animation time based on sequential or not
+        const totalDuration = props.sequential 
+          ? props.text.length * props.speed * 3 + 500 // Add buffer time
+          : props.maxIterations * props.speed * 3 + 500;
+          
+        setTimeout(() => {
+          // Only reset if not currently being hovered
+          if (!containerRef.value?.matches(':hover')) {
+            setIsHovering(false);
+          }
+        }, totalDuration);
+      }
+      
+      // Set up automatic animation
+      setupAutoAnimation();
+    }, 500);
+  }
   
   // Set up intersection observer for view-based animations
-  if (props.animateOn === 'view') {
+  if (props.animateOn === 'view' && !prefersReducedMotion.value) {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -459,6 +484,11 @@ onBeforeUnmount(() => {
   // Clean up event listeners
   window.removeEventListener('resize', calculateFontSize);
   window.removeEventListener('orientationchange', calculateFontSize);
+
+  if (process.client) {
+    window.matchMedia('(prefers-reduced-motion: reduce)')
+      .removeEventListener?.('change', checkReducedMotion);
+  }
 });
 
 // Reset animation when text changes
@@ -466,7 +496,7 @@ watch(() => props.text, (newText) => {
   displayText.value = newText;
   revealedIndices.value = new Set();
   calculateFontSize();
-  if (isHovering.value) {
+  if (isHovering.value && !prefersReducedMotion.value) {
     startAnimation();
   }
 });

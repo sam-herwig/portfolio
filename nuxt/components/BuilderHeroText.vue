@@ -5,6 +5,7 @@
       <div class="hero-title-container">
         <TextPressure 
           :text="title"
+          :as="titleAs"
           :width="true"
           :weight="true"
           :italic="false"
@@ -82,6 +83,10 @@ const props = defineProps({
   title: {
     type: String,
     required: true
+  },
+  titleAs: {
+    type: String,
+    default: 'h2'
   },
   subtitle: {
     type: String,

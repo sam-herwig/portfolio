@@ -1,5 +1,6 @@
 <template>
   <div id="home-page" class="page space-t">
+    <h1 class="screen-reader">Sam Herwig</h1>
     <InteractiveHero />
     
     <!-- Expandable Gallery Section -->
@@ -92,6 +93,14 @@ const fetchData = async () => {
 
 // Initialize data
 await fetchData();
+
+useSeoMeta({
+  title: computed(() => pageData.value?.heroTitle ? `${pageData.value.heroTitle} | ${store.site_name}` : store.site_name),
+  ogTitle: computed(() => pageData.value?.heroTitle || store.site_name),
+  description: computed(() => pageData.value?.heroSubtitle || store.site_seo_description),
+  ogDescription: computed(() => pageData.value?.heroSubtitle || store.site_seo_description),
+  ogImage: computed(() => pageData.value?.heroImage?.src || store.site_seo_image)
+});
 
 // Set up live preview updates
 onMounted(() => {

@@ -75,6 +75,7 @@ const containerRef = ref(null);
 const textRef = ref(null);
 const canvasContainerRef = ref(null);
 const effectStarted = ref(false);
+const prefersReducedMotion = ref(false);
 
 let engine = null;
 let render = null;
@@ -95,8 +96,18 @@ const updateTextHTML = () => {
   textRef.value.innerHTML = newHTML;
 };
 
+const checkReducedMotion = () => {
+  if (!process.client) return;
+  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+  prefersReducedMotion.value = media.matches;
+};
+
 // Initialize trigger based on prop
 const initializeTrigger = () => {
+  if (prefersReducedMotion.value) {
+    effectStarted.value = false;
+    return;
+  }
   if (props.trigger === 'auto') {
     effectStarted.value = true;
     return;
@@ -118,7 +129,7 @@ const initializeTrigger = () => {
 
 // Start the falling text effect
 const startEffect = async () => {
-  if (!effectStarted.value || !containerRef.value || !textRef.value || !canvasContainerRef.value) return;
+  if (!effectStarted.value || prefersReducedMotion.value || !containerRef.value || !textRef.value || !canvasContainerRef.value) return;
 
   await nextTick();
 
@@ -274,12 +285,21 @@ watch(effectStarted, (newVal) => {
 });
 
 onMounted(() => {
+  checkReducedMotion();
+  if (process.client) {
+    window.matchMedia('(prefers-reduced-motion: reduce)')
+      .addEventListener?.('change', checkReducedMotion);
+  }
   updateTextHTML();
   initializeTrigger();
 });
 
 onBeforeUnmount(() => {
   cleanup();
+  if (process.client) {
+    window.matchMedia('(prefers-reduced-motion: reduce)')
+      .removeEventListener?.('change', checkReducedMotion);
+  }
 });
 </script>
 

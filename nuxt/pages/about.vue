@@ -6,6 +6,7 @@
         <div class="hero-content">
           <TextPressure 
               text="About"
+              as="h1"
               :width="true"
               :weight="true"
               :italic="false"
@@ -134,9 +135,11 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { useSiteStore } from '~/stores/store';
 import { imageProps } from '~/utils/groq-common';
 
 const pageData = ref(null);
+const store = useSiteStore();
 
 const pageQuery = groq`*[_type == 'aboutPage'][0]{
   title,
@@ -182,6 +185,14 @@ const pageQuery = groq`*[_type == 'aboutPage'][0]{
 // Fetch data
 const data = await useSanityData({ query: pageQuery });
 pageData.value = data;
+
+useSeoMeta({
+  title: computed(() => pageData.value?.title ? `${pageData.value.title} | ${store.site_name}` : store.site_name),
+  ogTitle: computed(() => pageData.value?.title || store.site_name),
+  description: computed(() => pageData.value?.heroSection?.subheading || store.site_seo_description),
+  ogDescription: computed(() => pageData.value?.heroSection?.subheading || store.site_seo_description),
+  ogImage: computed(() => pageData.value?.heroSection?.centerImage?.src || store.site_seo_image)
+});
 
 // Get all skills
 const allSkills = computed(() => {
@@ -253,6 +264,10 @@ const highlightedSkills = computed(() => {
       width: 400px;
       height: 400px;
       margin: 0 auto;
+
+      .builder-circular-text.pad-bl {
+        padding: 0;
+      }
 
       @media #{$tablet} {
         width: 300px;

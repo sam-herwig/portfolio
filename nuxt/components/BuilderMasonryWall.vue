@@ -105,6 +105,25 @@ const loadedItems = ref(0);
 const totalItems = ref(0);
 const loadedItemsMap = ref({});
 const layoutApplied = ref(false);
+const prefersReducedMotion = ref(false);
+const motionMedia = ref(null);
+const handleMotionChange = (event) => {
+  prefersReducedMotion.value = event.matches;
+  if (prefersReducedMotion.value) {
+    if (scrollTrigger) {
+      scrollTrigger.kill();
+      scrollTrigger = null;
+    }
+    if (masonryItems.value.length) {
+      gsap.set(masonryItems.value, { opacity: 1, y: 0 });
+      if (props.title && masonryTitle.value) {
+        gsap.set(masonryTitle.value, { opacity: 1, y: 0 });
+      }
+    }
+  } else {
+    animateItems();
+  }
+};
 
 // Modal handlers
 const openModal = (item) => {
@@ -280,7 +299,15 @@ const setupMediaLoadHandlers = () => {
 
 // Animation for items when they come into view
 const animateItems = () => {
-  if (!masonryItems.value.length || !process.client) return;
+  if (!masonryItems.value.length || !process.client || prefersReducedMotion.value) {
+    if (masonryItems.value.length) {
+      gsap.set(masonryItems.value, { opacity: 1, y: 0 });
+      if (props.title && masonryTitle.value) {
+        gsap.set(masonryTitle.value, { opacity: 1, y: 0 });
+      }
+    }
+    return;
+  }
   
   // Reset any existing animations
   if (scrollTrigger) {
@@ -386,6 +413,9 @@ let resizeTimeout;
 // Lifecycle hooks
 onMounted(async () => {
   if (process.client) {
+    motionMedia.value = window.matchMedia('(prefers-reduced-motion: reduce)');
+    prefersReducedMotion.value = motionMedia.value.matches;
+    motionMedia.value.addEventListener?.('change', handleMotionChange);
     // Wait for DOM update
     await nextTick();
     
@@ -469,6 +499,7 @@ onBeforeUnmount(() => {
     // Remove event listeners
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', applyMasonryLayout);
+    motionMedia.value?.removeEventListener?.('change', handleMotionChange);
   }
 });
 </script>

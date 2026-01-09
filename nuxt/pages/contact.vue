@@ -7,6 +7,7 @@
     />
     <BuilderHeroText
       :title="'contact'"
+      titleAs="h1"
       :circularText="'Fill Out Form *PLEASE* '"
       :backgroundColor="red"
       :textColor="black"
@@ -25,6 +26,9 @@
 import BuilderGeneralBlock from '~/components/BuilderGeneralBlock.vue';
 import ContactForm from '~/components/ContactForm.vue';
 import Footer from '~/components/Footer.vue';
+import { useSiteStore } from '~/stores/store';
+
+const store = useSiteStore();
 
 const contactQuery = groq`*[(_type == "contact")][0]{
   blocks[] {
@@ -38,6 +42,13 @@ const contactQuery = groq`*[(_type == "contact")][0]{
 
 const pageData = await useSanityData({ query: contactQuery });
 const block = pageData?.blocks?.find(b => b.type === 'generalBlock');
+
+useSeoMeta({
+  title: `Contact | ${store.site_name}`,
+  ogTitle: `Contact | ${store.site_name}`,
+  description: 'Contact Sam Herwig',
+  ogDescription: 'Contact Sam Herwig'
+});
 </script>
 
 <style lang="scss">

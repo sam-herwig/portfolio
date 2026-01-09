@@ -1,6 +1,7 @@
 <template>
   <div class="case-study-page page">
     <template v-if="pageData">
+      <h1 class="screen-reader">{{ pageData.title }}</h1>
        <!-- <Hero
         :title="pageData.title"
         :slug="pageData.slug.current"
@@ -109,7 +110,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
+import { useSiteStore } from '~/stores/store';
 import { imageProps } from '~/utils/groq-common';
 import BuilderCarousel from '~/components/BuilderCarousel.vue';
 import BuilderMasonryWall from '~/components/BuilderMasonryWall.vue';
@@ -118,6 +120,7 @@ import BuilderHeroText from '~/components/BuilderHeroText.vue';
 import ExpandableGallery from '~/components/ExpandableGallery.vue';
 
 const route = useRoute();
+const store = useSiteStore();
 const params = { slug: route.params.slug };
 const pageData = ref(null);
 
@@ -293,6 +296,13 @@ const fetchData = async () => {
 // Initialize data
 const nextProjects = ref([]);
 await fetchData();
+
+useSeoMeta({
+  title: computed(() => pageData.value?.title ? `${pageData.value.title} | ${store.site_name}` : store.site_name),
+  ogTitle: computed(() => pageData.value?.title || store.site_name),
+  description: computed(() => pageData.value?.subtitle || store.site_seo_description),
+  ogDescription: computed(() => pageData.value?.subtitle || store.site_seo_description)
+});
 
 // Watch for route changes to update data
 watch(() => route.params.slug, async () => {
