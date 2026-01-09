@@ -70,11 +70,7 @@
             </div>
             <label for="email">reach me at</label>
           </div>
-
-       
-
           <div class="form-row">
-         
             <input
               type="email"
               id="email"
