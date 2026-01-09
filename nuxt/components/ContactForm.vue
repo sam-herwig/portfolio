@@ -46,9 +46,9 @@
               >
                 <option value="" disabled selected>Project type</option>
                 <option value="website">Website</option>
-                <option value="branding">Branding</option>
+                <option value="interactive">Interactive</option>
                 <option value="application">Application</option>
-                <option value="marketing">Marketing</option>
+                <option value="installation">Installation</option>
                 <option value="other">Other</option>
               </select>
             </div>
