@@ -65,6 +65,40 @@ export default defineType({
       ]
     }),
     defineField({
+      fieldset: 'content',
+      name: 'projectUrl',
+      title: 'Live Site URL',
+      type: 'url',
+      description: 'Link to the live project (shown as "See Site" button)',
+    }),
+    defineField({
+      fieldset: 'content',
+      name: 'circularText',
+      title: 'Circular Text',
+      type: 'string',
+      description: 'Text that spins in a circle on the project hero (e.g., "LET\'S GET VOODOO • ")',
+    }),
+    defineField({
+      fieldset: 'content',
+      name: 'overview',
+      title: 'Project Overview',
+      type: 'object',
+      fields: [
+        {
+          name: 'headline',
+          title: 'Headline',
+          type: 'string',
+          description: 'Punchy one-liner for the project'
+        },
+        {
+          name: 'richtext',
+          title: 'Description',
+          type: 'blockContent',
+          description: 'Detailed project description'
+        }
+      ]
+    }),
+    defineField({
       fieldset: 'display',
       name: 'featuredImage',
       title: 'Featured Image',
