@@ -2,7 +2,7 @@
   <section id="contact" class="contact-section">
     <div class="container">
       <div class="greeting">
-        <h2>Hi Sam,</h2>
+        <h2>Hi there,</h2>
 
         <div class="note">
           <p>Please fill this out if you want to chat!</p>

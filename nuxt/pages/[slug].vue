@@ -1,18 +1,48 @@
 <template>
   <div class="case-study-page page">
     <template v-if="pageData">
-      <h1 class="screen-reader">{{ pageData.title }}</h1>
-       <!-- <Hero
-        :title="pageData.title"
-        :slug="pageData.slug.current"
-        :subtitle="pageData.subtitle"
-        :media="pageData.heroMedia[0]"
-      />
-      <BuilderTextBlock
-        :headline="pageData.overview.headline"
-        :richtext="pageData.overview.richtext"
-        :tags="pageData.tags"
-      /> -->
+      <!-- Project Hero Section -->
+      <section class="project-hero">
+        <div class="project-hero__content">
+          <h1 class="project-hero__title">{{ pageData.title }}</h1>
+          <BuilderCircularText
+            v-if="pageData.circularText"
+            :circularText="pageData.circularText"
+            :centerText="pageData.centerText"
+            :rotationSpeed="10"
+            :direction="1"
+            :fontSize="5"
+            textColor="black"
+          />
+          <NuxtLink 
+            v-if="pageData.projectUrl" 
+            :to="pageData.projectUrl" 
+            target="_blank"
+            class="project-hero__link"
+          >
+            See Site
+          </NuxtLink>
+        </div>
+      </section>
+
+      <!-- Project Overview Section -->
+      <section v-if="pageData.overview" class="project-overview">
+        <div class="gutter">
+          <div v-if="pageData.tags?.length" class="project-tags">
+            <span v-for="tag in pageData.tags" :key="tag.tag" class="project-tag">
+              {{ tag.tag }}
+            </span>
+          </div>
+          <h2 v-if="pageData.overview.headline" class="project-overview__headline">
+            {{ pageData.overview.headline }}
+          </h2>
+          <div v-if="pageData.overview.richtext" class="project-overview__content">
+            <RichTextContent :content="pageData.overview.richtext" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Dynamic Content Blocks -->
       <template v-for="(block, index) in pageData.blocks">
         <BuilderTextBlock
           v-if="block.type === 'textBlock'"
@@ -136,6 +166,9 @@ const pageQuery = groq`*[( _type == 'project') && slug.current == $slug][0]{
   title,
   slug,
   subtitle,
+  circularText,
+  centerText,
+  projectUrl,
   overview {
     headline,
     richtext
@@ -313,6 +346,98 @@ watch(() => route.params.slug, async () => {
 
 <style lang='scss'>
 .case-study-page {
+  .project-hero {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: $red;
+    padding: 6rem 2rem 4rem;
+    text-align: center;
+
+    &__content {
+      max-width: 800px;
+    }
+
+    &__title {
+      font-family: $poppins-extra-bold;
+      font-size: clamp(3rem, 10vw, 6rem);
+      color: $black;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      margin-bottom: 2rem;
+    }
+
+    &__link {
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 1rem 2.5rem;
+      background: $white;
+      color: $black;
+      text-decoration: none;
+      font-family: $poppins-semi-bold;
+      font-size: 1rem;
+      border-radius: $radius-m;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: $black;
+        color: $white;
+      }
+    }
+
+    .builder-circular-text {
+      width: 300px;
+      height: 300px;
+      margin: 0 auto;
+
+      @media #{$mobile} {
+        width: 200px;
+        height: 200px;
+      }
+    }
+  }
+
+  .project-overview {
+    background: $white;
+    padding: 4rem 0;
+
+    &__headline {
+      font-family: $poppins-semi-bold;
+      font-size: 2rem;
+      color: $black;
+      margin-bottom: 1.5rem;
+    }
+
+    &__content {
+      max-width: 800px;
+      font-size: 1.125rem;
+      line-height: 1.8;
+      color: rgba($black, 0.8);
+
+      p {
+        margin-bottom: 1.5rem;
+      }
+    }
+  }
+
+  .project-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .project-tag {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: $ash;
+    color: $black;
+    font-size: 0.875rem;
+    font-family: $poppins;
+    border-radius: $radius-xs;
+  }
+
   .expandable-gallery-section {
     background-color: $white;
     color: $black;
