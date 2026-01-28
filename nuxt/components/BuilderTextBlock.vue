@@ -32,7 +32,7 @@ const props = defineProps({
 .builder-text-block {
   .cols {
     .col {
-      text-align: center;
+      text-align: left;
 
       &:not(:first-child) {
         margin-top: $space-l;
@@ -96,7 +96,7 @@ const props = defineProps({
       justify-content: space-between;
 
       .col {
-        width: span(6);
+        width: span(8);
 
         &:not(:last-child) {
           width: span(5);

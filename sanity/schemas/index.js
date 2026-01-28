@@ -21,7 +21,8 @@ import masonryWall from './shared/builder/masonry-wall';
 import circularText from './shared/builder/circular-text';
 import expandableGallery from './shared/builder/expandable-gallery';
 
-// Shared 
+// Shared
+import blockContent from './shared/block-content';
 import videoLoop from './shared/video-loop';
 import videoPlayer from './shared/video-player';
 
@@ -31,6 +32,7 @@ export const schemaTypes = [
   contactPage,
   aboutPage,
   project,
+  blockContent,
   textBlock, 
   pullQuote, 
   singleImage, 

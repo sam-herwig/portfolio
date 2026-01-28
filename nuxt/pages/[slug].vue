@@ -29,8 +29,8 @@
       <section v-if="pageData.overview" class="project-overview">
         <div class="gutter">
           <div v-if="pageData.tags?.length" class="project-tags">
-            <span v-for="tag in pageData.tags" :key="tag.tag" class="project-tag">
-              {{ tag.tag }}
+            <span v-for="tag in pageData.tags" :key="tag" class="project-tag">
+              {{ tag }}
             </span>
           </div>
           <h2 v-if="pageData.overview.headline" class="project-overview__headline">
@@ -173,9 +173,7 @@ const pageQuery = groq`*[( _type == 'project') && slug.current == $slug][0]{
     headline,
     richtext
   },
-  tags[]-> {
-    tag
-  },
+  tags,
   blocks[] {
     _type == 'textBlock' => {
       "type": _type,

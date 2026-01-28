@@ -147,11 +147,25 @@ export default defineType({
           type: 'string',
           options: {
             list: [
-              { title: 'Web', value: 'WEB' },
+              { title: 'Web', value: 'Web' },
               { title: 'Interactive', value: 'Interactive' },
-              { title: 'Three.JS', value: 'Three.JS' },
-              { title: 'New Belgium', value: 'New Belgium' },
-              { title: 'Fresh Build', value: 'Fresh Build' }
+              { title: 'Vue.js', value: 'Vue.js' },
+              { title: 'Nuxt', value: 'Nuxt' },
+              { title: 'React', value: 'React' },
+              { title: 'Three.js', value: 'Three.js' },
+              { title: 'WebGL', value: 'WebGL' },
+              { title: 'GSAP', value: 'GSAP' },
+              { title: 'Animation', value: 'Animation' },
+              { title: 'E-commerce', value: 'E-commerce' },
+              { title: 'CMS Integration', value: 'CMS Integration' },
+              { title: 'Sanity CMS', value: 'Sanity CMS' },
+              { title: 'Booking Integration', value: 'Booking Integration' },
+              { title: 'Internationalization', value: 'Internationalization' },
+              { title: 'Responsive Design', value: 'Responsive Design' },
+              { title: 'Accessibility', value: 'Accessibility' },
+              { title: 'Optimizely', value: 'Optimizely' },
+              { title: 'Episerver', value: 'Episerver' },
+              { title: 'Handlebars', value: 'Handlebars' }
             ]
           }
         }
