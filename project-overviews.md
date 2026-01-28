@@ -124,6 +124,54 @@ The site needed to work as hard as we do—late nights, weird edge cases, the oc
 
 ---
 
+## Lightstrike
+
+**Circular Text:** `OUTPACE THE PARTY • OUTPACE THE PARTY •`
+
+**Tags:** Optimizely, Episerver, Handlebars, SCSS, Animation
+
+**Overview Headline:** A New Kind of Drink Needs a New Kind of Site
+
+**Overview Content:**
+
+Lightstrike isn't beer. It isn't seltzer. It's a hard refresher—zero fizz, coconut water, sea salt, sports bottle. The brand exists because someone asked "why doesn't this exist?" and then made it. The website needed that same energy: confident, a little cocky, and unapologetically different.
+
+Working with Consume & Create on the Optimizely/Episerver platform, I built a front-end that matches the product's "outpace the party" positioning. Bold colors, kinetic typography, and enough personality to stand out in a crowded RTD market.
+
+**What I Built:**
+- High-energy Handlebars templates with motion design that reinforces the active lifestyle brand
+- SCSS architecture built for rapid iteration as the brand evolved post-launch
+- Product showcase components optimized for the unique bottle format and flavor lineup
+- Mobile-first approach—their audience lives on phones, so that's where we started
+
+The beverage space is brutal for new brands. The site needed to communicate "we're different" in about three seconds flat. Mission accomplished.
+
+---
+
+## GKE Healthcare
+
+**Circular Text:** `GUIDING YOU TO CLEAN & STERILE •`
+
+**Tags:** HubSpot, SCSS, Responsive Design, Internationalization, B2B
+
+**Overview Headline:** Making Medical Compliance Feel Human
+
+**Overview Content:**
+
+GKE is a world leader in sterilization monitoring—biological indicators, chemical indicators, cleaning validation. The kind of stuff that keeps hospitals safe but doesn't exactly scream "exciting web project." That was the challenge: take highly technical B2B content and make it accessible without dumbing it down.
+
+I handled front-end development on their HubSpot rebuild, creating a site that serves four regional markets (US, Canada, International, and German) while maintaining brand consistency. The audience is procurement managers and infection control specialists—people who need answers fast and don't have patience for fluff.
+
+**What I Built:**
+- HubSpot theme with modular components that scale across regional sites
+- Multi-language architecture with proper handling for German market requirements
+- Product catalog system that makes complex SKUs browsable and searchable
+- Clean, professional SCSS that conveys trustworthiness without feeling sterile (pun intended)
+
+B2B healthcare isn't glamorous, but it matters. When the site helps someone find the right sterilization indicator faster, that's a win that ripples out to patient safety. Not bad for a day's work.
+
+---
+
 ## Notes for Sanity Setup
 
 Each project in Sanity should have:
