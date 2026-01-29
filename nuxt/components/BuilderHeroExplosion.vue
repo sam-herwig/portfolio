@@ -197,10 +197,36 @@ const resetAnimation = () => {
   }
 };
 
+// --- WebGL Context Loss/Restoration ---
+let isContextLost = false;
+
+const handleContextLost = (event) => {
+  event.preventDefault();
+  isContextLost = true;
+  console.log('WebGL context lost - pausing animation');
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+};
+
+const handleContextRestored = () => {
+  console.log('WebGL context restored - reinitializing');
+  isContextLost = false;
+  // Reinitialize the renderer
+  initThree();
+};
+
 // --- Three.js Gradient Background ---
 const initThree = () => {
   if (!process.client || !gradientCanvas.value) return;
   if (!THREE) return;
+  
+  // Clean up existing renderer if any
+  if (renderer) {
+    renderer.dispose();
+    renderer = null;
+  }
   
   // Scene setup
   scene = new THREE.Scene();
@@ -210,10 +236,15 @@ const initThree = () => {
   renderer = new THREE.WebGLRenderer({ 
     canvas: gradientCanvas.value, 
     alpha: true,
-    antialias: true 
+    antialias: true,
+    powerPreference: 'high-performance'
   });
   renderer.setSize(gradientCanvas.value.offsetWidth, gradientCanvas.value.offsetHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  
+  // Add context loss handlers
+  gradientCanvas.value.addEventListener('webglcontextlost', handleContextLost);
+  gradientCanvas.value.addEventListener('webglcontextrestored', handleContextRestored);
   
   // Geometry
   geometry = new THREE.PlaneGeometry(2, 2);
@@ -360,9 +391,14 @@ const initThree = () => {
 };
 
 const animate = () => {
-  if (!material || animationParams.value.isAnimationPaused) return;
+  if (!material || animationParams.value.isAnimationPaused || isContextLost || !renderer) return;
   material.uniforms.time.value += animationParams.value.animationSpeed;
-  renderer.render(scene, camera);
+  try {
+    renderer.render(scene, camera);
+  } catch (e) {
+    console.warn('Render error:', e);
+    return;
+  }
   animationFrameId = requestAnimationFrame(animate);
 };
 
@@ -491,12 +527,36 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
   window.removeEventListener('resize', onWindowResize);
-  if (geometry) geometry.dispose();
-  if (material) material.dispose();
-  if (renderer) renderer.dispose();
+  
+  // Remove WebGL context event listeners
+  if (gradientCanvas.value) {
+    gradientCanvas.value.removeEventListener('webglcontextlost', handleContextLost);
+    gradientCanvas.value.removeEventListener('webglcontextrestored', handleContextRestored);
+  }
+  
+  // Dispose THREE.js resources
+  if (geometry) {
+    geometry.dispose();
+    geometry = null;
+  }
+  if (material) {
+    material.dispose();
+    material = null;
+  }
+  if (renderer) {
+    renderer.dispose();
+    renderer.forceContextLoss();
+    renderer = null;
+  }
   if (gui) {
     gui.destroy();
+    gui = null;
   }
+  
+  // Clear references
+  scene = null;
+  camera = null;
+  mesh = null;
 });
 </script>
 
