@@ -7,43 +7,11 @@
         :loop="true"
         :pagination="{ clickable: true }"
         :navigation="true"
-        :free-mode="{
-          enabled: true,
-          sticky: true,
-          momentum: true,
-          momentumRatio: 0.8,
-          momentumBounce: true,
-          momentumBounceRatio: 0.8
-        }"
-        :mousewheel="{
-          forceToAxis: true,
-          sensitivity: 1
-        }"
-        :grab-cursor="true"
-        :touch-ratio="1.2"
-        :resistance="true"
-        :resistance-ratio="0.85"
         class="carousel-swiper"
         @slideChange="onSlideChange"
         :breakpoints="{
-          0: { 
-            slidesPerView: 1.5,
-            freeMode: {
-              enabled: true,
-              sticky: false,
-              momentum: true,
-              momentumRatio: 0.6
-            }
-          },
-          768: { 
-            slidesPerView: 3,
-            freeMode: {
-              enabled: true,
-              sticky: true,
-              momentum: true,
-              momentumRatio: 0.8
-            }
-          }
+          0: { slidesPerView: 1.5 },
+          768: { slidesPerView: 3 }
         }"
         :modules="modules"
       >
@@ -97,13 +65,12 @@
 <script setup>
 import { ref } from 'vue';
 import { Swiper, SwiperSlide } from 'swiper/vue';
-import { Navigation, Pagination, FreeMode, Mousewheel } from 'swiper/modules';
+import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import 'swiper/css/free-mode';
 
-const modules = [Navigation, Pagination, FreeMode, Mousewheel];
+const modules = [Navigation, Pagination];
 
 const props = defineProps({
   images: {
@@ -144,39 +111,19 @@ const toggleFullscreen = () => {
   }
   .carousel-swiper {
     width: 100%;
-    cursor: grab;
-    
-    &:active {
-      cursor: grabbing;
-    }
-    
-    .swiper-wrapper {
-      transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
-    
     .carousel-slide {
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 0 span(0.5);
       opacity: 0.5;
-      transition: opacity 0.3s ease, transform 0.3s ease;
-      user-select: none;
-      
-      &.active { 
-        opacity: 1; 
-      }
-      
-      &:hover {
-        transform: scale(1.02);
-      }
-      
+      transition: opacity 0.3s;
+      &.active { opacity: 1; }
       img {
         width: 100%;
         height: auto;
         object-fit: cover;
         border-radius: $radius-xs;
-        pointer-events: none;
       }
     }
   }
