@@ -393,6 +393,11 @@ watch(() => route.params.slug, async () => {
         width: 200px;
         height: 200px;
       }
+
+      @media #{$tablet} {
+        width: 400px;
+        height: 400px;
+      }
     }
   }
 
