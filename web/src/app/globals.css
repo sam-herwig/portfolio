@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  
+  --color-background-light: #f9fafb;
+  --color-background-dark: #09090b; /* zinc-950 */
+  --color-foreground-light: #18181b; /* zinc-900 */
+  --color-foreground-dark: #fafafa; /* zinc-50 */
+  
+  /* Taste-Skill Config Variables */
+  --design-variance: 8;
+  --motion-intensity: 6;
+  --visual-density: 4;
+}
+
+@layer base {
+  :root {
+    --background: var(--color-background-light);
+    --foreground: var(--color-foreground-light);
+  }
+
+  .dark {
+    --background: var(--color-background-dark);
+    --foreground: var(--color-foreground-dark);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevents scroll bump */
+    overflow-y: scroll; 
+  }
+
+  ::selection {
+    background-color: var(--foreground);
+    color: var(--background);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Taste-Skill liquid glass refraction */
+  .glassmorphism {
+    @apply backdrop-blur-md bg-white/5 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)];
+  }
+}
