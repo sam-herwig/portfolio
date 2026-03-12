@@ -5,11 +5,7 @@ import { useTexture } from '@react-three/drei';
 import { useRef, useEffect, Suspense } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
-import { useAppStore } from '@/store/useAppStore';
-import './shaders/WoodcutMaterial'; // Import to register the shader
-
 const WoodcutShader = 'woodcutShaderMaterial' as any;
-import DigitalParticleSystem from './DigitalParticleSystem'; // Import the new State 2 system
 
 declare global {
     namespace JSX {
@@ -31,12 +27,8 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1 }: any) {
 
     const materialRef = useRef<any>(null);
     const meshRef = useRef<THREE.Mesh>(null);
-    const isAlternateReality = useAppStore((state) => state.isAlternateReality);
     const scrollY = useRef(0);
     const mousePos = useRef(new THREE.Vector2(0, 0));
-
-    // Smooth target for uniform interpolation
-    const altTarget = isAlternateReality ? 1.0 : 0.0;
 
     useEffect(() => {
         return () => {
@@ -70,13 +62,6 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1 }: any) {
 
             // Smoothly damp mouse position into the shader
             materialRef.current.uMouse.lerp(mousePos.current, 0.1);
-
-            materialRef.current.uAlternateReality = THREE.MathUtils.damp(
-                materialRef.current.uAlternateReality,
-                altTarget,
-                4, // damping speed
-                delta
-            );
         }
 
         // 2. Parallax sliding based on scroll speed
@@ -184,9 +169,6 @@ export default function InteractiveHero({ scrollProgress }: { scrollProgress: Mo
                 <Suspense fallback={null}>
                     {/* Stage 1: The Mountain Climb */}
                     <Scene scrollProgress={scrollProgress} />
-
-                    {/* Stage 2: Digital "Creative Technologist" Particle System */}
-                    <DigitalParticleSystem scrollProgress={scrollProgress} />
                 </Suspense>
             </Canvas>
         </motion.div>

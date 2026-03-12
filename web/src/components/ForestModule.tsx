@@ -5,7 +5,6 @@ import { Suspense, useRef, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { useVideoTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import { useAppStore } from '@/store/useAppStore';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
 
@@ -46,9 +45,7 @@ function VideoForestIntro({ videoUrl, position, scale, scrollProgress }: any) {
     const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
     const meshRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<any>(null);
-    const isAlternateReality = useAppStore((state) => state.isAlternateReality);
     const mousePos = useRef(new THREE.Vector2(0, 0));
-    const altTarget = isAlternateReality ? 1.0 : 0.0;
     const lerpedProgress = useRef(0);
 
     // Video Lifecycle Guard (Outside of rendering loop)
@@ -97,12 +94,6 @@ function VideoForestIntro({ videoUrl, position, scale, scrollProgress }: any) {
             if (materialRef.current) {
                 materialRef.current.uTime = state.clock.elapsedTime;
                 materialRef.current.uMouse.lerp(mousePos.current, 0.1);
-                materialRef.current.uAlternateReality = THREE.MathUtils.damp(
-                    materialRef.current.uAlternateReality,
-                    altTarget,
-                    4,
-                    delta
-                );
                 materialRef.current.uOpacity = opacity;
             }
         }

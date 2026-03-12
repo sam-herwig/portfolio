@@ -6,7 +6,6 @@ const WoodcutShaderMaterial = shaderMaterial(
   {
     uTexture: null,
     uTime: 0,
-    uAlternateReality: 0,
     uColorBase: new THREE.Color('#18181b'), // Charcoal Ink
     uColorPaper: new THREE.Color('#f5f5f4'), // Warm Stone Paper
     uColorWater: new THREE.Color('#d1e8e2'), // Pale Map Blue
@@ -22,7 +21,6 @@ const WoodcutShaderMaterial = shaderMaterial(
     varying vec2 vWorldPos; // Pass world position x/y to fragment for gradient maths
     uniform sampler2D uTexture;
     uniform float uTime;
-    uniform float uAlternateReality;
     uniform vec2 uMouse;
 
     float getLuminance(vec3 color) {
@@ -43,10 +41,6 @@ void main() {
       // Base Reality: Slower, organic breathing effect
       float wind = sin(pos.x * 0.5 + uTime * 0.2) * cos(pos.y * 0.5 + uTime * 0.2) * 0.05;
       
-      // Alternate Reality: Glitch
-      float glitch = (fract(sin(dot(pos.xy + uTime, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.15;
-      glitch *= step(0.98, fract(uTime * 5.0));
-      
       // Mouse interaction: Pushes the vertices away from the cursor
       float distToMouse = distance(pos.xy, uMouse * 10.0); 
       float mousePush = smoothstep(3.0, 0.0, distToMouse) * 0.5; // Gentle push
@@ -54,12 +48,12 @@ void main() {
       // Apply Z displacement (much flatter now)
       pos.z += displacement;
       
-      // Apply Reality Motion
-      pos.x += mix(wind, glitch, uAlternateReality);
-      pos.y += mix(wind * 0.5, glitch * 0.5, uAlternateReality);
+      // Apply Mountain Man Base Motion
+      pos.x += wind;
+      pos.y += wind * 0.5;
       
       // Apply Mouse Push
-      pos.z += mix(mousePush * 0.1, mousePush, uAlternateReality);
+      pos.z += mousePush * 0.1;
 
   vDisplacement = displacement; // Pass to fragment for color shading
   
@@ -75,7 +69,6 @@ void main() {
     varying vec2 vWorldPos;
     varying float vDisplacement;
     uniform sampler2D uTexture;
-    uniform float uAlternateReality;
     uniform float uTime;
     uniform vec3 uColorBase;
     uniform vec3 uColorPaper;
@@ -90,13 +83,8 @@ void main() {
     }
 
 void main() {
-      // For alternate reality glitch, we shift the UV slightly for RGB channel splitting
-      vec2 rUv = vUv + vec2(0.01 * uAlternateReality, 0.0);
-      vec2 bUv = vUv - vec2(0.01 * uAlternateReality, 0.0);
-      
-      vec4 texColorR = texture2D(uTexture, rUv);
+      // Sample Base Texture
       vec4 texColorG = texture2D(uTexture, vUv);
-      vec4 texColorB = texture2D(uTexture, bUv);
       
       float lum = getLuminance(texColorG.rgb);
       
@@ -127,34 +115,12 @@ void main() {
       injectedPaperColor = mix(injectedPaperColor, uColorSun, sunRadius * 0.8);   // 80% max orange at core
       
       // Combine Ink and injected Paper colors
-      vec3 popUpColor = mix(injectedPaperColor, uColorBase, inkIntensity);
-      
-      vec3 finalColor = mix(popUpColor, uColorAlt, uAlternateReality);
-
-  if (uAlternateReality > 0.0) {
-          // Calculate chromatic aberration intensities
-          float lumR = 1.0 - getLuminance(texColorR.rgb);
-          float lumB = 1.0 - getLuminance(texColorB.rgb);
-
-    lumR = smoothstep(0.7, 0.9, lumR);
-    lumB = smoothstep(0.7, 0.9, lumB);
-
-          // Map RGB split to neon colors
-          vec3 splitColor = vec3(lumR * 1.5, inkIntensity * 0.5, lumB * 2.0) * uColorAlt;
-    finalColor = mix(uColorBase, splitColor, uAlternateReality);
-
-    // Use max alpha from all channels so the split edges are opaque
-    inkIntensity = max(inkIntensity, max(lumR, lumB));
-  }
+      vec3 finalColor = mix(injectedPaperColor, uColorBase, inkIntensity);
 
       // Overall alpha for the fragment
       // We keep the ink perfectly opaque, and fade the paper out into the sky, but bound everything by the PNG's innate transparency
       float baseAlpha = texColorG.a;
       float alphaOut = max(inkIntensity, paperAlpha) * uOpacity * baseAlpha;
-
-      // CROSS-FADE LOGIC:
-      // Fade the entire analog diorama OUT when Alternate Reality triggers
-      alphaOut *= (1.0 - uAlternateReality);
 
       if (alphaOut < 0.05) discard;
 
@@ -171,7 +137,6 @@ declare global {
   namespace JSX {
     interface IntrinsicElements {
       woodcutShaderMaterial: any;
-      particleShaderMaterial: any;
     }
   }
 }

@@ -21,10 +21,6 @@
     --foreground: var(--color-foreground-light);
   }
 
-  .dark {
-    --background: var(--color-background-dark);
-    --foreground: var(--color-foreground-dark);
-  }
 
   body {
     background-color: var(--background);

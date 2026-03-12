@@ -1,6 +1,6 @@
 'use client';
 
-import { useAppStore } from '@/store/useAppStore';
+
 import { motion, useScroll, useTransform, MotionValue } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRef } from 'react';
@@ -77,7 +77,6 @@ function CinematicCaseStudy({ title, subtitle, side }: { title: string, subtitle
 }
 
 export default function Home() {
-  const { isAlternateReality, toggleReality } = useAppStore();
 
   const refHero = useRef<HTMLElement>(null);
   const refForest = useRef<HTMLDivElement>(null);
@@ -133,7 +132,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
             >
-              {isAlternateReality ? "Shifting Paradigms." : "Mountain Man."}
+              "Mountain Man."
             </motion.h1>
 
             <motion.p
@@ -143,26 +142,10 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2, duration: 1 }}
             >
-              {isAlternateReality
-                ? "Exploring the boundaries of WebGL, AR, and immersive creative technology."
-                : "Frontend engineering rooted in high-end design and natural aesthetics."}
+              "Frontend engineering rooted in high-end design and natural aesthetics."
             </motion.p>
 
-            <motion.button
-              onClick={toggleReality}
-              className="mt-12 px-8 py-4 rounded-full border border-foreground/10 bg-background/50 glassmorphism hover:bg-foreground/10 transition-colors duration-500 relative overflow-hidden group cursor-pointer"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, type: "spring", stiffness: 100, damping: 20 }}
-            >
-              <span className="relative z-10 font-mono text-sm uppercase tracking-widest flex items-center gap-3">
-                <span className={`w-2 h-2 rounded-full ${isAlternateReality ? 'bg-emerald-500' : 'bg-foreground'} animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]`} />
-                {isAlternateReality ? "Revert to Base" : "Change Reality"}
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-            </motion.button>
+
           </div>
 
           {/* Scroll Indicator */}
