@@ -1,10 +1,10 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Suspense, useRef, useMemo } from 'react';
+import { Suspense, useRef, useMemo, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
-import { useTexture, useVideoTexture, PointMaterial, Points } from '@react-three/drei';
+import { useVideoTexture, PointMaterial, Points } from '@react-three/drei';
 
 // Generates procedural twinkling stars
 function Starfield() {
@@ -46,22 +46,39 @@ function Starfield() {
 function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: { videoUrl: string, position: any, scale: any, scrollProgress: MotionValue<number> }) {
     const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
     const meshRef = useRef<THREE.Mesh>(null);
+    const lerpedProgress = useRef(0);
 
-    useFrame(() => {
+    // Video Lifecycle Guard (Outside of rendering loop)
+    useEffect(() => {
+        if (!tex?.image) return;
+        const videoElem = tex.image as HTMLVideoElement;
+
+        const unsubscribe = scrollProgress.on("change", (v: number) => {
+            if (v > 0.05 && v < 0.95) {
+                if (videoElem.paused) videoElem.play().catch(() => {});
+            } else {
+                if (!videoElem.paused) {
+                    videoElem.pause();
+                    videoElem.currentTime = 0; // Hardware memory flush
+                }
+            }
+        });
+
+        return () => {
+            unsubscribe();
+            // Strict WebGL Garbage Collection
+            tex.dispose();
+        };
+    }, [tex, scrollProgress]);
+
+    useFrame((state, delta) => {
         if (meshRef.current && tex.image) {
-            const progress = scrollProgress.get();
-            const videoElem = tex.image as HTMLVideoElement;
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            const progress = lerpedProgress.current;
 
             // Map local layout scroll [0.0, 0.5] to a fadeIn progress 0.0 -> 1.0
             const animProgress = Math.min(1, Math.max(0, progress * 2));
             (meshRef.current.material as THREE.MeshBasicMaterial).opacity = animProgress;
-
-            // Autoplay the video once the section enters the screen
-            if (progress > 0.0 && progress < 1.0) {
-                if (videoElem.paused) videoElem.play();
-            } else {
-                if (!videoElem.paused) videoElem.pause();
-            }
         }
     });
 
@@ -82,9 +99,16 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: { videoUr
 
 function NightCampScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const { camera } = useThree();
+    const groupRef = useRef<THREE.Group>(null);
+    const lerpedProgress = useRef(0);
 
     useFrame((state, delta) => {
-        const animProgress = scrollProgress.get(); // Ranges exactly 0.0 to 1.0 over the Night Camp container
+        lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+        const animProgress = lerpedProgress.current; // Ranges exactly 0.0 to 1.0 over the Night Camp container
+
+        if (groupRef.current) {
+            groupRef.current.visible = animProgress > 0.001 && animProgress < 0.999;
+        }
 
         // Subtly sway the camera on X to keep it feeling alive
         const swayX = Math.sin(state.clock.elapsedTime * 0.5) * 1.5;
@@ -101,7 +125,7 @@ function NightCampScene({ scrollProgress }: { scrollProgress: MotionValue<number
     });
 
     return (
-        <group>
+        <group ref={groupRef}>
             {/* The Procedural Night Sky */}
             <Starfield />
 

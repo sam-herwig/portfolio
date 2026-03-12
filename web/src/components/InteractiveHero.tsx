@@ -39,6 +39,12 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1 }: any) {
     const altTarget = isAlternateReality ? 1.0 : 0.0;
 
     useEffect(() => {
+        return () => {
+            tex.dispose();
+        };
+    }, [tex]);
+
+    useEffect(() => {
         const handleScroll = () => {
             scrollY.current = window.scrollY;
         };
@@ -106,10 +112,18 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1 }: any) {
 
 function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const { camera } = useThree();
+    const groupRef = useRef<THREE.Group>(null);
+    const lerpedProgress = useRef(0);
 
     // The Camera Mountain Climb
     useFrame((state, delta) => {
-        const progress = scrollProgress.get(); // 0.0 to 1.0
+        lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+        const progress = lerpedProgress.current; // 0.0 to 1.0
+
+        if (groupRef.current) {
+            // Cull when completely scrolled away
+            groupRef.current.visible = progress < 0.999;
+        }
 
         // Target progress: ensure we hit max zoom roughly 80% down the first section before fadeout
         const Math_val = progress / 0.8;
@@ -129,7 +143,7 @@ function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     });
 
     return (
-        <group position={[0, -2, -5]}>
+        <group ref={groupRef} position={[0, -2, -5]}>
             {/* 1. Distant Background / Sky */}
             <ParallaxLayer
                 textureUrl="/bg_layer.png"

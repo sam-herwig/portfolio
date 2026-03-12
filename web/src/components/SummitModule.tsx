@@ -2,17 +2,25 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture, useVideoTexture } from '@react-three/drei';
-import { Suspense, useRef, useMemo } from 'react';
+import { Suspense, useRef, useMemo, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
 
 function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgress }: any) {
     const tex = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
+    const lerpedProgress = useRef(0);
 
-    useFrame(() => {
+    useEffect(() => {
+        return () => {
+            tex.dispose();
+        };
+    }, [tex]);
+
+    useFrame((state, delta) => {
         if (meshRef.current) {
-            const progress = scrollProgress.get();
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            const progress = lerpedProgress.current;
             // Start panning background only AFTER it completely fades in at 0.66
             const panProgress = Math.min(1, Math.max(0, (progress - 0.66) / 0.34));
             meshRef.current.position.x = position[0] - (panProgress * parallaxX);
@@ -67,10 +75,36 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
     }
     const dynamicScale: [number, number, number] = [width * 1.2, height * 1.2, 1];
 
-    useFrame(() => {
+    const lerpedProgress = useRef(0);
+
+    // Video Lifecycle Guard (Outside of rendering loop)
+    useEffect(() => {
+        if (!tex?.image) return;
+        const videoElem = tex.image as HTMLVideoElement;
+
+        const unsubscribe = scrollProgress.on("change", (v: number) => {
+            // Fox lands and video triggers
+            if (v > playThreshold && v < 0.99) {
+                if (videoElem.paused) videoElem.play().catch(() => {});
+            } else {
+                if (!videoElem.paused) {
+                    videoElem.pause();
+                    videoElem.currentTime = 0; // Hardware memory flush
+                }
+            }
+        });
+
+        return () => {
+            unsubscribe();
+            // Strict WebGL Garbage Collection
+            tex.dispose();
+        };
+    }, [tex, scrollProgress, playThreshold]);
+
+    useFrame((state, delta) => {
         if (meshRef.current && tex.image) {
-            const progress = scrollProgress.get();
-            const videoElem = tex.image as HTMLVideoElement;
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            const progress = lerpedProgress.current;
 
             // Start panning background only AFTER it completely fades in at 0.66
             const panProgress = Math.min(1, Math.max(0, (progress - 0.66) / 0.34));
@@ -85,11 +119,6 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
             }
 
             (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
-
-            // Autoplay the video once the user hits the threshold (e.g. Fox lands)
-            if (progress > playThreshold && videoElem.paused) {
-                videoElem.play();
-            }
         }
     });
 
@@ -117,10 +146,18 @@ function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scr
     const currentViewport = viewport.getCurrentViewport(camera, new THREE.Vector3(position[0], position[1], endZ));
     const maxDim = Math.max(currentViewport.width, currentViewport.height);
     const dynamicScale: [number, number, number] = [maxDim * 1.5, maxDim * 1.5, 1];
+    const lerpedProgress = useRef(0);
 
-    useFrame(() => {
+    useEffect(() => {
+        return () => {
+            tex.dispose();
+        };
+    }, [tex]);
+
+    useFrame((state, delta) => {
         if (meshRef.current) {
-            const progress = scrollProgress.get();
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            const progress = lerpedProgress.current;
             // Ledge flies towards the camera from deep Z-space (0.0 to 0.25)
             const flyProgress = Math.min(1, Math.max(0, (progress - 0.0) / 0.25));
 
@@ -161,9 +198,19 @@ function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset
         return clone;
     }, [tex, frames]);
 
-    useFrame(() => {
+    const lerpedProgress = useRef(0);
+
+    useEffect(() => {
+        return () => {
+            tex.dispose();
+            clonedTex.dispose();
+        };
+    }, [tex, clonedTex]);
+
+    useFrame((state, delta) => {
         if (meshRef.current) {
-            const progress = scrollProgress.get();
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            const progress = lerpedProgress.current;
 
             // Wait for the ledge to rise (0.0 - 0.25), then start walking
             const clamped = Math.min(1, Math.max(0, (progress - scrollStart) / (scrollEnd - scrollStart)));
@@ -185,14 +232,17 @@ function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset
             // Frame Animation Logic
             if (walkProgress >= 1.0) {
                 // Lock on the final cuddling pose
+                // eslint-disable-next-line react-hooks/immutability
                 clonedTex.offset.x = (frames - 1) / frames;
                 // Fade out slightly when curled up to blend with the scene
             } else if (walkProgress > 0) {
                 // Loop normally while walking
                 const totalFrames = walkProgress * cycles * frames;
                 const currentFrame = Math.floor(totalFrames) % frames;
+                // eslint-disable-next-line react-hooks/immutability
                 clonedTex.offset.x = currentFrame / frames;
             } else if (walkProgress === 0) {
+                // eslint-disable-next-line react-hooks/immutability
                 clonedTex.offset.x = 0;
             }
         }
@@ -223,22 +273,26 @@ function SummitCamera() {
     return null;
 }
 
-export default function SummitModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
-    // Scene fades in quickly as we enter the local box
-    const canvasOpacity = useTransform(scrollProgress, [0.0, 0.1], [0, 1]);
+function SummitScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+    const groupRef = useRef<THREE.Group>(null);
+    const lerpedProgress = useRef(0);
+
+    // Frustum Culling Logic
+    useFrame((state, delta) => {
+        if (groupRef.current) {
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            // Hide mesh bounds from Three.js renderer if they are completely off screen
+            groupRef.current.visible = lerpedProgress.current > 0.001; // End module, never culls on right bound
+        }
+    });
 
     return (
-        <motion.div
-            style={{ opacity: canvasOpacity }}
-            className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply"
-        >
-            <Canvas camera={{ position: [-15, 0, 20], fov: 50 }} dpr={[1, 2]}>
-                <Suspense fallback={null}>
-                    {/* The Camera Controller */}
-                    <SummitCamera />
+        <group ref={groupRef}>
+            {/* The Camera Controller */}
+            <SummitCamera />
 
-                    {/* The Massive Panoramic Background */}
-                    <group>
+            {/* The Massive Panoramic Background */}
+            <group>
                         <VideoPanoramaLedge
                             videoUrl="/assets/videos/summit_video.mp4"
                             position={[-15, 2, -40]} // Centered on camera X (-15), pushed back
@@ -275,6 +329,22 @@ export default function SummitModule({ scrollProgress }: { scrollProgress: Motio
                             scrollProgress={scrollProgress}
                         />
                     </group>
+        </group>
+    );
+}
+
+export default function SummitModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+    // Scene fades in quickly as we enter the local box
+    const canvasOpacity = useTransform(scrollProgress, [0.0, 0.1], [0, 1]);
+
+    return (
+        <motion.div
+            style={{ opacity: canvasOpacity }}
+            className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply"
+        >
+            <Canvas camera={{ position: [-15, 0, 20], fov: 50 }} dpr={[1, 2]}>
+                <Suspense fallback={null}>
+                    <SummitScene scrollProgress={scrollProgress} />
                 </Suspense>
             </Canvas>
         </motion.div>

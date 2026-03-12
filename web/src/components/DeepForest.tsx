@@ -1,13 +1,13 @@
 import { useTexture } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useRef, useMemo } from 'react';
-import { useScroll } from 'framer-motion';
+import { useRef, useMemo, useEffect } from 'react';
+import { MotionValue } from 'framer-motion';
 
-function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, frames = 8, scrollStart, scrollEnd, cycles = 6 }: any) {
+function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, frames = 8, scrollStart, scrollEnd, cycles = 6, scrollProgress }: { textureUrl: string, startX: number, endX: number, y: number, z: number, scale: [number, number], rotation?: number, frames?: number, scrollStart: number, scrollEnd: number, cycles?: number, scrollProgress: MotionValue<number> }) {
     const tex = useTexture(textureUrl) as THREE.Texture;
-    const { scrollYProgress } = useScroll();
     const meshRef = useRef<THREE.Mesh>(null);
+    const lerpedProgress = useRef(0);
 
     const clonedTex = useMemo(() => {
         const clone = tex.clone();
@@ -16,10 +16,17 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
         clone.repeat.set(1 / frames, 1);
         return clone;
     }, [tex, frames]);
+    useEffect(() => {
+        return () => {
+            tex.dispose();
+            clonedTex.dispose();
+        };
+    }, [tex, clonedTex]);
 
-    useFrame(() => {
+    useFrame((state, delta) => {
         if (meshRef.current) {
-            const progress = scrollYProgress.get();
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            const progress = lerpedProgress.current;
             // Map the global scroll progress strictly to this module's local scroll range constraint
             const clamped = Math.min(1, Math.max(0, (progress - scrollStart) / (scrollEnd - scrollStart)));
 
@@ -55,6 +62,12 @@ function ForestTree({ textureUrl, position, scale, rotation = 0 }: any) {
     const sideDir = position[0] > 0 ? 1 : -1;
     // Pushed 40 units offscreen relative to target
     const offscreenX = targetX + (40 * sideDir);
+
+    useEffect(() => {
+        return () => {
+            tex.dispose();
+        };
+    }, [tex]);
 
     useFrame((state, delta) => {
         if (meshRef.current) {
@@ -103,6 +116,13 @@ function ForestWall({ textureUrl, position, scale }: any) {
         return clone;
     }, [tex]);
 
+    useEffect(() => {
+        return () => {
+            tex.dispose();
+            clonedTex.dispose();
+        };
+    }, [tex, clonedTex]);
+
     useFrame((state, delta) => {
         // Slowly drift the background wall to create deep parallax
         clonedTex.offset.x -= delta * 0.05;
@@ -121,7 +141,7 @@ function ForestWall({ textureUrl, position, scale }: any) {
     );
 }
 
-export default function DeepForest() {
+export default function DeepForest({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     return (
         <group>
             {/* The Endless Background Wall of Trees */}
@@ -175,6 +195,7 @@ export default function DeepForest() {
                 scale={[18, 18]}
                 frames={8}
                 cycles={8}
+                scrollProgress={scrollProgress}
             />
         </group>
     );

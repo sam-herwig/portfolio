@@ -13,10 +13,12 @@ const WoodcutShader = 'woodcutShaderMaterial' as any;
 
 function ForestCamera({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const { camera } = useThree();
+    const lerpedProgress = useRef(0);
 
     // The Forest Walk Camera (Only active between 0.0 and 1.0)
     useFrame((state, delta) => {
-        const progress = scrollProgress.get();
+        lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+        const progress = lerpedProgress.current;
 
         // Delay the start of the deep walk to give the Intro Video time to breathe
         const forestProgress = Math.max(0, (progress - 0.2) / 0.8);
@@ -47,6 +49,30 @@ function VideoForestIntro({ videoUrl, position, scale, scrollProgress }: any) {
     const isAlternateReality = useAppStore((state) => state.isAlternateReality);
     const mousePos = useRef(new THREE.Vector2(0, 0));
     const altTarget = isAlternateReality ? 1.0 : 0.0;
+    const lerpedProgress = useRef(0);
+
+    // Video Lifecycle Guard (Outside of rendering loop)
+    useEffect(() => {
+        if (!tex?.image) return;
+        const videoElem = tex.image as HTMLVideoElement;
+
+        const unsubscribe = scrollProgress.on("change", (v: number) => {
+            if (v > 0.05 && v < 0.95) {
+                if (videoElem.paused) videoElem.play().catch(() => {});
+            } else {
+                if (!videoElem.paused) {
+                    videoElem.pause();
+                    videoElem.currentTime = 0; // Hardware memory flush
+                }
+            }
+        });
+
+        return () => {
+            unsubscribe();
+            // Strict WebGL Garbage Collection
+            tex.dispose();
+        };
+    }, [tex, scrollProgress]);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -59,8 +85,8 @@ function VideoForestIntro({ videoUrl, position, scale, scrollProgress }: any) {
 
     useFrame((state, delta) => {
         if (meshRef.current && tex.image) {
-            const progress = scrollProgress.get();
-            const videoElem = tex.image as HTMLVideoElement;
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            const progress = lerpedProgress.current;
 
             // Fade out rapidly to reveal the 3D trees as we start walking (0.20 -> 0.25)
             let opacity = 1;
@@ -79,13 +105,6 @@ function VideoForestIntro({ videoUrl, position, scale, scrollProgress }: any) {
                 );
                 materialRef.current.uOpacity = opacity;
             }
-
-            // Autoplay the video once the user is in the Forest Module entry bounds
-            if (progress > 0.0 && progress < 0.25) {
-                if (videoElem.paused) videoElem.play();
-            } else {
-                if (!videoElem.paused) videoElem.pause();
-            }
         }
     });
 
@@ -103,6 +122,38 @@ function VideoForestIntro({ videoUrl, position, scale, scrollProgress }: any) {
     );
 }
 
+function ForestScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+    const groupRef = useRef<THREE.Group>(null);
+    const lerpedProgress = useRef(0);
+
+    // Frustum Culling Logic
+    useFrame((state, delta) => {
+        if (groupRef.current) {
+            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
+            // Hide mesh bounds from Three.js renderer if they are completely off screen
+            groupRef.current.visible = lerpedProgress.current > 0.001 && lerpedProgress.current < 0.999;
+        }
+    });
+
+    return (
+        <group ref={groupRef}>
+            {/* The Camera Controller */}
+            <ForestCamera scrollProgress={scrollProgress} />
+
+            {/* Cinematic Intro Video - Fades out as we begin the true walk */}
+            <VideoForestIntro
+                videoUrl="/assets/videos/forrest_intro.mp4"
+                position={[0, 0, 10]} // Camera is at Z 20, so 10 units away at start
+                scale={[64, 36]} // Extremely large 16:9 plane
+                scrollProgress={scrollProgress}
+            />
+
+            {/* The 3D Assets placed deep on the Z-Axis */}
+            <DeepForest scrollProgress={scrollProgress} />
+        </group>
+    );
+}
+
 export default function ForestModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     // Fade IN right as the module enters view (0.0 -> 0.1)
     // Fade OUT completely as we approach the dark Night Camp (0.9 -> 1.0)
@@ -115,19 +166,7 @@ export default function ForestModule({ scrollProgress }: { scrollProgress: Motio
         >
             <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={[1, 2]}>
                 <Suspense fallback={null}>
-                    {/* The Camera Controller */}
-                    <ForestCamera scrollProgress={scrollProgress} />
-
-                    {/* Cinematic Intro Video - Fades out as we begin the true walk */}
-                    <VideoForestIntro
-                        videoUrl="/assets/videos/forrest_intro.mp4"
-                        position={[0, 0, 10]} // Camera is at Z 20, so 10 units away at start
-                        scale={[64, 36]} // Extremely large 16:9 plane
-                        scrollProgress={scrollProgress}
-                    />
-
-                    {/* The 3D Assets placed deep on the Z-Axis */}
-                    <DeepForest />
+                    <ForestScene scrollProgress={scrollProgress} />
                 </Suspense>
             </Canvas>
         </motion.div>
