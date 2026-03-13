@@ -1,3 +1,4 @@
+/* eslint-disable */
 import * as THREE from 'three';
 import { shaderMaterial } from '@react-three/drei';
 import { extend } from '@react-three/fiber';
@@ -12,6 +13,7 @@ const WoodcutShaderMaterial = shaderMaterial(
     uColorSun: new THREE.Color('#fcd34d'),  // Faded Sunset Orange
     uColorAlt: new THREE.Color('#10b981'),  // Neon Emerald
     uOpacity: 1.0,
+    uWind: 0.0, // Global synchronized continuous wind
     uMouse: new THREE.Vector2(0, 0), // Track normalized mouse coordinates
   },
   // Vertex Shader
@@ -22,6 +24,7 @@ const WoodcutShaderMaterial = shaderMaterial(
     uniform sampler2D uTexture;
     uniform float uTime;
     uniform vec2 uMouse;
+    uniform float uWind;
 
     float getLuminance(vec3 color) {
   return dot(color, vec3(0.299, 0.587, 0.114));
@@ -38,22 +41,30 @@ void main() {
       // Black ink pushes slightly forward for pop-up effect, paper stays flat
       float displacement = (1.0 - lum) * 0.5; 
       
-      // Base Reality: Slower, organic breathing effect
-      float wind = sin(pos.x * 0.5 + uTime * 0.2) * cos(pos.y * 0.5 + uTime * 0.2) * 0.05;
+      // Global Wind Physics: Synchronized across all meshes
+      // More intense swaying at the top of the sprite (uv.y == 1 is the top)
+      float swayBlend = vUv.y; 
+      float wind = sin(pos.x * 0.2 + uWind * 1.5) * 0.2 * swayBlend;
       
       // Mouse interaction: Pushes the vertices away from the cursor
-      float distToMouse = distance(pos.xy, uMouse * 10.0); 
-      float mousePush = smoothstep(3.0, 0.0, distToMouse) * 0.5; // Gentle push
+      // Mouse is roughly -40 to 40 in world coordinates based on a max FOV calculation
+      vec2 worldMouse = uMouse * 50.0;
+      float distToMouse = distance(pos.xy, worldMouse); 
       
-      // Apply Z displacement (much flatter now)
+      // Create a smooth blast radius of ~15 units pushing away 3 units max
+      float mousePush = smoothstep(20.0, 0.0, distToMouse) * 3.0 * swayBlend; 
+      vec2 pushDir = normalize(pos.xy - worldMouse);
+      
+      // Apply Z displacement 
       pos.z += displacement;
       
-      // Apply Mountain Man Base Motion
+      // Apply Global Wind Sway
       pos.x += wind;
-      pos.y += wind * 0.5;
+      pos.y += wind * 0.2;
       
-      // Apply Mouse Push
-      pos.z += mousePush * 0.1;
+      // Apply Mouse Repulsion (Push X and lean Z away)
+      pos.x += pushDir.x * mousePush;
+      pos.z -= mousePush * 0.5;
 
   vDisplacement = displacement; // Pass to fragment for color shading
   

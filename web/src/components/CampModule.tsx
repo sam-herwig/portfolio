@@ -5,6 +5,7 @@ import { Suspense, useRef, useMemo, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
 import { useVideoTexture, PointMaterial, Points } from '@react-three/drei';
+import PostProcessingStack from './PostProcessingStack';
 
 // Generates procedural twinkling stars
 function Starfield() {
@@ -54,7 +55,8 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: { videoUr
         const videoElem = tex.image as HTMLVideoElement;
 
         const unsubscribe = scrollProgress.on("change", (v: number) => {
-            if (v > 0.05 && v < 0.95) {
+            // Pre-warm campfire immediately before entering bounds [0.44 - 0.71]
+            if (v > 0.44 && v < 0.71) {
                 if (videoElem.paused) videoElem.play().catch(() => {});
             } else {
                 if (!videoElem.paused) {
@@ -76,8 +78,8 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: { videoUr
             lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
             const progress = lerpedProgress.current;
 
-            // Map local layout scroll [0.0, 0.5] to a fadeIn progress 0.0 -> 1.0
-            const animProgress = Math.min(1, Math.max(0, progress * 2));
+            // Map global scroll [0.45 -> 0.55] to a fadeIn progress 0.0 -> 1.0
+            const animProgress = Math.min(1, Math.max(0, (progress - 0.45) / 0.10));
             (meshRef.current.material as THREE.MeshBasicMaterial).opacity = animProgress;
         }
     });
@@ -100,14 +102,27 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: { videoUr
 function NightCampScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const { camera } = useThree();
     const groupRef = useRef<THREE.Group>(null);
+    const lightRef = useRef<THREE.AmbientLight>(null);
     const lerpedProgress = useRef(0);
+
+    const colorNight = useMemo(() => new THREE.Color('#020617'), []); // Deep Slate Blue
+    const colorFire = useMemo(() => new THREE.Color('#ea580c'), []);  // Embers Orange
 
     useFrame((state, delta) => {
         lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
-        const animProgress = lerpedProgress.current; // Ranges exactly 0.0 to 1.0 over the Night Camp container
+        const progress = lerpedProgress.current;
+        // Map [0.45 - 0.7] segment to a pure 0.0 -> 1.0 interpolation for camera logic
+        const animProgress = Math.min(Math.max(0, (progress - 0.45) / 0.25), 1.0);
 
         if (groupRef.current) {
-            groupRef.current.visible = animProgress > 0.001 && animProgress < 0.999;
+            groupRef.current.visible = progress > 0.44 && progress < 0.71;
+        }
+
+        if (lightRef.current) {
+            // Shift lighting from cold night to warm fire as we approach the camp center [0.45 -> 0.55]
+            const lightMix = Math.min(1, Math.max(0, (progress - 0.45) / 0.1));
+            lightRef.current.color.lerpColors(colorNight, colorFire, lightMix);
+            lightRef.current.intensity = 0.2 + (lightMix * 1.5);
         }
 
         // Subtly sway the camera on X to keep it feeling alive
@@ -119,13 +134,15 @@ function NightCampScene({ scrollProgress }: { scrollProgress: MotionValue<number
         const targetY = THREE.MathUtils.lerp(-10, 15, animProgress);
         const targetZ = THREE.MathUtils.lerp(30, -10, animProgress);
 
-        camera.position.x = THREE.MathUtils.damp(camera.position.x, swayX, 2, delta);
-        camera.position.y = THREE.MathUtils.damp(camera.position.y, targetY, 2, delta);
-        camera.position.z = THREE.MathUtils.damp(camera.position.z, targetZ, 2, delta);
+        camera.position.x = swayX;
+        camera.position.y = targetY;
+        camera.position.z = targetZ;
     });
 
     return (
         <group ref={groupRef}>
+            <ambientLight ref={lightRef} intensity={0.2} color="#020617" />
+            
             {/* The Procedural Night Sky */}
             <Starfield />
 
@@ -141,18 +158,20 @@ function NightCampScene({ scrollProgress }: { scrollProgress: MotionValue<number
 }
 
 export default function CampModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
-    // Fade IN right as we enter (0.0 -> 0.1)
-    // Fade OUT completely as we leave (0.6 -> 0.75) to avoid overlapping the Alpine module
-    const canvasOpacity = useTransform(scrollProgress, [0.0, 0.1, 0.6, 0.75], [0, 1, 1, 0]);
+    // Fade IN starting at global bounds [0.45], solidly opaque by [0.55]
+    // Fade OUT sequentially starting at [0.65] hitting 0 at [0.70]
+    const canvasOpacity = useTransform(scrollProgress, [0.45, 0.55, 0.65, 0.7], [0, 1, 1, 0]);
+    const canvasScale = useTransform(scrollProgress, [0.45, 0.55], [0.9, 1.0]);
 
     return (
         <motion.div
-            style={{ opacity: canvasOpacity }}
-            className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-screen"
+            style={{ opacity: canvasOpacity, scale: canvasScale }}
+            className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-screen origin-center"
         >
-            <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={[1, 2]}>
+            <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={[1, 1.5]}>
                 <Suspense fallback={null}>
                     <NightCampScene scrollProgress={scrollProgress} />
+                    <PostProcessingStack bloomIntensity={1.5} />
                 </Suspense>
             </Canvas>
         </motion.div>

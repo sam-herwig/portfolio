@@ -5,6 +5,7 @@ import { useTexture, useVideoTexture } from '@react-three/drei';
 import { Suspense, useRef, useMemo, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
+import PostProcessingStack from './PostProcessingStack';
 
 function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgress }: any) {
     const tex = useTexture(textureUrl) as THREE.Texture;
@@ -21,17 +22,20 @@ function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgr
         if (meshRef.current) {
             lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
             const progress = lerpedProgress.current;
+            // Map global scroll [0.85 -> 1.0] to local progress [0.0 -> 1.0]
+            const animProgress = Math.min(1, Math.max(0, (progress - 0.85) / 0.15));
+
             // Start panning background only AFTER it completely fades in at 0.66
-            const panProgress = Math.min(1, Math.max(0, (progress - 0.66) / 0.34));
+            const panProgress = Math.min(1, Math.max(0, (animProgress - 0.66) / 0.34));
             meshRef.current.position.x = position[0] - (panProgress * parallaxX);
 
             // Fade the massive vista in dramatically AFTER fox settles (0.50 -> 0.66)
             let opacity = 0;
-            if (progress < 0.83) {
-                opacity = Math.min(1, Math.max(0, (progress - 0.50) / 0.16));
+            if (animProgress < 0.83) {
+                opacity = Math.min(1, Math.max(0, (animProgress - 0.50) / 0.16));
             } else {
                 // Fade out at end
-                opacity = 1 - Math.min(1, Math.max(0, (progress - 0.83) / 0.17));
+                opacity = 1 - Math.min(1, Math.max(0, (animProgress - 0.83) / 0.17));
             }
 
             (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
@@ -83,8 +87,10 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
         const videoElem = tex.image as HTMLVideoElement;
 
         const unsubscribe = scrollProgress.on("change", (v: number) => {
+            // Map global threshold [0.85 + percent] limit
+            const globalPlay = 0.85 + (playThreshold * 0.15);
             // Fox lands and video triggers
-            if (v > playThreshold && v < 0.99) {
+            if (v > globalPlay && v <= 1.0) {
                 if (videoElem.paused) videoElem.play().catch(() => {});
             } else {
                 if (!videoElem.paused) {
@@ -106,16 +112,19 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
             lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
             const progress = lerpedProgress.current;
 
+            // Map global scroll [0.85 -> 1.0] to local progress [0.0 -> 1.0]
+            const animProgress = Math.min(1, Math.max(0, (progress - 0.85) / 0.15));
+
             // Start panning background only AFTER it completely fades in at 0.66
-            const panProgress = Math.min(1, Math.max(0, (progress - 0.66) / 0.34));
+            const panProgress = Math.min(1, Math.max(0, (animProgress - 0.66) / 0.34));
             meshRef.current.position.x = position[0] - (panProgress * parallaxX);
 
             // Fade the massive vista in dramatically AFTER fox settles (0.50 -> 0.66)
             let opacity = 0;
-            if (progress < 0.83) {
-                opacity = Math.min(1, Math.max(0, (progress - 0.50) / 0.16));
+            if (animProgress < 0.83) {
+                opacity = Math.min(1, Math.max(0, (animProgress - 0.50) / 0.16));
             } else {
-                opacity = 1 - Math.min(1, Math.max(0, (progress - 0.83) / 0.17));
+                opacity = 1 - Math.min(1, Math.max(0, (animProgress - 0.83) / 0.17));
             }
 
             (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
@@ -158,8 +167,10 @@ function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scr
         if (meshRef.current) {
             lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
             const progress = lerpedProgress.current;
+            // Map global scroll [0.85 -> 1.0] to local progress [0.0 -> 1.0]
+            const animProgress = Math.min(1, Math.max(0, (progress - 0.85) / 0.15));
             // Ledge flies towards the camera from deep Z-space (0.0 to 0.25)
-            const flyProgress = Math.min(1, Math.max(0, (progress - 0.0) / 0.25));
+            const flyProgress = Math.min(1, Math.max(0, (animProgress - 0.0) / 0.25));
 
             // Ease out cubic for a dramatic reveal
             const easeOut = 1 - Math.pow(1 - flyProgress, 3);
@@ -211,18 +222,20 @@ function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset
         if (meshRef.current) {
             lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
             const progress = lerpedProgress.current;
+            // Map global scroll [0.85 -> 1.0] to local progress [0.0 -> 1.0]
+            const animProgress = Math.min(1, Math.max(0, (progress - 0.85) / 0.15));
 
             // Wait for the ledge to rise (0.0 - 0.25), then start walking
-            const clamped = Math.min(1, Math.max(0, (progress - scrollStart) / (scrollEnd - scrollStart)));
+            const clamped = Math.min(1, Math.max(0, (animProgress - scrollStart) / (scrollEnd - scrollStart)));
 
             // Move fox horizontally
             // Wait for the ledge to completely finish arriving before walking (0.25 -> 0.50)
-            const walkProgress = Math.min(1, Math.max(0, (progress - 0.25) / 0.25));
+            const walkProgress = Math.min(1, Math.max(0, (animProgress - 0.25) / 0.25));
             meshRef.current.position.x = THREE.MathUtils.lerp(startX, endX, walkProgress);
 
             // Move fox vertically and in Z in tandem with the flying ForegroundLedge so it stays grounded
             // Matches the ledge fly envelope (0.0 -> 0.25)
-            const flyProgress = Math.min(1, Math.max(0, (progress - 0.0) / 0.25));
+            const flyProgress = Math.min(1, Math.max(0, (animProgress - 0.0) / 0.25));
             const easeOut = 1 - Math.pow(1 - flyProgress, 3);
 
             // The fox rides the ledge up and forward
@@ -282,7 +295,7 @@ function SummitScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
         if (groupRef.current) {
             lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
             // Hide mesh bounds from Three.js renderer if they are completely off screen
-            groupRef.current.visible = lerpedProgress.current > 0.001; // End module, never culls on right bound
+            groupRef.current.visible = lerpedProgress.current > 0.84; // End module, never culls on right bound
         }
     });
 
@@ -334,17 +347,19 @@ function SummitScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
 }
 
 export default function SummitModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
-    // Scene fades in quickly as we enter the local box
-    const canvasOpacity = useTransform(scrollProgress, [0.0, 0.1], [0, 1]);
+    // Scene fades in quickly as we enter the local box [0.85 -> 0.95]
+    const canvasOpacity = useTransform(scrollProgress, [0.85, 0.95], [0, 1]);
+    const canvasScale = useTransform(scrollProgress, [0.85, 0.95], [0.9, 1.0]);
 
     return (
         <motion.div
-            style={{ opacity: canvasOpacity }}
-            className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply"
+            style={{ opacity: canvasOpacity, scale: canvasScale }}
+            className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply origin-center"
         >
-            <Canvas camera={{ position: [-15, 0, 20], fov: 50 }} dpr={[1, 2]}>
+            <Canvas camera={{ position: [-15, 0, 20], fov: 50 }} dpr={[1, 1.5]}>
                 <Suspense fallback={null}>
                     <SummitScene scrollProgress={scrollProgress} />
+                    <PostProcessingStack />
                 </Suspense>
             </Canvas>
         </motion.div>

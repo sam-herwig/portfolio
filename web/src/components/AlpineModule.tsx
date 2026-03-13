@@ -5,11 +5,16 @@ import { useTexture, useVideoTexture } from '@react-three/drei';
 import { Suspense, useRef, useMemo, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
+import PostProcessingStack from './PostProcessingStack';
+
+const WoodcutShader = 'woodcutShaderMaterial' as any;
 
 function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, frames = 8, scrollStart, scrollEnd, cycles = 6, scrollProgress }: { textureUrl: string, startX: number, endX: number, y: number, z: number, scale: [number, number], rotation?: number, frames?: number, scrollStart: number, scrollEnd: number, cycles?: number, scrollProgress: MotionValue<number> }) {
     const tex = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
+    const materialRef = useRef<any>(null);
     const lerpedProgress = useRef(0);
+    const playhead = useRef(0);
 
     const clonedTex = useMemo(() => {
         const clone = tex.clone();
@@ -18,6 +23,7 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
         clone.repeat.set(1 / frames, 1);
         return clone;
     }, [tex, frames]);
+    
     useEffect(() => {
         return () => {
             tex.dispose();
@@ -35,19 +41,33 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
             // 1. Physical Translation: Move linearly from startX to endX
             meshRef.current.position.x = THREE.MathUtils.lerp(startX, endX, clamped);
 
-            // 2. Sprite Animation: Tie current frame to scroll directly, looping it 'cycles' times
-            const totalFrames = clamped * cycles * frames;
-            const currentFrame = Math.floor(totalFrames) % frames;
+            // 2. Sprite Animation: Tie current frame to velocity
+            const vel = Math.abs(scrollProgress.getVelocity());
+            const animationSpeed = vel > 0.01 ? 8 + (vel * 120) : 0; 
+
+            // Only animate if the sprite is active
+            if (clamped > 0 && clamped < 1) {
+                playhead.current += animationSpeed * delta;
+            }
+            
+            const currentFrame = Math.floor(playhead.current) % frames;
             clonedTex.offset.x = currentFrame / frames;
+        }
+        if (materialRef.current) {
+            materialRef.current.uTime = state.clock.elapsedTime;
+            materialRef.current.uWind = state.clock.elapsedTime * 1.5;
+            // Bird sprite ignores intense mouse repulsion, but material needs the uniform to not crash
+            materialRef.current.uMouse.lerp(state.pointer, 0.1);
         }
     });
 
     return (
         <mesh ref={meshRef} position={[startX, y, z]} rotation-z={rotation}>
             <planeGeometry args={scale} />
-            <meshBasicMaterial
-                map={clonedTex}
-                transparent
+            <WoodcutShader
+                ref={materialRef}
+                uTexture={clonedTex}
+                transparent={true}
                 depthWrite={true}
                 alphaTest={0.5}
             />
@@ -187,24 +207,24 @@ function AlpineCamera({ scrollProgress }: { scrollProgress: MotionValue<number> 
         lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
         const progress = lerpedProgress.current;
 
-        // The entire container is our climb surface
-        const climbProgress = progress;
+        // Map global scroll [0.65 -> 0.9] to local climb [0.0 -> 1.0]
+        const climbProgress = Math.min(1, Math.max(0, (progress - 0.65) / 0.25));
 
         // Simulate body movement/climbing step sway (creates 3 full organic side-to-side sways)
         const climbSwayX = Math.sin(climbProgress * Math.PI * 6) * 1.5;
-        camera.position.x = THREE.MathUtils.damp(camera.position.x, climbSwayX, 4, delta);
+        camera.position.x = climbSwayX;
 
         // Y Travel: We climb vertically up the extremely tall rock face from Y=0 to Y=120
         const targetY = THREE.MathUtils.lerp(0, 120, climbProgress);
-        camera.position.y = THREE.MathUtils.damp(camera.position.y, targetY, 4, delta);
+        camera.position.y = targetY;
 
         // Z Travel: Pull very close to the cliff face for visceral scale and extreme parallax
         const targetZ = 15;
-        camera.position.z = THREE.MathUtils.damp(camera.position.z, targetZ, 4, delta);
+        camera.position.z = targetZ;
 
         // Look slightly up the wall
         const targetRotX = 0.15;
-        camera.rotation.x = THREE.MathUtils.damp(camera.rotation.x, targetRotX, 4, delta);
+        camera.rotation.x = targetRotX;
     });
 
     return null;
@@ -221,7 +241,8 @@ function VideoAlpineIntro({ videoUrl, position, scale, scrollProgress }: any) {
         const videoElem = tex.image as HTMLVideoElement;
 
         const unsubscribe = scrollProgress.on("change", (v: number) => {
-            if (v > 0.05 && v < 0.95) {
+            // Unpause video only while passing through the Alpine Module bounds
+            if (v > 0.64 && v < 0.91) {
                 if (videoElem.paused) videoElem.play().catch(() => {});
             } else {
                 if (!videoElem.paused) {
@@ -244,10 +265,13 @@ function VideoAlpineIntro({ videoUrl, position, scale, scrollProgress }: any) {
             const progress = lerpedProgress.current;
             const videoElem = tex.image as HTMLVideoElement;
 
+            // Map global scroll to local timeline [0.0 -> 1.0]
+            const animProgress = Math.min(1, Math.max(0, (progress - 0.65) / 0.25));
+
             // Fade out completely by the time the vertical climb starts (0.10 -> 0.15)
             let opacity = 1;
-            if (progress > 0.10) {
-                opacity = 1 - Math.min(1, Math.max(0, (progress - 0.10) / 0.05));
+            if (animProgress > 0.10) {
+                opacity = 1 - Math.min(1, Math.max(0, (animProgress - 0.10) / 0.05));
             }
             (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
         }
@@ -276,8 +300,8 @@ function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
     useFrame((state, delta) => {
         if (groupRef.current) {
             lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
-            // Hide mesh bounds from Three.js renderer if they are completely off screen
-            groupRef.current.visible = lerpedProgress.current > 0.001 && lerpedProgress.current < 0.999;
+            // Limit render calls exclusively to the [0.65 -> 0.90] global phase window
+            groupRef.current.visible = lerpedProgress.current > 0.64 && lerpedProgress.current < 0.91;
         }
     });
 
@@ -338,8 +362,8 @@ function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
                             endX={45}
                             y={105}
                             z={-30}
-                            scrollStart={0.60}
-                            scrollEnd={0.90}
+                            scrollStart={0.80}
+                            scrollEnd={0.875}
                             scale={[15, 15]}
                             scrollProgress={scrollProgress}
                             frames={8}
@@ -351,18 +375,20 @@ function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
 }
 
 export default function AlpineModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
-    // Fade IN as the module enters (0.0 -> 0.1)
-    // Fade OUT completely as the camera reaches the Summit Module (0.9 -> 1.0)
-    const canvasOpacity = useTransform(scrollProgress, [0.0, 0.1, 0.9, 1.0], [0, 1, 1, 0]);
+    // Fade IN as the module enters (0.65 -> 0.75)
+    // Fade OUT completely as the camera reaches the Summit Module (0.85 -> 0.9)
+    const canvasOpacity = useTransform(scrollProgress, [0.65, 0.75, 0.85, 0.9], [0, 1, 1, 0]);
+    const canvasScale = useTransform(scrollProgress, [0.65, 0.75], [0.9, 1.0]);
 
     return (
         <motion.div
-            style={{ opacity: canvasOpacity }}
-            className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply"
+            style={{ opacity: canvasOpacity, scale: canvasScale }}
+            className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply origin-center"
         >
-            <Canvas camera={{ position: [0, 0, 40], fov: 50 }} dpr={[1, 2]}>
+            <Canvas camera={{ position: [0, 0, 40], fov: 50 }} dpr={[1, 1.5]}>
                 <Suspense fallback={null}>
                     <AlpineScene scrollProgress={scrollProgress} />
+                    <PostProcessingStack />
                 </Suspense>
             </Canvas>
         </motion.div>
