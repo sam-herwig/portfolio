@@ -73,10 +73,10 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
         {/* Checkpoint 2.5: The Night Camp */}
         <div ref={refCamp} className="w-full flex flex-col items-center justify-center min-h-[200vh] py-[60vh]">
           <div className="w-full min-h-[50vh] flex flex-col items-center justify-center text-center px-4 md:px-24 my-[20vh] transform-gpu relative">
-            <div className="absolute inset-0 bg-background/70 backdrop-blur-xl rounded-3xl m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
+            <div className="absolute inset-0 bg-background/70 backdrop-blur-xl rounded-3xl m-4 md:m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
             <div className="relative z-10 p-12">
               <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 mt-16 text-balance">Relevant Skills.</h2>
-              <div className="flex flex-wrap text-center md:text-left justify-center md:justify-start gap-4 mt-8 max-w-2xl mx-auto opacity-80 text-foreground/80 font-mono tracking-widest uppercase text-xs md:text-sm">
+              <div className="flex flex-wrap text-center md:text-left justify-center md:justify-start gap-2 md:gap-4 mt-8 max-w-2xl mx-auto opacity-80 text-foreground/80 font-mono tracking-widest uppercase text-xs md:text-sm">
                 <span>React / Next.js</span> • <span>Vue / Nuxt</span> • <span>Three.js / WebGL</span> • <span>GLSL</span> • <span>TypeScript</span> • <span>Framer Motion</span> • <span>Tailwind CSS</span> • <span>GSAP</span> • <span>Sanity CMS</span> • <span>AI Agent Systems</span>
               </div>
             </div>
@@ -107,13 +107,13 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
             }}
             className="w-full flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto mix-blend-multiply"
           >
-            <h2 className="text-6xl md:text-9xl font-bold tracking-tighter uppercase mb-8">Reach Out.</h2>
+            <h2 className="text-4xl md:text-6xl lg:text-9xl font-bold tracking-tighter uppercase mb-8">Reach Out.</h2>
             <p className="text-xl md:text-3xl text-foreground/80 mb-16 max-w-[20ch]">
               Let's build a reality together.
             </p>
             <a
               href="mailto:Sherwig123@gmail.com"
-              className="group relative px-12 py-6 overflow-hidden rounded-full border-2 border-foreground bg-transparent text-foreground hover:text-background transition-colors duration-500"
+              className="group relative px-8 py-4 md:px-12 md:py-6 overflow-hidden rounded-full border-2 border-foreground bg-transparent text-foreground hover:text-background transition-colors duration-500"
             >
               <span className="relative z-10 font-mono text-sm uppercase tracking-widest">Say Hello</span>
               <div className="absolute inset-0 h-full w-full bg-foreground transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500 ease-out" />

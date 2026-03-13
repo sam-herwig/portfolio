@@ -10,7 +10,8 @@ import PostProcessingStack from './PostProcessingStack';
 // Generates procedural twinkling stars
 function Starfield() {
     const ref = useRef(null) as any;
-    const count = 2000;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const count = isMobile ? 800 : 2000;
     const positions = useMemo(() => {
         const positions = new Float32Array(count * 3);
         for (let i = 0; i < count; i++) {

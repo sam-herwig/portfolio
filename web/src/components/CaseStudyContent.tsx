@@ -26,7 +26,7 @@ export default function CaseStudyContent({ caseStudy }: CaseStudyProps) {
     <article className="w-full">
       {/* Hero */}
       {heroImage && (
-        <div className="relative w-full aspect-[21/9] overflow-hidden rounded-t-2xl">
+        <div className="relative w-full aspect-[16/9] md:aspect-[21/9] overflow-hidden rounded-t-2xl">
           <img
             src={heroImage}
             alt={title}
@@ -35,7 +35,7 @@ export default function CaseStudyContent({ caseStudy }: CaseStudyProps) {
         </div>
       )}
 
-      <div className="px-8 md:px-16 py-12 space-y-16">
+      <div className="px-4 py-8 md:px-16 md:py-12 space-y-10 md:space-y-16">
         {/* Header */}
         <header className="space-y-4">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">{title}</h1>

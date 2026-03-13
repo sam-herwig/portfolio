@@ -21,6 +21,9 @@
     --foreground: var(--color-foreground-light);
   }
 
+  html {
+    -webkit-overflow-scrolling: touch;
+  }
 
   body {
     background-color: var(--background);

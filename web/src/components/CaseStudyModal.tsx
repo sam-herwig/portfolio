@@ -42,11 +42,11 @@ export default function CaseStudyModal({ caseStudy }: CaseStudyModalProps) {
       />
 
       {/* Modal Content */}
-      <div className="relative z-10 w-full max-w-5xl mx-4 my-8 max-h-[calc(100vh-4rem)] overflow-y-auto bg-background rounded-2xl shadow-2xl border border-foreground/10">
+      <div className="relative z-10 w-full max-w-5xl mx-2 my-4 md:mx-4 md:my-8 max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-4rem)] overflow-y-auto bg-background rounded-xl md:rounded-2xl shadow-2xl border border-foreground/10">
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="sticky top-4 float-right mr-4 mt-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-foreground/10 hover:bg-foreground/20 transition-colors text-foreground"
+          className="sticky top-2 float-right mr-2 mt-2 md:top-4 md:mr-4 md:mt-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-foreground/10 hover:bg-foreground/20 transition-colors text-foreground"
           aria-label="Close"
         >
           ✕

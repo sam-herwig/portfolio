@@ -102,12 +102,15 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1 }: any) {
 }
 
 function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
-    const { camera, gl, scene } = useThree();
+    const { camera, gl, scene, viewport } = useThree();
     const groupRef = useRef<THREE.Group>(null);
     const textRef = useRef<THREE.Mesh>(null);
     const textMatRef = useRef<any>(null);
     const lerpedProgress = useRef(0);
     
+    // Responsive font size — scales with viewport width so it doesn't clip on mobile
+    const fontSize = Math.min(8, viewport.width * 0.6);
+
     // High-fidelity render target to capture the background for the glass lens
     const mainRenderTarget = useFBO({
         samples: 4,
@@ -166,7 +169,7 @@ function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
             <Text
                 ref={textRef}
                 position={[0, 0, 5]}
-                fontSize={8}
+                fontSize={fontSize}
                 letterSpacing={-0.05}
                 anchorX="center"
                 anchorY="middle"
