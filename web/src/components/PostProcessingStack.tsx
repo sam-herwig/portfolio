@@ -4,6 +4,8 @@ import { EffectComposer, Noise, ChromaticAberration, Vignette, DepthOfField, Blo
 import { useState, useRef } from 'react';
 import * as THREE from 'three';
 
+const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.navigator.maxTouchPoints > 0);
+
 export default function PostProcessingStack({ bloomIntensity = 0 }: { bloomIntensity?: number }) {
     const [performanceOk, setPerformanceOk] = useState(true);
     const fpsTracker = useRef({ frames: 0, lastTime: 0 });
@@ -26,22 +28,24 @@ export default function PostProcessingStack({ bloomIntensity = 0 }: { bloomInten
 
     return (
         // @ts-expect-error - React 18 strict children mismatch with postprocessing types
-        <EffectComposer disableNormalPass multisampling={4}>
+        <EffectComposer disableNormalPass multisampling={isMobile ? 0 : 4}>
             {/* 1. Cinematic Grain: Binds the transparent PNGs and vectors together to feel like physical medium */}
             <Noise opacity={0.06} />
 
             {/* 2. Lens Distortion: Creates a subtle analog camera imperfection at the edges */}
-            <ChromaticAberration
-                offset={new THREE.Vector2(0.0008, 0.0008)}
-                radialModulation={true}
-                modulationOffset={0.5}
-            />
+            {!isMobile && (
+                <ChromaticAberration
+                    offset={new THREE.Vector2(0.0008, 0.0008)}
+                    radialModulation={true}
+                    modulationOffset={0.5}
+                />
+            )}
 
             {/* 3. Vignette: Focuses the user's eye towards the center of the viewport naturally */}
             <Vignette eskil={false} offset={0.1} darkness={0.8} />
 
-            {/* 4. Cinematic Depth of Field: Only on if the machine can handle it */}
-            {performanceOk && (
+            {/* 4. Cinematic Depth of Field: Only on desktop and if the machine can handle it */}
+            {!isMobile && performanceOk && (
                 <DepthOfField
                     focusDistance={0.0} // Focus on the immediate screen plane
                     focalLength={0.02}

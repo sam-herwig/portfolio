@@ -316,7 +316,7 @@ function SummitScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
 
                         {/* The new foreground cliff edge that we are standing on */}
                         <ForegroundLedge
-                            textureUrl="/cliff_edge.png"
+                            textureUrl="/cliff_edge.webp"
                             position={[0, 0, 0]}
                             startZ={-150} // Deep in background (appears ~20% size)
                             endZ={5}     // Extreme foreground right in front of camera
@@ -327,7 +327,7 @@ function SummitScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
 
                         {/* The Fox that walks in and curls up on the ledge */}
                         <OneShotAnimatedFox
-                            textureUrl="/fox_sprite.png"
+                            textureUrl="/fox_sprite.webp"
                             startX={-18}
                             endX={2}
                             startYOffset={-12} // Starts relative to deep cliff Y
@@ -346,6 +346,8 @@ function SummitScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
     );
 }
 
+const isMobileSummit = typeof window !== 'undefined' && window.innerWidth < 768;
+
 export default function SummitModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     // Scene fades in quickly as we enter the local box [0.85 -> 0.95]
     const canvasOpacity = useTransform(scrollProgress, [0.85, 0.95], [0, 1]);
@@ -356,7 +358,7 @@ export default function SummitModule({ scrollProgress }: { scrollProgress: Motio
             style={{ opacity: canvasOpacity, scale: canvasScale }}
             className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply origin-center"
         >
-            <Canvas camera={{ position: [-15, 0, 20], fov: 50 }} dpr={[1, 1.5]}>
+            <Canvas camera={{ position: [-15, 0, 20], fov: 50 }} dpr={isMobileSummit ? [1, 1] : [1, 1.5]}>
                 <Suspense fallback={null}>
                     <SummitScene scrollProgress={scrollProgress} />
                     <PostProcessingStack />

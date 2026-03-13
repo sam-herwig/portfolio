@@ -251,7 +251,7 @@ function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
 
                     {/* The Deep Ambient Mountain Skyline */}
                     <AlpineWall
-                        textureUrl="/alpine_wall.png"
+                        textureUrl="/alpine_wall.webp"
                         position={[0, 80, -500]}
                         scale={[1200, 1200]}
                     />
@@ -260,35 +260,35 @@ function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
                     <group>
                         {/* Ledge 1: Left Monolith (Frames Case Study 1 on right) */}
                         <RockLedge
-                            textureUrl="/alpine_ledge_left.png"
+                            textureUrl="/alpine_ledge_left.webp"
                             position={[-12, 0, -5]}
                             scale={[25, 25]}
                         />
 
                         {/* Ledge 2: Right Cluster (Frames Case Study 2 on left) */}
                         <RockLedge
-                            textureUrl="/alpine_ledge_right.png"
+                            textureUrl="/alpine_ledge_right.webp"
                             position={[12, 30, -10]}
                             scale={[25, 25]}
                         />
 
                         {/* Ledge 3: Left Overhang (Frames Case Study 3 on right) */}
                         <RockLedge
-                            textureUrl="/alpine_ledge_left_variant_2.png"
+                            textureUrl="/alpine_ledge_left_variant_2.webp"
                             position={[-12, 60, -15]}
                             scale={[25, 25]}
                         />
 
                         {/* Ledge 4: Right Vertical Cliff (Frames Case Study 4 on left) */}
                         <RockLedge
-                            textureUrl="/alpine_ledge_right_variant_2.png"
+                            textureUrl="/alpine_ledge_right_variant_2.webp"
                             position={[12, 90, -20]}
                             scale={[25, 25]}
                         />
 
                         {/* The Flapping Bird (Flying high in the thin air, tied to scroll) */}
                         <AnimatedSprite
-                            textureUrl="/bird_sprite.png"
+                            textureUrl="/bird_sprite.webp"
                             startX={-45}
                             endX={45}
                             y={105}
@@ -305,6 +305,8 @@ function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
     );
 }
 
+const isMobileAlpine = typeof window !== 'undefined' && window.innerWidth < 768;
+
 export default function AlpineModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     // Fade IN as the module enters (0.65 -> 0.75)
     // Fade OUT completely as the camera reaches the Summit Module (0.85 -> 0.9)
@@ -316,7 +318,7 @@ export default function AlpineModule({ scrollProgress }: { scrollProgress: Motio
             style={{ opacity: canvasOpacity, scale: canvasScale }}
             className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply origin-center"
         >
-            <Canvas camera={{ position: [0, 0, 40], fov: 50 }} dpr={[1, 1.5]}>
+            <Canvas camera={{ position: [0, 0, 40], fov: 50 }} dpr={isMobileAlpine ? [1, 1] : [1, 1.5]}>
                 <Suspense fallback={null}>
                     <AlpineScene scrollProgress={scrollProgress} />
                     <PostProcessingStack />

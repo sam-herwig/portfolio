@@ -66,6 +66,8 @@ function ForestScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
     );
 }
 
+const isMobileForest = typeof window !== 'undefined' && window.innerWidth < 768;
+
 export default function ForestModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     // Fade IN smoothly during the overlap with the Hero climb [0.2 -> 0.3]
     // Fade OUT completely as we approach the dark Night Camp [0.45 -> 0.5]
@@ -77,7 +79,7 @@ export default function ForestModule({ scrollProgress }: { scrollProgress: Motio
             style={{ opacity: canvasOpacity, scale: canvasScale }}
             className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-multiply origin-center"
         >
-            <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={[1, 1.5]}>
+            <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={isMobileForest ? [1, 1] : [1, 1.5]}>
                 <Suspense fallback={null}>
                     <ForestScene scrollProgress={scrollProgress} />
                     <PostProcessingStack />

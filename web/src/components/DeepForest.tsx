@@ -269,7 +269,7 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
         <group>
             {/* The Endless Background Wall of Trees */}
             <ForestWall
-                textureUrl="/forest_wall.png"
+                textureUrl="/forest_wall.webp"
                 position={[0, 10, -180]}
                 scale={[300, 300]}
             />
@@ -279,7 +279,7 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
             {/* Tree 4: Deep distance - The massive Sequoia anchoring the path (Left) */}
             <ForestTree
                 ref={tree4Ref}
-                textureUrl="/tree_sequoia.png"
+                textureUrl="/tree_sequoia.webp"
                 position={[-28, 2, -85]}
                 scale={[65, 65]}
             />
@@ -287,7 +287,7 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
             {/* Tree 3: Mid-distance - The sharp Spruce (Right) */}
             <ForestTree
                 ref={tree3Ref}
-                textureUrl="/tree_spruce.png"
+                textureUrl="/tree_spruce.webp"
                 position={[25, 5, -55]}
                 scale={[50, 50]}
                 rotation={-0.05}
@@ -296,7 +296,7 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
             {/* Tree 2: Mid-foreground - The twisted Cherry Blossom (Left) */}
             <ForestTree
                 ref={tree2Ref}
-                textureUrl="/tree_cherry.png"
+                textureUrl="/tree_cherry.webp"
                 position={[-25, 5, -25]}
                 scale={[60, 60]}
                 rotation={0.05}
@@ -305,7 +305,7 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
             {/* Tree 1: Extreme foreground, framing the entrance - The stark Aspen (Right) */}
             <ForestTree
                 ref={tree1Ref}
-                textureUrl="/tree_aspen.png"
+                textureUrl="/tree_aspen.webp"
                 position={[25, -2, 0]}
                 scale={[45, 45]}
             />
@@ -342,7 +342,7 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
 
             {/* The Animated Stag (Walking subtly in the midground, tied directly to scroll) */}
             <AnimatedSprite
-                textureUrl="/stag_sprite.png"
+                textureUrl="/stag_sprite.webp"
                 startX={-50}
                 endX={50}
                 y={-5}

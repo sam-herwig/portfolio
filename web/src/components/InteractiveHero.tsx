@@ -181,7 +181,7 @@ function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
 
             {/* 1. Distant Background / Sky */}
             <ParallaxLayer
-                textureUrl="/bg_layer.png"
+                textureUrl="/bg_layer.webp"
                 z={-80}
                 baseY={20} // push up significantly since it's far away
                 speed={0.1}
@@ -189,7 +189,7 @@ function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
 
             {/* 2. Midground Mountains */}
             <ParallaxLayer
-                textureUrl="/mg_layer.png"
+                textureUrl="/mg_layer.webp"
                 z={-30}
                 baseY={5}
                 speed={0.5}
@@ -197,7 +197,7 @@ function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
 
             {/* 3. Foreground Peaks and Cabin */}
             <ParallaxLayer
-                textureUrl="/fg_layer.png"
+                textureUrl="/fg_layer.webp"
                 z={10}
                 baseY={-8}
                 speed={1.0}
@@ -205,6 +205,8 @@ function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
         </group>
     );
 }
+
+const isMobileHero = typeof window !== 'undefined' && window.innerWidth < 768;
 
 export default function InteractiveHero({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     // Hero Fade Sequence: 
@@ -218,7 +220,7 @@ export default function InteractiveHero({ scrollProgress }: { scrollProgress: Mo
             style={{ opacity: canvasOpacity, scale: canvasScale }}
             className="absolute inset-0 z-0 pointer-events-none bg-background transform-gpu origin-center"
         >
-            <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={[1, 1.5]}>
+            <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={isMobileHero ? [1, 1] : [1, 1.5]}>
                 <Suspense fallback={null}>
                     {/* Stage 1: The Mountain Climb */}
                     <Scene scrollProgress={scrollProgress} />

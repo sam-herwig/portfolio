@@ -158,6 +158,8 @@ function NightCampScene({ scrollProgress }: { scrollProgress: MotionValue<number
     );
 }
 
+const isMobileCamp = typeof window !== 'undefined' && window.innerWidth < 768;
+
 export default function CampModule({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     // Fade IN starting at global bounds [0.45], solidly opaque by [0.55]
     // Fade OUT sequentially starting at [0.65] hitting 0 at [0.70]
@@ -169,7 +171,7 @@ export default function CampModule({ scrollProgress }: { scrollProgress: MotionV
             style={{ opacity: canvasOpacity, scale: canvasScale }}
             className="fixed inset-0 z-0 pointer-events-none transform-gpu mix-blend-screen origin-center"
         >
-            <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={[1, 1.5]}>
+            <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={isMobileCamp ? [1, 1] : [1, 1.5]}>
                 <Suspense fallback={null}>
                     <NightCampScene scrollProgress={scrollProgress} />
                     <PostProcessingStack bloomIntensity={1.5} />
