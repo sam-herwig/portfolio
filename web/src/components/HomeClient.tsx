@@ -113,6 +113,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
               thumbnail={cs.thumbnail}
               tags={cs.tags}
               side={i % 2 === 0 ? 'right' : 'left'}
+              linkable={caseStudies.length > 0}
             />
           ))}
         </div>

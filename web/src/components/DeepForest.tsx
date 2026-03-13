@@ -234,10 +234,10 @@ function SpatialText({ position, title, subtitle, scrollProgress, trees }: { pos
                 distanceFactor={15} // Maintain proportional size 
             >
                 <div className="w-[90vw] max-w-[800px] text-center pointer-events-none flex flex-col items-center select-none font-inter text-balance">
-                    <h2 ref={textRef} className="text-8xl font-bold mb-4 font-instrument text-foreground" style={{ transition: 'none' }}>
+                    <h2 ref={textRef} className="text-5xl md:text-8xl font-bold mb-4 font-instrument text-foreground" style={{ transition: 'none' }}>
                         {title}
                     </h2>
-                    <p className="text-3xl text-foreground/80 max-w-[30ch]">
+                    <p className="text-xl md:text-3xl text-foreground/80 max-w-[30ch]">
                         {subtitle}
                     </p>
                 </div>
