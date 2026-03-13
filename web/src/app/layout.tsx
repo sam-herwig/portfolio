@@ -20,13 +20,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  modal,
 }: Readonly<{
   children: React.ReactNode;
+  modal: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${instrument.variable} antialiased transition-colors duration-1000 bg-background text-foreground font-inter`}>
         {children}
+        {modal}
       </body>
     </html>
   );
