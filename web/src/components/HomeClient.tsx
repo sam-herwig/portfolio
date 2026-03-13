@@ -44,6 +44,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
     ["#18181b", "#fafafa", "#fafafa", "#18181b"]
   );
 
+  const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
+
   const displayCaseStudies = caseStudies.length > 0 ? caseStudies : fallbackCaseStudies;
 
   return (
@@ -51,6 +53,23 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
       style={{ backgroundColor, color }}
       className="relative w-full overflow-x-hidden min-h-screen transition-colors duration-100"
     >
+
+      {/* Scroll indicator */}
+      <motion.div
+        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
+        style={{ opacity: scrollHintOpacity }}
+      >
+        <span className="text-xs font-mono uppercase tracking-[0.3em] text-foreground/40">Scroll</span>
+        <motion.div
+          className="w-5 h-8 rounded-full border-2 border-foreground/30 flex items-start justify-center p-1"
+        >
+          <motion.div
+            className="w-1.5 h-1.5 rounded-full bg-foreground/50"
+            animate={{ y: [0, 12, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </motion.div>
+      </motion.div>
 
       {/* Persistent 3D Background System */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -73,7 +92,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
         {/* Checkpoint 2.5: The Night Camp */}
         <div ref={refCamp} className="w-full flex flex-col items-center justify-center min-h-[200vh] py-[60vh]">
           <div className="w-full min-h-[50vh] flex flex-col items-center justify-center text-center px-4 md:px-24 my-[20vh] transform-gpu relative">
-            <div className="absolute inset-0 bg-background/70 backdrop-blur-xl rounded-3xl m-4 md:m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
+            <div className="absolute inset-0 bg-foreground/5 backdrop-blur-xl rounded-3xl m-4 md:m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
             <div className="relative z-10 p-12">
               <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 mt-16 text-balance">Relevant Skills.</h2>
               <div className="flex flex-wrap text-center md:text-left justify-center md:justify-start gap-2 md:gap-4 mt-8 max-w-2xl mx-auto opacity-80 text-foreground/80 font-mono tracking-widest uppercase text-xs md:text-sm">

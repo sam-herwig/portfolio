@@ -34,7 +34,7 @@ export default function CaseStudyCard({ title, subtitle, slug, thumbnail, tags, 
       className={`w-full min-h-[30vh] md:min-h-[40vh] flex flex-col justify-center px-4 md:px-32 my-[5vh] md:my-[10vh] transform-gpu ${alignmentClass}`}
     >
       <Link href={`/work/${slug}`} className="w-full md:w-[60%] block">
-        <div className="p-6 md:p-12 bg-[#f5f5f4]/80 backdrop-blur-md rounded-3xl border border-foreground/10 shadow-2xl group cursor-pointer hover:bg-foreground/5 transition-colors duration-500">
+        <div className="p-6 md:p-12 bg-background/80 backdrop-blur-md rounded-3xl border border-foreground/10 shadow-2xl group cursor-pointer hover:bg-foreground/5 transition-colors duration-500">
           <div className="aspect-[4/3] w-full bg-foreground/10 rounded-xl mb-6 overflow-hidden relative">
             {thumbnail ? (
               <img
