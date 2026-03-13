@@ -175,7 +175,7 @@ function Scene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
                 anchorY="middle"
                 font="/fonts/InstrumentSerif-Regular.ttf"
             >
-                Mountain Man.
+                Let's Go On A Journey.
                 <RefractionShader ref={textMatRef} uRefraction={0.06} />
             </Text>
 

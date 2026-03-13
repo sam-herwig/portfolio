@@ -72,6 +72,8 @@ const gradientCanvas = ref(null);
 let scene, camera, renderer, geometry, material, mesh;
 let animationFrameId = null;
 let gui;
+let observer = null;
+let isInView = true;
 
 // --- Animation Control Functions ---
 const updateAnimationSpeed = () => {
@@ -157,7 +159,7 @@ const toggleAnimation = () => {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
     }
-  } else {
+  } else if (isInView) {
     animate();
   }
 };
@@ -360,10 +362,38 @@ const initThree = () => {
 };
 
 const animate = () => {
-  if (!material || animationParams.value.isAnimationPaused) return;
+  if (!material || animationParams.value.isAnimationPaused || !isInView) return;
   material.uniforms.time.value += animationParams.value.animationSpeed;
   renderer.render(scene, camera);
   animationFrameId = requestAnimationFrame(animate);
+};
+
+// --- Intersection Observer ---
+const setupIntersectionObserver = () => {
+  if (!heroContainer.value) return;
+  
+  observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        isInView = entry.isIntersecting;
+        if (isInView && !animationParams.value.isAnimationPaused) {
+          // Resume animation when in view
+          if (animationFrameId === null) {
+            animate();
+          }
+        } else {
+          // Pause animation when out of view
+          if (animationFrameId !== null) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+          }
+        }
+      });
+    },
+    { threshold: 0.1 }
+  );
+  
+  observer.observe(heroContainer.value);
 };
 
 const onWindowResize = () => {
@@ -469,6 +499,7 @@ onMounted(async () => {
     nextTick(() => {
       initThree();
       initDatGUI();
+      setupIntersectionObserver();
     });
     
     // Fade in text content after delay
@@ -490,6 +521,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+  if (observer) {
+    observer.disconnect();
+    observer = null;
+  }
   window.removeEventListener('resize', onWindowResize);
   if (geometry) geometry.dispose();
   if (material) material.dispose();
