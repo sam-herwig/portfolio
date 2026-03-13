@@ -103,7 +103,7 @@ export default function Home() {
             <div className="relative z-10 p-12">
               <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 mt-16 text-balance">Relevant Skills.</h2>
               <div className="flex flex-wrap text-center md:text-left justify-center md:justify-start gap-4 mt-8 max-w-2xl mx-auto opacity-80 text-foreground/80 font-mono tracking-widest uppercase text-xs md:text-sm">
-                <span>React</span> • <span>Next.js</span> • <span>Three.js</span> • <span>WebGL</span> • <span>GLSL</span> • <span>TypeScript</span> • <span>Framer Motion</span> • <span>Tailwind CSS</span> • <span>GSAP</span>
+                <span>React / Next.js</span> • <span>Vue / Nuxt</span> • <span>Three.js / WebGL</span> • <span>GLSL</span> • <span>TypeScript</span> • <span>Framer Motion</span> • <span>Tailwind CSS</span> • <span>GSAP</span> • <span>Sanity CMS</span> • <span>AI Agent Systems</span>
               </div>
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function Home() {
               Let's build a reality together.
             </p>
             <a
-              href="mailto:hello@example.com"
+              href="mailto:Sherwig123@gmail.com"
               className="group relative px-12 py-6 overflow-hidden rounded-full border-2 border-foreground bg-transparent text-foreground hover:text-background transition-colors duration-500"
             >
               <span className="relative z-10 font-mono text-sm uppercase tracking-widest">Say Hello</span>
