@@ -91,13 +91,13 @@ export default function Home() {
       <div className="relative z-10 w-full overflow-x-hidden flex flex-col items-center">
 
         {/* Checkpoint 1: Basecamp - Hero Content (Migrated to 3D Canvas) */}
-        <div ref={refHero} className="w-full min-h-screen pb-[150vh]" />
+        <div ref={refHero} className="w-full min-h-screen pb-[300vh]" />
 
         {/* The Forest Gauntlet Text Nodes (Migrated to 3D Canvas) */}
         <div ref={refForest} className="w-full min-h-[400vh]" />
 
         {/* Checkpoint 2.5: The Night Camp */}
-        <div ref={refCamp} className="w-full flex flex-col items-center justify-center min-h-[80vh] py-[30vh]">
+        <div ref={refCamp} className="w-full flex flex-col items-center justify-center min-h-[200vh] py-[60vh]">
           <div className="w-full min-h-[50vh] flex flex-col items-center justify-center text-center px-4 md:px-24 my-[20vh] transform-gpu relative">
             <div className="absolute inset-0 bg-background/70 backdrop-blur-xl rounded-3xl m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
             <div className="relative z-10 p-12">
@@ -110,7 +110,7 @@ export default function Home() {
         </div>
 
         {/* Checkpoint 3: The High Alpine - Case Studies */}
-        <div ref={refAlpine} className="w-full flex flex-col items-center max-w-7xl mx-auto py-[30vh]">
+        <div ref={refAlpine} className="w-full flex flex-col items-center max-w-7xl mx-auto py-[80vh]">
           <CinematicCaseStudy
             side="right"
             title="Google DeepMind"
@@ -134,7 +134,7 @@ export default function Home() {
         </div>
 
         {/* Checkpoint 4: The Summit - Finale & Footer */}
-        <section ref={refSummit} className="w-full relative min-h-[350vh] flex flex-col justify-end pb-[20vh] pt-[130vh]">
+        <section ref={refSummit} className="w-full relative min-h-[160vh] flex flex-col justify-end pb-[20vh] pt-[60vh]">
           <motion.div
             style={{
               opacity: useTransform(scrollYProgress, [0.85, 0.95], [0, 1]),

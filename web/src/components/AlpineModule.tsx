@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useTexture, useVideoTexture } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import { Suspense, useRef, useMemo, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
@@ -230,67 +230,6 @@ function AlpineCamera({ scrollProgress }: { scrollProgress: MotionValue<number> 
     return null;
 }
 
-function VideoAlpineIntro({ videoUrl, position, scale, scrollProgress }: any) {
-    const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
-    const meshRef = useRef<THREE.Mesh>(null);
-    const lerpedProgress = useRef(0);
-
-    // Video Lifecycle Guard (Outside of rendering loop)
-    useEffect(() => {
-        if (!tex?.image) return;
-        const videoElem = tex.image as HTMLVideoElement;
-
-        const unsubscribe = scrollProgress.on("change", (v: number) => {
-            // Unpause video only while passing through the Alpine Module bounds
-            if (v > 0.64 && v < 0.91) {
-                if (videoElem.paused) videoElem.play().catch(() => {});
-            } else {
-                if (!videoElem.paused) {
-                    videoElem.pause();
-                    videoElem.currentTime = 0; // Hardware memory flush
-                }
-            }
-        });
-
-        return () => {
-            unsubscribe();
-            // Strict WebGL Garbage Collection
-            tex.dispose();
-        };
-    }, [tex, scrollProgress]);
-
-    useFrame((state, delta) => {
-        if (meshRef.current && tex.image) {
-            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
-            const progress = lerpedProgress.current;
-            const videoElem = tex.image as HTMLVideoElement;
-
-            // Map global scroll to local timeline [0.0 -> 1.0]
-            const animProgress = Math.min(1, Math.max(0, (progress - 0.65) / 0.25));
-
-            // Fade out completely by the time the vertical climb starts (0.10 -> 0.15)
-            let opacity = 1;
-            if (animProgress > 0.10) {
-                opacity = 1 - Math.min(1, Math.max(0, (animProgress - 0.10) / 0.05));
-            }
-            (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
-        }
-    });
-
-    return (
-        <mesh ref={meshRef} position={position}>
-            {/* 16:9 relative plane mapping */}
-            <planeGeometry args={scale} />
-            <meshBasicMaterial
-                map={tex}
-                transparent
-                depthWrite={true}
-                alphaTest={0.5}
-            />
-        </mesh>
-    );
-}
-
 
 function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const groupRef = useRef<THREE.Group>(null);
@@ -309,14 +248,6 @@ function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
         <group ref={groupRef}>
             {/* The Camera Controller */}
             <AlpineCamera scrollProgress={scrollProgress} />
-
-                    {/* Cinematic Intro Video - Fades out before the vertical climb begins */}
-                    <VideoAlpineIntro
-                        videoUrl="/assets/videos/alpine_intro.mp4"
-                        position={[0, 0, 5]} // Deep behind the start of the camera move so it fully immerses the climb
-                        scale={[64, 36]} // 16:9 plane scale
-                        scrollProgress={scrollProgress}
-                    />
 
                     {/* The Deep Ambient Mountain Skyline */}
                     <AlpineWall

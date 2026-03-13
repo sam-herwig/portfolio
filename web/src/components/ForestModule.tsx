@@ -3,7 +3,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useRef, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
-import { useVideoTexture } from '@react-three/drei';
+
 import * as THREE from 'three';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
@@ -41,79 +41,6 @@ function ForestCamera({ scrollProgress }: { scrollProgress: MotionValue<number> 
     return null;
 }
 
-function VideoForestIntro({ videoUrl, position, scale, scrollProgress }: any) {
-    const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
-    const meshRef = useRef<THREE.Mesh>(null);
-    const materialRef = useRef<any>(null);
-    const mousePos = useRef(new THREE.Vector2(0, 0));
-    const lerpedProgress = useRef(0);
-
-    // Video Lifecycle Guard (Outside of rendering loop)
-    useEffect(() => {
-        if (!tex?.image) return;
-        const videoElem = tex.image as HTMLVideoElement;
-
-        const unsubscribe = scrollProgress.on("change", (v: number) => {
-            // Pre-warm the heavy video memory directly after leaving the top of the page (0.01)
-            // Pause and flush it entirely once the module finishes its active window at (0.50)
-            if (v > 0.01 && v < 0.51) {
-                if (videoElem.paused) videoElem.play().catch(() => {});
-            } else {
-                if (!videoElem.paused) {
-                    videoElem.pause();
-                    videoElem.currentTime = 0; // Hardware memory flush
-                }
-            }
-        });
-
-        return () => {
-            unsubscribe();
-            // Strict WebGL Garbage Collection
-            tex.dispose();
-        };
-    }, [tex, scrollProgress]);
-
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            mousePos.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        };
-        window.addEventListener('mousemove', handleMouseMove, { passive: true });
-        return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, []);
-
-    useFrame((state, delta) => {
-        if (meshRef.current && tex.image) {
-            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
-            const progress = lerpedProgress.current;
-
-            // Fade out rapidly to reveal the 3D trees as we start walking (0.20 -> 0.25)
-            let opacity = 1;
-            if (progress > 0.20) {
-                opacity = 1 - Math.min(1, Math.max(0, (progress - 0.20) / 0.05));
-            }
-
-            if (materialRef.current) {
-                materialRef.current.uTime = state.clock.elapsedTime;
-                materialRef.current.uMouse.lerp(mousePos.current, 0.1);
-                materialRef.current.uOpacity = opacity;
-            }
-        }
-    });
-
-    return (
-        <mesh ref={meshRef} position={position}>
-            {/* 16:9 plane mapping */}
-            <planeGeometry args={scale} />
-            <WoodcutShader
-                ref={materialRef}
-                transparent
-                depthWrite={false}
-                uTexture={tex}
-            />
-        </mesh>
-    );
-}
 
 function ForestScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const groupRef = useRef<THREE.Group>(null);
@@ -132,14 +59,6 @@ function ForestScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
         <group ref={groupRef}>
             {/* The Camera Controller */}
             <ForestCamera scrollProgress={scrollProgress} />
-
-            {/* Cinematic Intro Video - Fades out as we begin the true walk */}
-            <VideoForestIntro
-                videoUrl="/assets/videos/forrest_intro.mp4"
-                position={[0, 0, 10]} // Camera is at Z 20, so 10 units away at start
-                scale={[64, 36]} // Extremely large 16:9 plane
-                scrollProgress={scrollProgress}
-            />
 
             {/* The 3D Assets placed deep on the Z-Axis */}
             <DeepForest scrollProgress={scrollProgress} />
