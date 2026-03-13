@@ -17,6 +17,11 @@ export default defineType({
     {
       name: 'content',
       title: 'Content'
+    },
+    {
+      name: 'caseStudy',
+      title: 'Case Study (Portfolio v2)',
+      options: { collapsible: true, collapsed: true }
     }
   ],
   fields: [
@@ -204,6 +209,83 @@ export default defineType({
         { type: 'masonryWall' },
         { type: 'circularText' }
       ]
+    }),
+    defineField({
+      fieldset: 'caseStudy',
+      name: 'caseStudyFeatured',
+      title: 'Featured on Homepage',
+      type: 'boolean',
+      description: 'Show this project as a case study on the homepage (max 4)',
+      initialValue: false,
+    }),
+    defineField({
+      fieldset: 'caseStudy',
+      name: 'caseStudyOrder',
+      title: 'Homepage Sort Order',
+      type: 'number',
+      description: 'Lower numbers appear first (1-4)',
+      validation: Rule => Rule.min(1).max(10),
+    }),
+    defineField({
+      fieldset: 'caseStudy',
+      name: 'caseStudyHeroImage',
+      title: 'Case Study Hero Image',
+      type: 'image',
+      description: 'Full-bleed hero image for the case study detail view (wider crop than featured image)',
+      options: { hotspot: true },
+    }),
+    defineField({
+      fieldset: 'caseStudy',
+      name: 'caseStudyHeroVideo',
+      title: 'Case Study Hero Video (Optional)',
+      type: 'videoLoop',
+      description: 'Optional video loop for the hero section (overrides hero image when set)',
+    }),
+    defineField({
+      fieldset: 'caseStudy',
+      name: 'caseStudyProblem',
+      title: 'The Problem',
+      type: 'blockContent',
+      description: 'What challenge did this project solve? (2-3 sentences)',
+    }),
+    defineField({
+      fieldset: 'caseStudy',
+      name: 'caseStudyApproach',
+      title: 'The Approach',
+      type: 'blockContent',
+      description: 'What did you build? Stack choices, architecture decisions, creative process.',
+    }),
+    defineField({
+      fieldset: 'caseStudy',
+      name: 'caseStudyResults',
+      title: 'The Results',
+      type: 'blockContent',
+      description: 'Metrics, qualitative impact, or outcomes.',
+    }),
+    defineField({
+      fieldset: 'caseStudy',
+      name: 'caseStudyGallery',
+      title: 'Case Study Gallery',
+      type: 'array',
+      description: 'Key visuals, screenshots, device mockups for the case study',
+      of: [
+        {
+          type: 'image',
+          options: { hotspot: true },
+          fields: [
+            {
+              name: 'alt',
+              title: 'Alt Text',
+              type: 'string',
+            },
+            {
+              name: 'caption',
+              title: 'Caption',
+              type: 'string',
+            },
+          ],
+        },
+      ],
     })
   ],
   preview: {
