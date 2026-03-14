@@ -11,41 +11,43 @@ import GearRack from '@/components/GearRack';
 import Preloader from '@/components/Preloader';
 import { useAppStore } from '@/store/useAppStore';
 import { Project } from '@/data/projects';
+import { MODULE_TIMELINE, moduleRange, childRanges } from '@/lib/moduleTimeline';
 
 // Single unified Canvas — avoids 5x WebGL context overhead
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
 
-const alpineRanges = [
-  [0.655, 0.69, 0.725, 0.765],
-  [0.715, 0.75, 0.79, 0.835],
-  [0.775, 0.81, 0.85, 0.89],
-  [0.835, 0.865, 0.9, 0.915],
-] as const;
+/* ── Derive all content ranges from the shared contract ──────────────── */
+
+const heroRange = moduleRange('hero');
+const forestChildRanges = childRanges('forest', 4);
+const campWindow = MODULE_TIMELINE.camp;
+const alpineChildRanges = childRanges('alpine', 4);
+const summitWindow = MODULE_TIMELINE.summit;
 
 const forestNarrative = [
   {
     title: "I'm Sam.",
     body: 'I write code that you walk through. I build portfolio sites, immersive campaigns, and product experiences that use the browser like a stage instead of a brochure.',
     side: 'left' as const,
-    range: [0.08, 0.16, 0.24, 0.34] as const,
+    range: forestChildRanges[0],
   },
   {
     title: 'Creative Engineer.',
     body: 'Three.js, shaders, motion systems, and CMS-backed front ends — all tuned to feel sharp without collapsing under their own ambition.',
     side: 'right' as const,
-    range: [0.24, 0.32, 0.42, 0.52] as const,
+    range: forestChildRanges[1],
   },
   {
     title: 'Every Pixel Earned.',
     body: 'I care about the part where bold visuals still have to load fast, survive real devices, and actually help the work sell itself.',
     side: 'left' as const,
-    range: [0.42, 0.5, 0.6, 0.72] as const,
+    range: forestChildRanges[2],
   },
   {
     title: 'See the View.',
     body: 'The work below is a mix of high-performance marketing builds, immersive front-end systems, and one absurdly overbuilt AI pipeline.',
     side: 'right' as const,
-    range: [0.62, 0.7, 0.8, 0.92] as const,
+    range: forestChildRanges[3],
   },
 ];
 
@@ -112,33 +114,36 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   const refAlpine = useRef<HTMLDivElement>(null);
   const refSummit = useRef<HTMLElement>(null);
 
-  // Global Scroll Tracker for unified timeline across all 5 modules [0.0 - 1.0]
+  // Global Scroll Tracker — single source for the unified module timeline [0.0 – 1.0]
   const { scrollYProgress } = useScroll();
-  const { scrollYProgress: heroSectionProgress } = useScroll({
-    target: refHero,
-    offset: ['start start', 'end start'],
-  });
-  const { scrollYProgress: forestSectionProgress } = useScroll({
-    target: refForest,
-    offset: ['start start', 'end start'],
-  });
 
-  // Background Color Transition tied exclusively to the Night Camp global bounds [0.45 - 0.70]
+  // Background Color Transition tied to the Night Camp module ownership window
   const backgroundColor = useTransform(
     scrollYProgress,
-    [0.45, 0.5, 0.65, 0.7],
+    [campWindow.ownStart, campWindow.enterEnd, campWindow.exitStart, campWindow.ownEnd],
     ['#f9fafb', '#09090b', '#09090b', '#f9fafb']
   );
 
   const color = useTransform(
     scrollYProgress,
-    [0.45, 0.5, 0.65, 0.7],
+    [campWindow.ownStart, campWindow.enterEnd, campWindow.exitStart, campWindow.ownEnd],
     ['#18181b', '#fafafa', '#fafafa', '#18181b']
   );
 
-  const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
-  const heroOpacity = useTransform(heroSectionProgress, [0, 0.14, 0.28], [1, 1, 0]);
-  const heroY = useTransform(heroSectionProgress, [0, 0.28], [0, -56]);
+  // ── Hero content uses the global timeline, not a section-local tracker ──
+  const scrollHintOpacity = useTransform(scrollYProgress, [0, heroRange[1]], [1, 0]);
+  const heroOpacity = useTransform(
+    scrollYProgress,
+    [heroRange[0], heroRange[2], heroRange[3]],
+    [1, 1, 0]
+  );
+  const heroY = useTransform(scrollYProgress, [heroRange[0], heroRange[3]], [0, -56]);
+
+  // ── Summit child sequencing inside summit ownership window ──
+  const summitRevealStart = summitWindow.enterStart + (summitWindow.ownEnd - summitWindow.ownStart) * 0.45;
+  const summitRevealEnd = summitRevealStart + (summitWindow.ownEnd - summitWindow.ownStart) * 0.2;
+  const summitCtaStart = summitRevealEnd;
+  const summitCtaEnd = summitWindow.ownEnd;
 
   return (
     <motion.main
@@ -216,7 +221,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           </div>
         </section>
 
-        {/* The Forest Gauntlet — narrative cards instead of scene-dependent copy */}
+        {/* The Forest Gauntlet — narrative cards driven by global timeline */}
         <section
           ref={refForest}
           role="region"
@@ -231,7 +236,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
                 body={entry.body}
                 side={entry.side}
                 range={entry.range}
-                scrollProgress={forestSectionProgress}
+                scrollProgress={scrollYProgress}
               />
             ))}
           </div>
@@ -272,7 +277,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
               side={i % 2 === 0 ? 'right' : 'left'}
               linkable={true}
               scrollProgress={scrollYProgress}
-              range={alpineRanges[i] ?? alpineRanges[alpineRanges.length - 1]}
+              range={alpineChildRanges[i] ?? alpineChildRanges[alpineChildRanges.length - 1]}
             />
           ))}
         </section>
@@ -290,8 +295,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center px-4 text-center">
             <motion.div
               style={{
-                opacity: useTransform(scrollYProgress, [0.975, 0.992], [0, 1]),
-                y: useTransform(scrollYProgress, [0.975, 0.992], [72, 0]),
+                opacity: useTransform(scrollYProgress, [summitRevealStart, summitRevealEnd], [0, 1]),
+                y: useTransform(scrollYProgress, [summitRevealStart, summitRevealEnd], [72, 0]),
               }}
               className="flex flex-col items-center"
             >
@@ -308,8 +313,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
 
             <motion.div
               style={{
-                opacity: useTransform(scrollYProgress, [0.992, 1], [0, 1]),
-                y: useTransform(scrollYProgress, [0.992, 1], [48, 0]),
+                opacity: useTransform(scrollYProgress, [summitCtaStart, summitCtaEnd], [0, 1]),
+                y: useTransform(scrollYProgress, [summitCtaStart, summitCtaEnd], [48, 0]),
               }}
               className="mt-10"
             >

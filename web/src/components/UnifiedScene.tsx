@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import PostProcessingStack from './PostProcessingStack';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
+import { MODULE_TIMELINE, sceneVisible } from '@/lib/moduleTimeline';
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
 
@@ -24,7 +25,7 @@ declare global {
 // =============================================================================
 // UNIFIED CAMERA
 // Single camera controller blending all 5 zone behaviours.
-// Replaces HeroCamera, ForestCamera, CampCamera, AlpineCamera, SummitCamera.
+// Uses MODULE_TIMELINE boundaries for zone transitions.
 // =============================================================================
 
 function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
@@ -37,50 +38,70 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
         );
         const p = lerpedProgress.current;
 
-        // Hero zone (0.0-0.25): z 20->-28, y 0->4, rotX 0->0.15 over [0.0,0.20]
-        const heroP  = Math.min(1, Math.max(0, p / 0.20));
+        const hero = MODULE_TIMELINE.hero;
+        const forest = MODULE_TIMELINE.forest;
+        const camp = MODULE_TIMELINE.camp;
+        const alpine = MODULE_TIMELINE.alpine;
+        const summit = MODULE_TIMELINE.summit;
+
+        // Hero zone: z 20->-28, y 0->4, rotX 0->0.15
+        const heroP  = Math.min(1, Math.max(0, p / hero.exitEnd));
         const heroX  = 0;
         const heroY  = THREE.MathUtils.lerp(0, 4, heroP);
         const heroZ  = THREE.MathUtils.lerp(20, -28, heroP);
         const heroRX = THREE.MathUtils.lerp(0, 0.15, heroP);
 
-        // Forest zone (0.2-0.5): z 20->-90, walk sway on X/Y, rotX=0.1
-        const forestP  = Math.min(1, Math.max(0, (p - 0.2) / 0.3));
+        // Forest zone: z 20->-90, walk sway on X/Y, rotX=0.1
+        const forestSpan = forest.ownEnd - forest.ownStart;
+        const forestP  = Math.min(1, Math.max(0, (p - forest.ownStart) / forestSpan));
         const forestX  = Math.sin(forestP * Math.PI * 10) * 0.5;
         const forestY  = Math.abs(Math.sin(forestP * Math.PI * 10)) * 0.5;
         const forestZ  = THREE.MathUtils.lerp(20, -90, forestP);
         const forestRX = 0.1;
 
-        // Camp zone (0.45-0.70): sway on X (clock), y -10->15, z 30->-10
-        const campP  = Math.min(1, Math.max(0, (p - 0.45) / 0.25));
+        // Camp zone: sway on X (clock), y -10->15, z 30->-10
+        const campSpan = camp.ownEnd - camp.ownStart;
+        const campP  = Math.min(1, Math.max(0, (p - camp.ownStart) / campSpan));
         const campX  = Math.sin(state.clock.elapsedTime * 0.5) * 1.5;
         const campY  = THREE.MathUtils.lerp(-10, 15, campP);
         const campZ  = THREE.MathUtils.lerp(30, -10, campP);
         const campRX = 0;
 
-        // Alpine zone (0.65-0.90): z=15 fixed, y 0->120, climb sway, rotX=0.15
-        const alpineP  = Math.min(1, Math.max(0, (p - 0.65) / 0.25));
+        // Alpine zone: z=15 fixed, y 0->120, climb sway, rotX=0.15
+        const alpineSpan = alpine.ownEnd - alpine.ownStart;
+        const alpineP  = Math.min(1, Math.max(0, (p - alpine.ownStart) / alpineSpan));
         const alpineX  = Math.sin(alpineP * Math.PI * 6) * 1.5;
         const alpineY  = THREE.MathUtils.lerp(0, 120, alpineP);
         const alpineZ  = 15;
         const alpineRX = 0.15;
 
-        // Summit zone (0.85-1.0): static (0,0,20), rotX=0
+        // Summit zone: static (0,0,20), rotX=0
         const summitX  = 0;
         const summitY  = 0;
         const summitZ  = 20;
         const summitRX = 0;
 
-        // Blend weights — each zone fades in/out at overlap boundaries
-        const hw = Math.max(0, p < 0.20 ? 1.0 : 1.0 - (p - 0.20) / 0.10);
+        // Blend weights using contract boundaries
+        const blendWidth = 0.06; // transition width between zones
+
+        const hw = Math.max(0, p < hero.ownEnd ? 1.0 : 1.0 - (p - hero.ownEnd) / blendWidth);
         const fw = Math.max(0, Math.min(1,
-            p < 0.20 ? 0 : p < 0.30 ? (p-0.20)/0.10 : p < 0.45 ? 1 : 1-(p-0.45)/0.10));
+            p < forest.ownStart ? 0
+            : p < forest.enterEnd ? (p - forest.ownStart) / (forest.enterEnd - forest.ownStart)
+            : p < forest.exitStart ? 1
+            : 1 - (p - forest.exitStart) / (forest.ownEnd - forest.exitStart)));
         const cw = Math.max(0, Math.min(1,
-            p < 0.45 ? 0 : p < 0.55 ? (p-0.45)/0.10 : p < 0.65 ? 1 : 1-(p-0.65)/0.10));
+            p < camp.ownStart ? 0
+            : p < camp.enterEnd ? (p - camp.ownStart) / (camp.enterEnd - camp.ownStart)
+            : p < camp.exitStart ? 1
+            : 1 - (p - camp.exitStart) / (camp.ownEnd - camp.exitStart)));
         const aw = Math.max(0, Math.min(1,
-            p < 0.65 ? 0 : p < 0.75 ? (p-0.65)/0.10 : p < 0.85 ? 1 : 1-(p-0.85)/0.07));
+            p < alpine.ownStart ? 0
+            : p < alpine.enterEnd ? (p - alpine.ownStart) / (alpine.enterEnd - alpine.ownStart)
+            : p < alpine.exitStart ? 1
+            : 1 - (p - alpine.exitStart) / (alpine.ownEnd - alpine.exitStart)));
         const sw = Math.max(0, Math.min(1,
-            p < 0.85 ? 0 : (p-0.85)/0.10));
+            p < summit.ownStart ? 0 : (p - summit.ownStart) / (summit.enterEnd - summit.ownStart)));
 
         const tot = hw + fw + cw + aw + sw || 1;
         const inv = 1 / tot;
@@ -96,7 +117,7 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
 
 // =============================================================================
 // UNIFIED POST PROCESSING
-// Single PostProcessingStack — bloom driven by camp zone.
+// Single PostProcessingStack — bloom driven by camp zone via contract.
 // =============================================================================
 
 function UnifiedPostProcessing({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
@@ -108,9 +129,9 @@ function UnifiedPostProcessing({ scrollProgress }: { scrollProgress: MotionValue
     useFrame((state, delta) => {
         lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
         const p = lerpedP.current;
-        const targetBloom = (p > 0.45 && p < 0.70) ? 1.5 : 0;
+        const camp = MODULE_TIMELINE.camp;
+        const targetBloom = (p > camp.ownStart && p < camp.ownEnd) ? 1.5 : 0;
         lerpedBloom.current = THREE.MathUtils.damp(lerpedBloom.current, targetBloom, 3, delta);
-        // Only trigger React re-render when value changes meaningfully
         if (Math.abs(lerpedBloom.current - lastSnap.current) > 0.1) {
             lastSnap.current = lerpedBloom.current;
             setBloomIntensity(lerpedBloom.current);
@@ -122,7 +143,6 @@ function UnifiedPostProcessing({ scrollProgress }: { scrollProgress: MotionValue
 
 // =============================================================================
 // HERO SCENE GROUP
-// Extracted from InteractiveHero -> Scene. Camera control removed.
 // =============================================================================
 
 function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1, scrollProgress }: {
@@ -159,7 +179,8 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1, scrollProgress }: 
 
     useFrame((state, delta) => {
         lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-        const heroProgress = Math.min(1, Math.max(0, lerpedP.current / 0.18));
+        const heroEnd = MODULE_TIMELINE.hero.exitEnd;
+        const heroProgress = Math.min(1, Math.max(0, lerpedP.current / heroEnd));
 
         if (materialRef.current) {
             materialRef.current.uTime = state.clock.elapsedTime;
@@ -187,10 +208,8 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
 
     useFrame((_, delta) => {
         lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-        const p = lerpedP.current;
-
         if (groupRef.current) {
-            groupRef.current.visible = p < 0.25;
+            groupRef.current.visible = sceneVisible('hero', lerpedP.current);
         }
     });
 
@@ -203,7 +222,6 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
 
 // =============================================================================
 // FOREST SCENE GROUP
-// Extracted from ForestModule -> ForestScene. Camera control removed.
 // =============================================================================
 
 function ForestSceneGroup({ scrollProgress, scrollVelocity }: {
@@ -216,7 +234,7 @@ function ForestSceneGroup({ scrollProgress, scrollVelocity }: {
     useFrame((state, delta) => {
         if (groupRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-            groupRef.current.visible = lerpedP.current > 0.24 && lerpedP.current < 0.58;
+            groupRef.current.visible = sceneVisible('forest', lerpedP.current);
 
             if (groupRef.current.visible) {
                 const vel = Math.min(scrollVelocity.current * 30, 1.5);
@@ -237,7 +255,6 @@ function ForestSceneGroup({ scrollProgress, scrollVelocity }: {
 
 // =============================================================================
 // CAMP SCENE GROUP
-// Extracted from CampModule -> NightCampScene. Camera control removed.
 // =============================================================================
 
 function Starfield({ scrollVelocity }: { scrollVelocity: React.MutableRefObject<number> }) {
@@ -327,6 +344,7 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: {
     videoUrl: string; position: [number, number, number];
     scale: [number, number]; scrollProgress: MotionValue<number>;
 }) {
+    const camp = MODULE_TIMELINE.camp;
     const tex     = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
     const meshRef = useRef<THREE.Mesh>(null);
     const lerpedP = useRef(0);
@@ -335,19 +353,19 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: {
         if (!tex?.image) return;
         const vid = tex.image as HTMLVideoElement;
         const unsub = scrollProgress.on('change', (v: number) => {
-            if (v > 0.44 && v < 0.71) {
+            if (v > camp.ownStart && v < camp.ownEnd) {
                 if (vid.paused) vid.play().catch(() => {});
             } else {
                 if (!vid.paused) { vid.pause(); vid.currentTime = 0; }
             }
         });
         return () => { unsub(); tex.dispose(); };
-    }, [tex, scrollProgress]);
+    }, [tex, scrollProgress, camp.ownStart, camp.ownEnd]);
 
     useFrame((state, delta) => {
         if (meshRef.current && tex.image) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-            const animP = Math.min(1, Math.max(0, (lerpedP.current - 0.45) / 0.10));
+            const animP = Math.min(1, Math.max(0, (lerpedP.current - camp.ownStart) / (camp.enterEnd - camp.ownStart)));
             (meshRef.current.material as THREE.MeshBasicMaterial).opacity = animP;
         }
     });
@@ -369,13 +387,14 @@ function CampSceneGroup({ scrollProgress, scrollVelocity }: {
     const lerpedP    = useRef(0);
     const colorNight = useMemo(() => new THREE.Color('#020617'), []);
     const colorFire  = useMemo(() => new THREE.Color('#ea580c'), []);
+    const camp = MODULE_TIMELINE.camp;
 
     useFrame((state, delta) => {
         lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
         const p = lerpedP.current;
-        if (groupRef.current) groupRef.current.visible = p > 0.44 && p < 0.71;
+        if (groupRef.current) groupRef.current.visible = sceneVisible('camp', p);
         if (lightRef.current) {
-            const mix = Math.min(1, Math.max(0, (p - 0.45) / 0.1));
+            const mix = Math.min(1, Math.max(0, (p - camp.ownStart) / (camp.enterEnd - camp.ownStart)));
             lightRef.current.color.lerpColors(colorNight, colorFire, mix);
             lightRef.current.intensity = 0.2 + mix * 1.5;
         }
@@ -398,7 +417,6 @@ function CampSceneGroup({ scrollProgress, scrollVelocity }: {
 
 // =============================================================================
 // ALPINE SCENE GROUP
-// Extracted from AlpineModule -> AlpineScene. Camera control removed.
 // =============================================================================
 
 function AlpineAnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0,
@@ -489,11 +507,12 @@ function AlpineWall({ textureUrl, position, scale }: {
 function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const groupRef = useRef<THREE.Group>(null);
     const lerpedP  = useRef(0);
+    const alpine = MODULE_TIMELINE.alpine;
 
     useFrame((state, delta) => {
         if (groupRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-            groupRef.current.visible = lerpedP.current > 0.64 && lerpedP.current < 0.91;
+            groupRef.current.visible = sceneVisible('alpine', lerpedP.current);
         }
     });
 
@@ -508,7 +527,7 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
                 <AlpineAnimatedSprite
                     textureUrl="/bird_sprite.webp"
                     startX={-45} endX={45} y={105} z={-30}
-                    scrollStart={0.76} scrollEnd={0.90}
+                    scrollStart={alpine.exitStart} scrollEnd={alpine.ownEnd}
                     scale={[15, 15]}
                     scrollProgress={scrollProgress}
                     frames={8} cycles={8}
@@ -520,7 +539,6 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
 
 // =============================================================================
 // SUMMIT SCENE GROUP
-// Extracted from SummitModule -> SummitScene. Camera control removed.
 // =============================================================================
 
 function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgress }: {
@@ -530,6 +548,7 @@ function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgr
     const tex     = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
     const lerpedP = useRef(0);
+    const summit = MODULE_TIMELINE.summit;
 
     useEffect(() => { return () => { tex.dispose(); }; }, [tex]);
 
@@ -537,7 +556,7 @@ function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgr
         if (meshRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
             const p     = lerpedP.current;
-            const animP = Math.min(1, Math.max(0, (p - 0.85) / 0.15));
+            const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
             const panP  = Math.min(1, Math.max(0, (animP - 0.66) / 0.34));
             meshRef.current.position.x = position[0] - panP * parallaxX;
             let opacity = 0;
@@ -565,6 +584,7 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
     const tex     = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
     const meshRef = useRef<THREE.Mesh>(null);
     const { viewport, camera } = useThree();
+    const summit = MODULE_TIMELINE.summit;
 
     const cv           = viewport.getCurrentViewport(camera, new THREE.Vector3(position[0], position[1], position[2]));
     const videoAspect  = 16 / 9;
@@ -579,21 +599,22 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
         if (!tex?.image) return;
         const vid = tex.image as HTMLVideoElement;
         const unsub = scrollProgress.on('change', (v: number) => {
-            const globalPlay = 0.85 + playThreshold * 0.15;
-            if (v > globalPlay && v <= 1.0) {
+            const summitSpan = summit.ownEnd - summit.ownStart;
+            const globalPlay = summit.ownStart + playThreshold * summitSpan;
+            if (v > globalPlay && v <= summit.ownEnd) {
                 if (vid.paused) vid.play().catch(() => {});
             } else {
                 if (!vid.paused) { vid.pause(); vid.currentTime = 0; }
             }
         });
         return () => { unsub(); tex.dispose(); };
-    }, [tex, scrollProgress, playThreshold]);
+    }, [tex, scrollProgress, summit.ownStart, summit.ownEnd, playThreshold]);
 
     useFrame((state, delta) => {
         if (meshRef.current && tex.image) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
             const p     = lerpedP.current;
-            const animP = Math.min(1, Math.max(0, (p - 0.85) / 0.15));
+            const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
             const panP  = Math.min(1, Math.max(0, (animP - 0.66) / 0.34));
             meshRef.current.position.x = position[0] - panP * parallaxX;
             let opacity = 0;
@@ -622,6 +643,7 @@ function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scr
     const tex     = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
     const { viewport, camera } = useThree();
+    const summit = MODULE_TIMELINE.summit;
 
     const cv      = viewport.getCurrentViewport(camera, new THREE.Vector3(position[0], position[1], endZ));
     const maxDim  = Math.max(cv.width, cv.height);
@@ -634,7 +656,7 @@ function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scr
         if (meshRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
             const p         = lerpedP.current;
-            const animP     = Math.min(1, Math.max(0, (p - 0.85) / 0.15));
+            const animP     = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
             const flyProgress = Math.min(1, Math.max(0, (animP - 0.0) / 0.25));
             const easeOut   = 1 - Math.pow(1 - flyProgress, 3);
             meshRef.current.position.z = THREE.MathUtils.lerp(startZ, endZ, easeOut);
@@ -654,6 +676,7 @@ function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset
     scale, rotation = 0, frames = 8, scrollStart, scrollEnd, cycles = 6, scrollProgress }: any) {
     const tex     = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
+    const summit = MODULE_TIMELINE.summit;
 
     const clonedTex = useMemo(() => {
         const c = tex.clone();
@@ -671,7 +694,7 @@ function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset
         if (meshRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
             const p         = lerpedP.current;
-            const animP     = Math.min(1, Math.max(0, (p - 0.85) / 0.15));
+            const animP     = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
             const clamped   = Math.min(1, Math.max(0, (animP - scrollStart) / (scrollEnd - scrollStart)));
             const walkProgress = Math.min(1, Math.max(0, (animP - 0.25) / 0.25));
             meshRef.current.position.x = THREE.MathUtils.lerp(startX, endX, walkProgress);
@@ -707,7 +730,7 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
     useFrame((state, delta) => {
         if (groupRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-            groupRef.current.visible = lerpedP.current > 0.84;
+            groupRef.current.visible = sceneVisible('summit', lerpedP.current);
         }
     });
 

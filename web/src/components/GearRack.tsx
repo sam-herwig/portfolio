@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { MODULE_TIMELINE } from '@/lib/moduleTimeline';
 import { motion, AnimatePresence, MotionValue, useTransform } from 'framer-motion';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -36,11 +37,14 @@ const essentials = [
   'Sanity CMS',
 ];
 
+// Camp timing bands derived from global module timeline contract
+const camp = MODULE_TIMELINE.camp;
+const campSpan = camp.ownEnd - camp.ownStart;
 const campBands = {
-  shell: [0.445, 0.49, 0.67, 0.71] as const,
-  intro: [0.46, 0.5, 0.61, 0.66] as const,
-  cards: [0.49, 0.54, 0.63, 0.685] as const,
-  pills: [0.55, 0.59, 0.65, 0.7] as const,
+  shell: [camp.ownStart, camp.enterEnd, camp.exitStart, camp.ownEnd] as const,
+  intro: [camp.ownStart + campSpan * 0.08, camp.enterEnd, camp.exitStart - campSpan * 0.04, camp.exitStart + campSpan * 0.1] as const,
+  cards: [camp.enterEnd - campSpan * 0.02, camp.enterEnd + campSpan * 0.1, camp.exitStart - campSpan * 0.02, camp.exitStart + campSpan * 0.12] as const,
+  pills: [camp.enterEnd + campSpan * 0.1, camp.enterEnd + campSpan * 0.2, camp.exitStart + campSpan * 0.02, camp.ownEnd - campSpan * 0.05] as const,
 };
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
