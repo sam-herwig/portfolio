@@ -19,7 +19,7 @@ function renderBody(body: string) {
 }
 
 export default function CaseStudyContent({ project, prev, next }: CaseStudyProps) {
-  const { title, subtitle, tags, projectUrl, overview, caseStudy } = project;
+  const { title, subtitle, tags, projectUrl, overview, gallery } = project;
 
   return (
     <article className="w-full">
@@ -61,32 +61,16 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
           </section>
         )}
 
-        {/* The Brief */}
-        {caseStudy?.problem && (
+        {/* Gallery */}
+        {gallery && gallery.length > 0 && (
           <section>
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">The Brief</h2>
-            <div className="prose prose-lg max-w-none text-foreground/80">
-              {renderBody(caseStudy.problem)}
-            </div>
-          </section>
-        )}
-
-        {/* How I Built It */}
-        {caseStudy?.approach && (
-          <section>
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">How I Built It</h2>
-            <div className="prose prose-lg max-w-none text-foreground/80">
-              {renderBody(caseStudy.approach)}
-            </div>
-          </section>
-        )}
-
-        {/* What Shipped */}
-        {caseStudy?.results && (
-          <section>
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">What Shipped</h2>
-            <div className="prose prose-lg max-w-none text-foreground/80">
-              {renderBody(caseStudy.results)}
+            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">The Work</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {gallery.map((src, i) => (
+                <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-foreground/5">
+                  <img src={src} alt={`${title} screenshot ${i + 1}`} className="object-cover w-full h-full" />
+                </div>
+              ))}
             </div>
           </section>
         )}
