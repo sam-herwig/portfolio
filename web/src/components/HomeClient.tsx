@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, MotionValue } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 import CaseStudyCard from '@/components/CaseStudyCard';
@@ -15,8 +15,95 @@ import { Project } from '@/data/projects';
 // Single unified Canvas — avoids 5x WebGL context overhead
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
 
-export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) {
+const alpineRanges = [
+  [0.655, 0.69, 0.725, 0.765],
+  [0.715, 0.75, 0.79, 0.835],
+  [0.775, 0.81, 0.85, 0.89],
+  [0.835, 0.865, 0.9, 0.915],
+] as const;
 
+const forestNarrative = [
+  {
+    title: "I'm Sam.",
+    body: 'I write code that you walk through. I build portfolio sites, immersive campaigns, and product experiences that use the browser like a stage instead of a brochure.',
+    side: 'left' as const,
+    range: [0.205, 0.235, 0.255, 0.285] as const,
+  },
+  {
+    title: 'Creative Engineer.',
+    body: 'Three.js, shaders, motion systems, and CMS-backed front ends — all tuned to feel sharp without collapsing under their own ambition.',
+    side: 'right' as const,
+    range: [0.255, 0.29, 0.315, 0.345] as const,
+  },
+  {
+    title: 'Every Pixel Earned.',
+    body: 'I care about the part where bold visuals still have to load fast, survive real devices, and actually help the work sell itself.',
+    side: 'left' as const,
+    range: [0.32, 0.355, 0.385, 0.425] as const,
+  },
+  {
+    title: 'See the View.',
+    body: 'The work below is a mix of high-performance marketing builds, immersive front-end systems, and one absurdly overbuilt AI pipeline.',
+    side: 'right' as const,
+    range: [0.395, 0.43, 0.465, 0.505] as const,
+  },
+];
+
+function GlassPanel({
+  className = '',
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[2rem] border border-foreground/12 bg-background/72 shadow-[0_30px_80px_-32px_rgba(0,0,0,0.45)] backdrop-blur-xl ${className}`}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent_45%,rgba(0,0,0,0.12))] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),transparent_45%,rgba(0,0,0,0.24))]" />
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
+
+function StoryCard({
+  title,
+  body,
+  side,
+  range,
+  scrollProgress,
+}: {
+  title: string;
+  body: string;
+  side: 'left' | 'right';
+  range: readonly [number, number, number, number];
+  scrollProgress: MotionValue<number>;
+}) {
+  const progressRange = [...range];
+  const opacity = useTransform(scrollProgress, progressRange, [0, 1, 1, 0]);
+  const y = useTransform(scrollProgress, [progressRange[0], progressRange[1], progressRange[3]], [72, 0, -32]);
+
+  return (
+    <motion.div
+      style={{ opacity, y }}
+      className={`flex w-full ${side === 'left' ? 'justify-start' : 'justify-end'}`}
+    >
+      <GlassPanel className="w-full max-w-2xl px-6 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10">
+        <p className="mb-3 text-[0.65rem] font-mono uppercase tracking-[0.35em] text-foreground/45">
+          Trail Marker
+        </p>
+        <h3 className="max-w-[14ch] text-3xl font-semibold tracking-tight text-foreground md:text-4xl lg:text-5xl">
+          {title}
+        </h3>
+        <p className="mt-4 max-w-[44ch] text-sm leading-7 text-foreground/75 md:text-base md:leading-8">
+          {body}
+        </p>
+      </GlassPanel>
+    </motion.div>
+  );
+}
+
+export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) {
   const { hasLoaded } = useAppStore();
 
   const refHero = useRef<HTMLDivElement>(null);
@@ -32,23 +119,24 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   const backgroundColor = useTransform(
     scrollYProgress,
     [0.45, 0.5, 0.65, 0.7],
-    ["#f9fafb", "#09090b", "#09090b", "#f9fafb"]
+    ['#f9fafb', '#09090b', '#09090b', '#f9fafb']
   );
 
   const color = useTransform(
     scrollYProgress,
     [0.45, 0.5, 0.65, 0.7],
-    ["#18181b", "#fafafa", "#fafafa", "#18181b"]
+    ['#18181b', '#fafafa', '#fafafa', '#18181b']
   );
 
   const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.14, 0.22], [1, 1, 0]);
+  const heroY = useTransform(scrollYProgress, [0, 0.18], [0, -48]);
 
   return (
     <motion.main
       style={{ backgroundColor, color }}
-      className="relative w-full overflow-x-hidden min-h-screen transition-colors duration-100"
+      className="relative min-h-screen w-full overflow-x-hidden transition-colors duration-100"
     >
-
       {/* Custom cursor — zone-aware, inertia-driven, touch-gated */}
       <CustomCursor scrollProgress={scrollYProgress} />
 
@@ -58,24 +146,22 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
       {/* Scroll indicator — only shown after loading completes */}
       {hasLoaded && (
         <motion.div
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
+          className="pointer-events-none fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2"
           style={{ opacity: scrollHintOpacity }}
         >
           <span className="text-xs font-mono uppercase tracking-[0.3em] text-foreground/40">Scroll</span>
-          <motion.div
-            className="w-5 h-8 rounded-full border-2 border-foreground/30 flex items-start justify-center p-1"
-          >
+          <motion.div className="flex h-8 w-5 items-start justify-center rounded-full border-2 border-foreground/30 p-1">
             <motion.div
-              className="w-1.5 h-1.5 rounded-full bg-foreground/50"
+              className="h-1.5 w-1.5 rounded-full bg-foreground/50"
               animate={{ y: [0, 12, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
             />
           </motion.div>
         </motion.div>
       )}
 
       {/* Persistent 3D Background System — single Canvas, unified scene */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
+      <div className="pointer-events-none fixed inset-0 z-0">
         <UnifiedScene scrollProgress={scrollYProgress} />
       </div>
 
@@ -83,31 +169,89 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
       <ElevationBar scrollProgress={scrollYProgress} />
 
       {/* The Content Overlay Container */}
-      <div id="main-content" className="relative z-10 w-full overflow-x-hidden flex flex-col items-center">
+      <div id="main-content" className="relative z-10 flex w-full flex-col items-center overflow-x-hidden">
+        {/* Checkpoint 1: Basecamp - Hero Content */}
+        <section
+          ref={refHero}
+          role="region"
+          aria-label="Hero — Introduction"
+          className="w-full min-h-screen pb-[180vh]"
+        >
+          <div className="sticky top-0 flex min-h-screen items-center px-4 pb-24 pt-28 md:px-8 lg:px-12">
+            <motion.div style={{ opacity: heroOpacity, y: heroY }} className="w-full">
+              <GlassPanel className="mx-auto max-w-3xl p-7 md:mx-0 md:ml-[8vw] md:p-10 lg:p-12">
+                <p className="text-[0.65rem] font-mono uppercase tracking-[0.35em] text-foreground/45">
+                  Denver · Front End / Creative Engineering
+                </p>
+                <h1 className="mt-4 max-w-[10ch] text-5xl font-semibold leading-[0.92] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-[5.6rem]">
+                  I build websites people can feel.
+                </h1>
+                <p className="mt-5 max-w-[34ch] text-base leading-8 text-foreground/78 md:text-lg">
+                  Three.js worlds, high-performance marketing builds, and motion systems that still hold up on a real laptop instead of only in a dribbble fever dream.
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <a
+                    href="#selected-work"
+                    className="inline-flex min-h-12 items-center justify-center rounded-full bg-foreground px-6 py-3 text-sm font-mono uppercase tracking-[0.2em] text-background transition-transform duration-300 hover:-translate-y-0.5"
+                  >
+                    See Selected Work
+                  </a>
+                  <a
+                    href="mailto:sam@samherwig.dev"
+                    className="inline-flex min-h-12 items-center justify-center rounded-full border border-foreground/20 bg-background/40 px-6 py-3 text-sm font-mono uppercase tracking-[0.2em] text-foreground/80 transition-colors duration-300 hover:border-foreground/35 hover:text-foreground"
+                  >
+                    Start a Project
+                  </a>
+                </div>
+              </GlassPanel>
+            </motion.div>
+          </div>
+        </section>
 
-        {/* Checkpoint 1: Basecamp - Hero Content (Migrated to 3D Canvas) */}
-        <div ref={refHero} role="region" aria-label="Hero — Introduction" className="w-full min-h-screen pb-[300vh]">
-          <h2 className="sr-only">Hero — Introduction</h2>
-        </div>
-
-        {/* The Forest Gauntlet Text Nodes (Migrated to 3D Canvas) */}
-        <div ref={refForest} role="region" aria-label="About Sam" className="w-full min-h-[400vh]">
-          <h2 className="sr-only">About Sam</h2>
-        </div>
+        {/* The Forest Gauntlet — narrative cards instead of scene-dependent copy */}
+        <section
+          ref={refForest}
+          role="region"
+          aria-label="About Sam"
+          className="w-full min-h-[360vh] px-4 py-[12vh] md:px-8 lg:px-12"
+        >
+          <div className="mx-auto flex max-w-6xl flex-col gap-[20vh] pt-[16vh]">
+            {forestNarrative.map((entry) => (
+              <StoryCard
+                key={entry.title}
+                title={entry.title}
+                body={entry.body}
+                side={entry.side}
+                range={entry.range}
+                scrollProgress={scrollYProgress}
+              />
+            ))}
+          </div>
+        </section>
 
         {/* Checkpoint 2.5: The Night Camp */}
-        <div ref={refCamp} role="region" aria-label="Technical Skills" className="w-full flex flex-col items-center justify-center min-h-[200vh] py-[60vh]">
+        <section
+          ref={refCamp}
+          role="region"
+          aria-label="Technical Skills"
+          className="flex min-h-[200vh] w-full flex-col items-center justify-center py-[60vh]"
+        >
           <h2 className="sr-only">Technical Skills</h2>
-          <div className="w-full min-h-[50vh] flex flex-col items-center justify-center text-center px-4 md:px-24 my-[20vh] transform-gpu relative">
-            <div className="absolute inset-0 bg-foreground/5 backdrop-blur-xl rounded-3xl m-4 md:m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
-            <div className="relative z-10 p-6 md:p-12 w-full max-w-4xl mx-auto">
-              <GearRack />
-            </div>
+          <div className="relative my-[20vh] flex min-h-[50vh] w-full flex-col items-center justify-center px-4 text-center md:px-24">
+            <GlassPanel className="mx-auto w-full max-w-5xl p-6 md:ml-[8vw] md:mr-auto md:max-w-[72rem] md:p-10 lg:p-12">
+              <GearRack scrollProgress={scrollYProgress} />
+            </GlassPanel>
           </div>
-        </div>
+        </section>
 
         {/* Checkpoint 3: The High Alpine - Case Studies */}
-        <div ref={refAlpine} role="region" aria-label="Selected Work" className="w-full flex flex-col items-center max-w-7xl mx-auto py-[80vh]">
+        <section
+          id="selected-work"
+          ref={refAlpine}
+          role="region"
+          aria-label="Selected Work"
+          className="mx-auto flex w-full max-w-7xl flex-col items-center py-[80vh]"
+        >
           <h2 className="sr-only">Selected Work</h2>
           {caseStudies.map((cs, i) => (
             <CaseStudyCard
@@ -119,37 +263,59 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
               tags={cs.tags}
               side={i % 2 === 0 ? 'right' : 'left'}
               linkable={true}
+              scrollProgress={scrollYProgress}
+              range={alpineRanges[i] ?? alpineRanges[alpineRanges.length - 1]}
             />
           ))}
-        </div>
+        </section>
 
         {/* Between Alpine and Summit: Social Proof / Credential Strip */}
         <CredentialStrip />
 
         {/* Checkpoint 4: The Summit - Finale & Footer */}
-        <section ref={refSummit} role="region" aria-label="Contact" className="w-full relative min-h-[160vh] flex flex-col justify-end pb-[20vh] pt-[60vh]">
-          <motion.div
-            style={{
-              opacity: useTransform(scrollYProgress, [0.85, 0.95], [0, 1]),
-              y: useTransform(scrollYProgress, [0.85, 0.95], [100, 0])
-            }}
-            className="w-full flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto mix-blend-multiply"
-          >
-            <h2 className="text-4xl md:text-6xl lg:text-9xl font-bold tracking-tighter uppercase mb-8">The Summit.</h2>
-            <p className="text-xl md:text-3xl text-foreground/80 mb-16 max-w-[20ch]">
-              I&apos;m looking for the next big build. Let&apos;s talk about yours.
-            </p>
-            <a
-              href="mailto:sam@samherwig.dev"
-              className="group relative px-8 py-4 md:px-12 md:py-6 overflow-hidden rounded-full border-2 border-foreground bg-transparent text-foreground hover:text-background transition-colors duration-500"
+        <section
+          ref={refSummit}
+          role="region"
+          aria-label="Contact"
+          className="relative flex min-h-[180vh] w-full flex-col justify-end pb-[18vh] pt-[72vh]"
+        >
+          <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center px-4 text-center">
+            <motion.div
+              style={{
+                opacity: useTransform(scrollYProgress, [0.975, 0.992], [0, 1]),
+                y: useTransform(scrollYProgress, [0.975, 0.992], [72, 0]),
+              }}
+              className="flex flex-col items-center"
             >
-              <span className="relative z-10 font-mono text-sm uppercase tracking-widest">Pitch Me Your Mountain →</span>
-              <div className="absolute inset-0 h-full w-full bg-foreground transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500 ease-out" />
-            </a>
-          </motion.div>
-        </section>
+              <p className="mb-4 text-[0.7rem] font-mono uppercase tracking-[0.35em] text-foreground/45">
+                Sam Herwig · Creative Engineer
+              </p>
+              <h2 className="text-4xl font-bold tracking-tighter uppercase md:text-6xl lg:text-8xl">
+                The Summit.
+              </h2>
+              <p className="mt-6 max-w-[26ch] text-lg leading-8 text-foreground/78 md:text-2xl md:leading-10">
+                Front-end systems, motion design, Three.js, and marketing builds that still know how to close.
+              </p>
+            </motion.div>
 
-      </div >
-    </motion.main >
+            <motion.div
+              style={{
+                opacity: useTransform(scrollYProgress, [0.992, 1], [0, 1]),
+                y: useTransform(scrollYProgress, [0.992, 1], [48, 0]),
+              }}
+              className="mt-10"
+            >
+              <a
+                href="mailto:sam@samherwig.dev"
+                className="group relative overflow-hidden rounded-full border-2 border-foreground bg-transparent px-8 py-4 text-foreground transition-colors duration-500 hover:text-background md:px-12 md:py-6"
+              >
+                <span className="relative z-10 font-mono text-sm uppercase tracking-widest">Pitch Me Your Mountain →</span>
+                <div className="absolute inset-0 h-full w-full origin-left scale-x-0 transform bg-foreground transition-transform duration-500 ease-out group-hover:scale-x-100" />
+              </a>
+            </motion.div>
+          </div>
+        </section>
+      </div>
+    </motion.main>
   );
 }

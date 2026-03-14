@@ -38,16 +38,16 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
             // 1. Physical Translation: Move linearly from startX to endX
             meshRef.current.position.x = THREE.MathUtils.lerp(startX, endX, clamped);
 
-            // 2. Sprite Animation: Tie current frame to velocity
-            // velocity is usually small (e.g. 0.1 to 2.0 progress/sec)
-            const vel = Math.abs(scrollProgress.getVelocity());
-            const animationSpeed = vel > 0.01 ? 10 + (vel * 150) : 0; // Walk very fast when scrolling, freeze when stopped
-
-            // Only animate if the sprite is currently "visible" and active in the sequence
+            // 2. Sprite Animation: Tie frame selection to local scroll progress instead of velocity.
+            // Velocity-based playback was too brittle on the global 0..1 page progress value.
             if (clamped > 0 && clamped < 1) {
-                playhead.current += animationSpeed * delta;
+                playhead.current = clamped * cycles * frames;
+            } else if (clamped >= 1) {
+                playhead.current = cycles * frames;
+            } else {
+                playhead.current = 0;
             }
-            
+
             const currentFrame = Math.floor(playhead.current) % frames;
             clonedTex.offset.x = currentFrame / frames;
         }
@@ -310,48 +310,21 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
                 scale={[45, 45]}
             />
 
-            {/* SPATIAL TYPOGRAPHY NODES */}
-            <SpatialText 
-                title="I'm Sam." 
-                subtitle="I write code that you walk through." 
-                position={[0, 5, -12]} 
-                scrollProgress={scrollProgress} 
-                trees={treeArray} 
-            />
-            <SpatialText 
-                title="Creative Engineer." 
-                subtitle="Three.js, shaders, and the browser as a canvas — not a document." 
-                position={[0, 5, -40]} 
-                scrollProgress={scrollProgress} 
-                trees={treeArray} 
-            />
-            <SpatialText 
-                title="Every Pixel Earned." 
-                subtitle="I don't use templates. I build worlds from geometry and light." 
-                position={[0, 5, -70]} 
-                scrollProgress={scrollProgress} 
-                trees={treeArray} 
-            />
-            <SpatialText 
-                title="See the View." 
-                subtitle="Selected work from the trail so far." 
-                position={[0, 5, -110]} 
-                scrollProgress={scrollProgress} 
-                trees={treeArray} 
-            />
+            {/* Spatial text removed from the scene layer.
+                Meaningful copy now lives in protected HTML panels so the scene can stay atmospheric. */}
 
             {/* The Animated Stag (Walking subtly in the midground, tied directly to scroll) */}
             <AnimatedSprite
                 textureUrl="/stag_sprite.webp"
-                startX={-50}
-                endX={50}
+                startX={-42}
+                endX={34}
                 y={-5}
                 z={-40}
-                scrollStart={0.15}
-                scrollEnd={0.35}
+                scrollStart={0.255}
+                scrollEnd={0.42}
                 scale={[18, 18]}
                 frames={8}
-                cycles={8}
+                cycles={6}
                 scrollProgress={scrollProgress}
             />
         </group>

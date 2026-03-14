@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useScroll, useTransform, AnimatePresence, MotionValue } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -13,6 +13,8 @@ interface CaseStudyCardProps {
   tags?: string[];
   side: 'left' | 'right';
   linkable?: boolean;
+  scrollProgress?: MotionValue<number>;
+  range?: readonly [number, number, number, number];
 }
 
 function hash(str: string): number {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, MotionValue, useTransform } from 'framer-motion';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +35,13 @@ const essentials = [
   'Tailwind CSS',
   'Sanity CMS',
 ];
+
+const campBands = {
+  shell: [0.445, 0.49, 0.67, 0.71] as const,
+  intro: [0.46, 0.5, 0.61, 0.66] as const,
+  cards: [0.49, 0.54, 0.63, 0.685] as const,
+  pills: [0.55, 0.59, 0.65, 0.7] as const,
+};
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -89,7 +96,19 @@ const childVariants = {
 
 // ─── LeadCard ────────────────────────────────────────────────────────────────
 
-function LeadCard({ name, tagline, icon, delay }: { name: string; tagline: string; icon: keyof typeof iconMap; delay: string }) {
+function LeadCard({
+  name,
+  tagline,
+  icon,
+  delay,
+  featured = false,
+}: {
+  name: string;
+  tagline: string;
+  icon: keyof typeof iconMap;
+  delay: string;
+  featured?: boolean;
+}) {
   const [hovered, setHovered] = useState(false);
   const Icon = iconMap[icon];
 
@@ -97,50 +116,45 @@ function LeadCard({ name, tagline, icon, delay }: { name: string; tagline: strin
     <motion.div
       variants={childVariants}
       style={{ animationDelay: delay }}
-      className={`animate-[ember-pulse_3s_ease-in-out_infinite]`}
+      className={featured ? 'md:col-span-2' : ''}
     >
       <motion.div
-        whileHover={{ y: -4, scale: 1.02 }}
+        whileHover={{ y: -4, scale: 1.015 }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         onHoverStart={() => setHovered(true)}
         onHoverEnd={() => setHovered(false)}
         className={[
-          'relative p-6 rounded-2xl backdrop-blur-sm',
-          'bg-white/5 border transition-all duration-300 cursor-default select-none',
-          hovered
-            ? 'border-amber-400/20 shadow-[0_0_30px_-5px_rgba(251,191,36,0.15)]'
-            : 'border-white/10',
+          'relative h-full rounded-[1.75rem] border p-6 transition-all duration-300 cursor-default select-none',
+          featured
+            ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.04))] border-amber-300/18 shadow-[0_0_40px_-18px_rgba(251,191,36,0.18)] md:p-8'
+            : 'bg-white/5 border-white/10',
+          hovered ? 'border-amber-400/28 shadow-[0_0_34px_-12px_rgba(251,191,36,0.16)]' : '',
         ].join(' ')}
       >
-        {/* Icon */}
-        <div className="text-amber-400/70 mb-4">
+        <div className="mb-4 text-amber-400/70">
           <Icon />
         </div>
 
-        {/* Skill name */}
-        <p className="text-lg font-bold tracking-tight text-foreground">{name}</p>
-
-        {/* Tagline — always visible on mobile, hover-reveal on desktop */}
-        <div className="mt-2">
-          {/* Mobile: always visible */}
-          <p className="text-sm text-foreground/60 md:hidden">{tagline}</p>
-
-          {/* Desktop: animate in/out */}
-          <AnimatePresence>
-            {hovered && (
-              <motion.p
-                key="tagline"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="hidden md:block text-sm text-foreground/60 overflow-hidden"
-              >
-                {tagline}
-              </motion.p>
-            )}
-          </AnimatePresence>
+        <div className="max-w-[34ch]">
+          <p className={`tracking-tight text-foreground ${featured ? 'text-xl md:text-2xl font-semibold' : 'text-lg font-bold'}`}>
+            {name}
+          </p>
+          <p className={`mt-3 text-foreground/72 ${featured ? 'text-sm leading-7 md:text-base md:leading-8' : 'text-sm leading-6'}`}>
+            {tagline}
+          </p>
         </div>
+
+        <AnimatePresence>
+          {hovered && !featured && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="pointer-events-none absolute inset-x-6 bottom-5 h-px bg-gradient-to-r from-transparent via-amber-300/50 to-transparent"
+            />
+          )}
+        </AnimatePresence>
       </motion.div>
     </motion.div>
   );
@@ -161,37 +175,55 @@ function EssentialPill({ name }: { name: string }) {
 
 // ─── GearRack ────────────────────────────────────────────────────────────────
 
-export default function GearRack() {
+export default function GearRack({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+  const shellOpacity = useTransform(scrollProgress, [...campBands.shell], [0, 1, 1, 0]);
+  const shellY = useTransform(scrollProgress, [campBands.shell[0], campBands.shell[1], campBands.shell[3]], [52, 0, -28]);
+  const introOpacity = useTransform(scrollProgress, [...campBands.intro], [0, 1, 1, 0]);
+  const introY = useTransform(scrollProgress, [campBands.intro[0], campBands.intro[1], campBands.intro[3]], [28, 0, -18]);
+  const cardsOpacity = useTransform(scrollProgress, [...campBands.cards], [0, 1, 1, 0]);
+  const cardsY = useTransform(scrollProgress, [campBands.cards[0], campBands.cards[1], campBands.cards[3]], [36, 0, -20]);
+  const pillsOpacity = useTransform(scrollProgress, [...campBands.pills], [0, 1, 1, 0]);
+  const pillsY = useTransform(scrollProgress, [campBands.pills[0], campBands.pills[1], campBands.pills[3]], [24, 0, -16]);
+
   return (
-    <motion.section
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: '-100px' }}
-      variants={{
-        hidden: {},
-        visible: { transition: { staggerChildren: 0.08 } },
-      }}
-    >
-      <motion.h2
-        variants={childVariants}
-        className="text-4xl md:text-6xl font-bold tracking-tight mb-10 text-balance"
+    <motion.section style={{ opacity: shellOpacity, y: shellY }} className="w-full">
+      <motion.div
+        style={{ opacity: introOpacity, y: introY }}
+        className="grid gap-8 md:grid-cols-[minmax(0,0.9fr)_minmax(20rem,1.1fr)] md:items-end md:gap-12"
       >
-        The Gear.
-      </motion.h2>
+        <div className="max-w-xl text-left">
+          <p className="mb-3 text-[0.68rem] font-mono uppercase tracking-[0.38em] text-foreground/45">
+            Basecamp Briefing
+          </p>
+          <h2 className="text-4xl font-semibold tracking-tight text-balance md:text-6xl">
+            The Gear.
+          </h2>
+        </div>
 
-      {/* Lead cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
-        {leadGear.map((item) => (
-          <LeadCard key={item.name} {...item} />
-        ))}
-      </div>
+        <p className="max-w-2xl text-left text-sm leading-7 text-foreground/72 md:ml-auto md:text-base md:leading-8">
+          This is the expedition kit: real-time 3D, custom shader work, and front-end systems built to hold up under real devices, real teams, and real launch pressure.
+        </p>
+      </motion.div>
 
-      {/* Essential pills */}
-      <div className="flex flex-wrap justify-center gap-2 md:gap-3">
-        {essentials.map((name) => (
-          <EssentialPill key={name} name={name} />
+      <motion.div
+        style={{ opacity: cardsOpacity, y: cardsY }}
+        className="mt-10 grid grid-cols-1 gap-4 md:mt-12 md:grid-cols-3 md:gap-6"
+      >
+        {leadGear.map((item, index) => (
+          <LeadCard key={item.name} {...item} featured={index === 0} />
         ))}
-      </div>
+      </motion.div>
+
+      <motion.div style={{ opacity: pillsOpacity, y: pillsY }} className="mt-8 md:mt-10">
+        <p className="mb-4 text-left text-[0.68rem] font-mono uppercase tracking-[0.32em] text-foreground/40">
+          Supporting kit
+        </p>
+        <div className="flex flex-wrap gap-2 md:gap-3">
+          {essentials.map((name) => (
+            <EssentialPill key={name} name={name} />
+          ))}
+        </div>
+      </motion.div>
     </motion.section>
   );
 }

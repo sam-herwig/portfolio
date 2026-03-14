@@ -2,24 +2,21 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useTexture, useFBO, Text, useVideoTexture, Points, PointMaterial } from '@react-three/drei';
+import { useTexture, useVideoTexture, Points, PointMaterial } from '@react-three/drei';
 import { useRef, useEffect, Suspense, useMemo, useState } from 'react';
 import React from 'react';
 import { MotionValue } from 'framer-motion';
 import * as THREE from 'three';
 import PostProcessingStack from './PostProcessingStack';
-import './shaders/RefractionMaterial';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
-const RefractionShader = 'refractionShaderMaterial' as any;
 
 declare global {
     namespace JSX {
         interface IntrinsicElements {
             woodcutShaderMaterial: any;
-            refractionShaderMaterial: any;
         }
     }
 }
@@ -181,51 +178,23 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1 }: {
 }
 
 function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
-    const { gl, scene, camera, viewport } = useThree();
-    const groupRef   = useRef<THREE.Group>(null);
-    const textRef    = useRef<THREE.Mesh>(null);
-    const textMatRef = useRef<any>(null);
-    const lerpedP    = useRef(0);
-    const fontSize   = Math.min(8, viewport.width * 0.6);
+    const groupRef = useRef<THREE.Group>(null);
+    const lerpedP = useRef(0);
 
-    const mainRenderTarget = useFBO({ samples: 4, type: THREE.HalfFloatType });
-
-    useFrame((state, delta) => {
+    useFrame((_, delta) => {
         lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
         const p = lerpedP.current;
 
         if (groupRef.current) {
             groupRef.current.visible = p < 0.25;
         }
-
-        if (groupRef.current?.visible && textRef.current && textMatRef.current) {
-            textRef.current.visible = false;
-            gl.setRenderTarget(mainRenderTarget);
-            gl.render(scene, camera);
-            gl.setRenderTarget(null);
-            textRef.current.visible = true;
-            textMatRef.current.uTexture = mainRenderTarget.texture;
-            textMatRef.current.uWinSize.set(window.innerWidth, window.innerHeight);
-        }
     });
 
     return (
         <group ref={groupRef} position={[0, -2, -5]}>
-            <Text
-                ref={textRef}
-                position={[0, 0, 5]}
-                fontSize={fontSize}
-                letterSpacing={-0.05}
-                anchorX="center"
-                anchorY="middle"
-                font="/fonts/InstrumentSerif-Regular.ttf"
-            >
-                {"Let's Go On A Journey."}
-                <RefractionShader ref={textMatRef} uRefraction={0.06} />
-            </Text>
-            <ParallaxLayer textureUrl="/bg_layer.webp" z={-80} baseY={20}  speed={0.1} />
-            <ParallaxLayer textureUrl="/mg_layer.webp" z={-30} baseY={5}   speed={0.5} />
-            <ParallaxLayer textureUrl="/fg_layer.webp" z={10}  baseY={-8}  speed={1.0} />
+            <ParallaxLayer textureUrl="/bg_layer.webp" z={-80} baseY={20} speed={0.1} />
+            <ParallaxLayer textureUrl="/mg_layer.webp" z={-30} baseY={5} speed={0.5} />
+            <ParallaxLayer textureUrl="/fg_layer.webp" z={10} baseY={-8} speed={1.0} />
         </group>
     );
 }
@@ -458,9 +427,13 @@ function AlpineAnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation 
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
             const clamped = Math.min(1, Math.max(0, (lerpedP.current - scrollStart) / (scrollEnd - scrollStart)));
             meshRef.current.position.x = THREE.MathUtils.lerp(startX, endX, clamped);
-            const vel   = Math.abs(scrollProgress.getVelocity());
-            const speed = vel > 0.01 ? 8 + vel * 120 : 0;
-            if (clamped > 0 && clamped < 1) playhead.current += speed * delta;
+            if (clamped > 0 && clamped < 1) {
+                playhead.current = clamped * cycles * frames;
+            } else if (clamped >= 1) {
+                playhead.current = cycles * frames;
+            } else {
+                playhead.current = 0;
+            }
             clonedTex.offset.x = (Math.floor(playhead.current) % frames) / frames;
         }
         if (matRef.current) {
@@ -533,10 +506,10 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
                 <AlpineAnimatedSprite
                     textureUrl="/bird_sprite.webp"
                     startX={-45} endX={45} y={105} z={-30}
-                    scrollStart={0.80} scrollEnd={0.875}
+                    scrollStart={0.76} scrollEnd={0.90}
                     scale={[15, 15]}
                     scrollProgress={scrollProgress}
-                    frames={8} cycles={10}
+                    frames={8} cycles={8}
                 />
             </group>
         </group>
@@ -766,8 +739,8 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
                     scale={[6, 6]}
                     frames={7}
                     cycles={6}
-                    scrollStart={0.25}
-                    scrollEnd={0.50}
+                    scrollStart={0.20}
+                    scrollEnd={0.60}
                     scrollProgress={scrollProgress}
                 />
             </group>
