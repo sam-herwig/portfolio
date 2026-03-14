@@ -125,8 +125,8 @@ function UnifiedPostProcessing({ scrollProgress }: { scrollProgress: MotionValue
 // Extracted from InteractiveHero -> Scene. Camera control removed.
 // =============================================================================
 
-function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1 }: {
-    textureUrl: string; z: number; baseY?: number; speed?: number;
+function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1, scrollProgress }: {
+    textureUrl: string; z: number; baseY?: number; speed?: number; scrollProgress: MotionValue<number>;
 }) {
     const tex = useTexture(textureUrl) as THREE.Texture;
     const { viewport, camera } = useThree();
@@ -137,32 +137,32 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1 }: {
 
     const materialRef = useRef<any>(null);
     const meshRef     = useRef<THREE.Mesh>(null);
-    const scrollYRef  = useRef(0);
+    const lerpedP     = useRef(0);
     const mousePos    = useRef(new THREE.Vector2(0, 0));
 
     useEffect(() => { return () => { tex.dispose(); }; }, [tex]);
 
     useEffect(() => {
-        const onScroll = () => { scrollYRef.current = window.scrollY; };
         const onMouse  = (e: MouseEvent) => {
             mousePos.current.x =  (e.clientX / window.innerWidth)  * 2 - 1;
             mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
         };
-        window.addEventListener('scroll',    onScroll, { passive: true });
-        window.addEventListener('mousemove', onMouse,  { passive: true });
+        window.addEventListener('mousemove', onMouse, { passive: true });
         return () => {
-            window.removeEventListener('scroll',    onScroll);
             window.removeEventListener('mousemove', onMouse);
         };
     }, []);
 
     useFrame((state, delta) => {
+        lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
+        const heroProgress = Math.min(1, Math.max(0, lerpedP.current / 0.2));
+
         if (materialRef.current) {
             materialRef.current.uTime = state.clock.elapsedTime;
             materialRef.current.uMouse.lerp(mousePos.current, 0.1);
         }
         if (meshRef.current) {
-            const targetY = baseY + scrollYRef.current * 0.005 * speed;
+            const targetY = baseY + heroProgress * (18 * speed);
             meshRef.current.position.y = THREE.MathUtils.damp(meshRef.current.position.y, targetY, 5, delta);
             meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, mousePos.current.y * 0.05, 0.05);
             meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, mousePos.current.x * 0.05, 0.05);
@@ -192,9 +192,9 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
 
     return (
         <group ref={groupRef} position={[0, -2, -5]}>
-            <ParallaxLayer textureUrl="/bg_layer.webp" z={-80} baseY={20} speed={0.1} />
-            <ParallaxLayer textureUrl="/mg_layer.webp" z={-30} baseY={5} speed={0.5} />
-            <ParallaxLayer textureUrl="/fg_layer.webp" z={10} baseY={-8} speed={1.0} />
+            <ParallaxLayer textureUrl="/bg_layer.webp" z={-80} baseY={20} speed={0.1} scrollProgress={scrollProgress} />
+            <ParallaxLayer textureUrl="/mg_layer.webp" z={-30} baseY={5} speed={0.5} scrollProgress={scrollProgress} />
+            <ParallaxLayer textureUrl="/fg_layer.webp" z={10} baseY={-8} speed={1.0} scrollProgress={scrollProgress} />
         </group>
     );
 }

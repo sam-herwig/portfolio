@@ -27,25 +27,25 @@ const forestNarrative = [
     title: "I'm Sam.",
     body: 'I write code that you walk through. I build portfolio sites, immersive campaigns, and product experiences that use the browser like a stage instead of a brochure.',
     side: 'left' as const,
-    range: [0.205, 0.235, 0.255, 0.285] as const,
+    range: [0.08, 0.16, 0.24, 0.34] as const,
   },
   {
     title: 'Creative Engineer.',
     body: 'Three.js, shaders, motion systems, and CMS-backed front ends — all tuned to feel sharp without collapsing under their own ambition.',
     side: 'right' as const,
-    range: [0.255, 0.29, 0.315, 0.345] as const,
+    range: [0.24, 0.32, 0.42, 0.52] as const,
   },
   {
     title: 'Every Pixel Earned.',
     body: 'I care about the part where bold visuals still have to load fast, survive real devices, and actually help the work sell itself.',
     side: 'left' as const,
-    range: [0.32, 0.355, 0.385, 0.425] as const,
+    range: [0.42, 0.5, 0.6, 0.72] as const,
   },
   {
     title: 'See the View.',
     body: 'The work below is a mix of high-performance marketing builds, immersive front-end systems, and one absurdly overbuilt AI pipeline.',
     side: 'right' as const,
-    range: [0.395, 0.43, 0.465, 0.505] as const,
+    range: [0.62, 0.7, 0.8, 0.92] as const,
   },
 ];
 
@@ -114,6 +114,14 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
 
   // Global Scroll Tracker for unified timeline across all 5 modules [0.0 - 1.0]
   const { scrollYProgress } = useScroll();
+  const { scrollYProgress: heroSectionProgress } = useScroll({
+    target: refHero,
+    offset: ['start start', 'end start'],
+  });
+  const { scrollYProgress: forestSectionProgress } = useScroll({
+    target: refForest,
+    offset: ['start end', 'end start'],
+  });
 
   // Background Color Transition tied exclusively to the Night Camp global bounds [0.45 - 0.70]
   const backgroundColor = useTransform(
@@ -129,8 +137,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   );
 
   const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.07, 0.14], [1, 1, 0]);
-  const heroY = useTransform(scrollYProgress, [0, 0.14], [0, -72]);
+  const heroOpacity = useTransform(heroSectionProgress, [0, 0.18, 0.36], [1, 1, 0]);
+  const heroY = useTransform(heroSectionProgress, [0, 0.36], [0, -72]);
 
   return (
     <motion.main
@@ -223,7 +231,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
                 body={entry.body}
                 side={entry.side}
                 range={entry.range}
-                scrollProgress={scrollYProgress}
+                scrollProgress={forestSectionProgress}
               />
             ))}
           </div>
