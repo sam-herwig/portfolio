@@ -6,12 +6,8 @@ import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 import CaseStudyCard from '@/components/CaseStudyCard';
 
-// Avoid SSR for the Three.js Canvas to prevent hydration matches
-const InteractiveHero = dynamic(() => import('@/components/InteractiveHero'), { ssr: false });
-const ForestModule = dynamic(() => import('@/components/ForestModule'), { ssr: false });
-const CampModule = dynamic(() => import('@/components/CampModule'), { ssr: false });
-const AlpineModule = dynamic(() => import('@/components/AlpineModule'), { ssr: false });
-const SummitModule = dynamic(() => import('@/components/SummitModule'), { ssr: false });
+// Single unified Canvas — avoids 5x WebGL context overhead
+const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
 
 const fallbackCaseStudies = [
   { slug: 'deepmind', title: 'Google DeepMind', subtitle: 'Scaling interactive experiences for global AI research.', tags: [], thumbnail: undefined },
@@ -71,13 +67,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
         </motion.div>
       </motion.div>
 
-      {/* Persistent 3D Background System */}
+      {/* Persistent 3D Background System — single Canvas, unified scene */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <InteractiveHero scrollProgress={scrollYProgress} />
-        <ForestModule scrollProgress={scrollYProgress} />
-        <CampModule scrollProgress={scrollYProgress} />
-        <AlpineModule scrollProgress={scrollYProgress} />
-        <SummitModule scrollProgress={scrollYProgress} />
+        <UnifiedScene scrollProgress={scrollYProgress} />
       </div>
 
       {/* The Content Overlay Container */}
