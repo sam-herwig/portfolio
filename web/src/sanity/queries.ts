@@ -13,6 +13,10 @@ export async function getFeaturedCaseStudies() {
   `);
 }
 
+export async function getAllCaseStudySlugs() {
+  return client.fetch(`*[_type == "project" && defined(slug)] | order(caseStudy.order asc) { title, "slug": slug.current }`);
+}
+
 export async function getCaseStudy(slug: string) {
   return client.fetch(`
     *[_type == "project" && slug.current == $slug][0] {

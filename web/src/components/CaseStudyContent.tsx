@@ -1,4 +1,10 @@
 import { PortableText } from '@portabletext/react';
+import Link from 'next/link';
+
+interface AdjacentStudy {
+  title: string;
+  slug: string;
+}
 
 interface CaseStudyProps {
   caseStudy: {
@@ -17,9 +23,11 @@ interface CaseStudyProps {
     caseStudyResults?: any;
     gallery?: Array<{ url: string; alt?: string; caption?: string }>;
   };
+  prev?: AdjacentStudy | null;
+  next?: AdjacentStudy | null;
 }
 
-export default function CaseStudyContent({ caseStudy }: CaseStudyProps) {
+export default function CaseStudyContent({ caseStudy, prev, next }: CaseStudyProps) {
   const { title, subtitle, tags, projectUrl, overview, heroImage, caseStudyProblem, caseStudyApproach, caseStudyResults, gallery } = caseStudy;
 
   return (
@@ -124,6 +132,33 @@ export default function CaseStudyContent({ caseStudy }: CaseStudyProps) {
             </div>
           </section>
         )}
+
+        {/* Prev / Next Navigation */}
+        <nav className="flex justify-between items-center border-t border-foreground/10 pt-8 mt-16">
+          {prev ? (
+            <Link href={`/work/${prev.slug}`} className="group flex flex-col items-start">
+              <span className="text-xs font-mono uppercase tracking-widest text-foreground/40 mb-1">← Previous</span>
+              <span className="text-lg font-bold group-hover:text-foreground/80 transition-colors">{prev.title}</span>
+            </Link>
+          ) : <div />}
+          {next ? (
+            <Link href={`/work/${next.slug}`} className="group flex flex-col items-end">
+              <span className="text-xs font-mono uppercase tracking-widest text-foreground/40 mb-1">Next →</span>
+              <span className="text-lg font-bold group-hover:text-foreground/80 transition-colors">{next.title}</span>
+            </Link>
+          ) : <div />}
+        </nav>
+
+        {/* Contact CTA Footer */}
+        <footer className="text-center py-16 mt-8 border-t border-foreground/5">
+          <p className="text-foreground/50 text-sm font-mono uppercase tracking-widest mb-4">Like what you see?</p>
+          <a
+            href="mailto:sam@samherwig.dev"
+            className="text-lg font-bold text-foreground hover:text-foreground/80 transition-colors"
+          >
+            sam@samherwig.dev →
+          </a>
+        </footer>
       </div>
     </article>
   );
