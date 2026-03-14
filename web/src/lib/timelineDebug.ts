@@ -96,7 +96,6 @@ export function tickTimelineDebug(progress: number): void {
       'color: #f59e0b; font-weight: bold; font-size: 13px;'
     );
     state.activeModule = newActive;
-    changed = true;
   }
 
   // Check forest card visibility
