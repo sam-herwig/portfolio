@@ -42,6 +42,11 @@ export const projects: Project[] = [
     tags: ['Nuxt', 'Vue', 'GSAP', 'Sanity CMS', 'WCAG 2.1 AA', 'Component Library', 'Front End Engineering'],
     projectUrl: 'https://www.missionbell.com/',
     thumbnail: '/work/mission-bell.webp',
+    gallery: [
+      '/work/mission-bell.webp',
+      '/work/mission-bell-2.webp',
+      '/work/mission-bell-3.webp',
+    ],
     overview: {
       headline: 'GSAP Page Transitions and a CMS a Winery Team Can Actually Use',
       body: "Wine websites fail in one of two directions: corporate brochure or lifestyle Pinterest board. Mission Bell needed a third option — something that felt like the vineyard actually made it. The technical ask was deceptively simple: smooth transitions, great photography, and a CMS the team could own without a developer on speed dial.\n\nI built the site in Nuxt with GSAP-driven page transitions tuned to feel seamless without announcing themselves, and wired up Sanity CMS so the team has full editorial control over the wine catalog and content — no tickets, no deploys. The Vue component library is mix-and-match modular, so landing pages stay on-brand without starting from scratch each time. WCAG 2.1 AA compliance was baked in from the start, not retrofitted. The client's exact words after launch: \"It finally feels like us.\"",
@@ -56,6 +61,11 @@ export const projects: Project[] = [
     tags: ['Nuxt', 'Contentful CMS', 'Vue', 'Performance Optimization', 'Animation', 'Lighthouse', 'Agency'],
     projectUrl: 'https://www.consumeandcreate.co/',
     thumbnail: '/work/consume-and-create.webp',
+    gallery: [
+      '/work/consume-and-create.webp',
+      '/work/cc-2.webp',
+      '/work/cc-3.webp',
+    ],
     overview: {
       headline: "High-90s Lighthouse Scores Without Sacrificing the Animation Budget",
       body: "Building for clients is easier than building for your own team — everyone's a critic and the standards are impossibly high. Rebuilding Consume & Create's agency site meant making something that could sell work while also demonstrating technical credibility to the exact clients we were trying to win. The internal pressure was real.\n\nI built it in Nuxt with Contentful CMS handling content updates without developer involvement, interactive project showcases with hover-state previews, and a contact form that doesn't feel like a DMV visit. The hard part was hitting Lighthouse scores in the high 90s while keeping the animation work intact — that tension usually forces a compromise, but the performance optimization pass made both possible. It's been live for over a year and has become the agency's most consistent new business driver.",
