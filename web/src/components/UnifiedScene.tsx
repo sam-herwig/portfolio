@@ -4,6 +4,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture, useFBO, Text, useVideoTexture, Points, PointMaterial } from '@react-three/drei';
 import { useRef, useEffect, Suspense, useMemo, useState } from 'react';
+import React from 'react';
 import { MotionValue } from 'framer-motion';
 import * as THREE from 'three';
 import PostProcessingStack from './PostProcessingStack';
@@ -234,7 +235,10 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
 // Extracted from ForestModule -> ForestScene. Camera control removed.
 // =============================================================================
 
-function ForestSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+function ForestSceneGroup({ scrollProgress, scrollVelocity }: {
+    scrollProgress: MotionValue<number>;
+    scrollVelocity: React.MutableRefObject<number>;
+}) {
     const groupRef = useRef<THREE.Group>(null);
     const lerpedP  = useRef(0);
 
@@ -242,6 +246,14 @@ function ForestSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
         if (groupRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
             groupRef.current.visible = lerpedP.current > 0.19 && lerpedP.current < 0.51;
+
+            if (groupRef.current.visible) {
+                const vel = Math.min(scrollVelocity.current * 30, 1.5);
+                const wind = Math.sin(state.clock.elapsedTime * 2) * vel * 0.02;
+                groupRef.current.rotation.x = THREE.MathUtils.damp(
+                    groupRef.current.rotation.x, wind, 4, delta
+                );
+            }
         }
     });
 
@@ -257,7 +269,7 @@ function ForestSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
 // Extracted from CampModule -> NightCampScene. Camera control removed.
 // =============================================================================
 
-function Starfield() {
+function Starfield({ scrollVelocity }: { scrollVelocity: React.MutableRefObject<number> }) {
     const ref      = useRef<any>(null);
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const count    = isMobile ? 800 : 2000;
@@ -272,10 +284,15 @@ function Starfield() {
         return pos;
     }, [count]);
 
-    useFrame((state) => {
+    useFrame((state, delta) => {
         if (ref.current) {
-            ref.current.rotation.z = state.clock.elapsedTime * 0.01;
+            const vel = Math.min(scrollVelocity.current * 50, 3);
+            ref.current.rotation.y = state.clock.elapsedTime * (0.01 + vel * 0.05);
             (ref.current.material as THREE.PointsMaterial).size = 0.5 + Math.sin(state.clock.elapsedTime * 2) * 0.2;
+            const targetScale = 1 + vel * 0.3;
+            ref.current.scale.setScalar(
+                THREE.MathUtils.damp(ref.current.scale.x, targetScale, 4, delta)
+            );
         }
     });
 
@@ -283,6 +300,55 @@ function Starfield() {
         <Points ref={ref} positions={positions} stride={3} frustumCulled={false}>
             <PointMaterial transparent color="#ffffff" size={0.8} sizeAttenuation={true} depthWrite={false} />
         </Points>
+    );
+}
+
+function CampfireEmbers({ scrollVelocity }: { scrollVelocity: React.MutableRefObject<number> }) {
+    const count   = 60;
+    const meshRef = useRef<THREE.Points>(null);
+
+    const [positions, velocities] = useMemo(() => {
+        const pos = new Float32Array(count * 3);
+        const vel = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+            pos[i * 3]     = (Math.random() - 0.5) * 2;
+            pos[i * 3 + 1] = -3 + Math.random() * 0.5;
+            pos[i * 3 + 2] = (Math.random() - 0.5) * 2;
+            vel[i * 3]     = (Math.random() - 0.5) * 0.3;
+            vel[i * 3 + 1] = 0.5 + Math.random() * 1.5;
+            vel[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+        }
+        return [pos, vel];
+    }, []);
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return;
+        const geo     = meshRef.current.geometry;
+        const posAttr = geo.attributes.position as THREE.BufferAttribute;
+        const vel2    = Math.min(scrollVelocity.current * 30, 2);
+        const emissionRate = 1 + vel2 * 2;
+
+        for (let i = 0; i < count; i++) {
+            (posAttr.array as Float32Array)[i * 3]     += velocities[i * 3]     * delta * emissionRate;
+            (posAttr.array as Float32Array)[i * 3 + 1] += velocities[i * 3 + 1] * delta * emissionRate;
+            (posAttr.array as Float32Array)[i * 3 + 2] += velocities[i * 3 + 2] * delta * emissionRate;
+
+            if ((posAttr.array as Float32Array)[i * 3 + 1] > 10) {
+                (posAttr.array as Float32Array)[i * 3]     = (Math.random() - 0.5) * 2;
+                (posAttr.array as Float32Array)[i * 3 + 1] = -3;
+                (posAttr.array as Float32Array)[i * 3 + 2] = (Math.random() - 0.5) * 2;
+            }
+        }
+        posAttr.needsUpdate = true;
+    });
+
+    return (
+        <points ref={meshRef}>
+            <bufferGeometry>
+                <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+            </bufferGeometry>
+            <pointsMaterial size={0.08} color="#f59e0b" transparent opacity={0.6} sizeAttenuation />
+        </points>
     );
 }
 
@@ -323,7 +389,10 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: {
     );
 }
 
-function CampSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+function CampSceneGroup({ scrollProgress, scrollVelocity }: {
+    scrollProgress: MotionValue<number>;
+    scrollVelocity: React.MutableRefObject<number>;
+}) {
     const groupRef   = useRef<THREE.Group>(null);
     const lightRef   = useRef<THREE.AmbientLight>(null);
     const lerpedP    = useRef(0);
@@ -344,7 +413,8 @@ function CampSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
     return (
         <group ref={groupRef}>
             <ambientLight ref={lightRef} intensity={0.2} color="#020617" />
-            <Starfield />
+            <Starfield scrollVelocity={scrollVelocity} />
+            <CampfireEmbers scrollVelocity={scrollVelocity} />
             <VideoCampLedge
                 videoUrl="/assets/videos/campfire.mp4"
                 position={[0, 0, -250]}
@@ -713,6 +783,17 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
 const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
 export default function UnifiedScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+    const scrollVelocity = useRef(0);
+    const lastProgress   = useRef(0);
+
+    useEffect(() => {
+        const unsubscribe = scrollProgress.on('change', (v) => {
+            scrollVelocity.current = Math.abs(v - lastProgress.current) * 60;
+            lastProgress.current   = v;
+        });
+        return unsubscribe;
+    }, [scrollProgress]);
+
     return (
         <Canvas
             camera={{ position: [0, 0, 20], fov: 50 }}
@@ -723,8 +804,8 @@ export default function UnifiedScene({ scrollProgress }: { scrollProgress: Motio
                 <UnifiedCamera scrollProgress={scrollProgress} />
 
                 <HeroSceneGroup   scrollProgress={scrollProgress} />
-                <ForestSceneGroup scrollProgress={scrollProgress} />
-                <CampSceneGroup   scrollProgress={scrollProgress} />
+                <ForestSceneGroup scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
+                <CampSceneGroup   scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
                 <AlpineSceneGroup scrollProgress={scrollProgress} />
                 <SummitSceneGroup scrollProgress={scrollProgress} />
 
