@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Project } from '@/data/projects';
@@ -39,13 +38,10 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
           className="w-full"
         >
           <div className="relative aspect-[16/9] md:aspect-[21/9] rounded-lg overflow-hidden mx-4 md:mx-16 mt-8">
-            <Image
+            <img
               src={heroImage}
               alt={`${title} hero`}
-              fill
-              sizes="(min-width: 768px) calc(100vw - 8rem), calc(100vw - 2rem)"
-              className="object-cover"
-              priority
+              className="object-cover w-full h-full"
             />
           </div>
         </motion.div>
@@ -127,12 +123,10 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
                 transition={{ duration: 0.5, ease: 'easeOut' }}
                 className="group relative aspect-video rounded-lg overflow-hidden bg-foreground/5"
               >
-                <Image
+                <img
                   src={remainingImages[0]}
                   alt={`${title} screenshot 2`}
-                  fill
-                  sizes="(min-width: 768px) calc(100vw - 8rem), calc(100vw - 2rem)"
-                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-[1.03]"
                 />
               </motion.div>
 
@@ -148,12 +142,10 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
                       transition={{ duration: 0.5, delay: (i + 1) * 0.1, ease: 'easeOut' }}
                       className="group relative aspect-video rounded-lg overflow-hidden bg-foreground/5"
                     >
-                      <Image
+                      <img
                         src={src}
                         alt={`${title} screenshot ${i + 3}`}
-                        fill
-                        sizes="(min-width: 768px) calc((100vw - 9rem) / 2), calc(100vw - 2rem)"
-                        className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                        className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-[1.03]"
                       />
                     </motion.div>
                   ))}
