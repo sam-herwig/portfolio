@@ -131,9 +131,13 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1, scrollProgress }: 
     const tex = useTexture(textureUrl) as THREE.Texture;
     const { viewport, camera } = useThree();
 
-    const cv   = viewport.getCurrentViewport(camera, new THREE.Vector3(0, 0, z));
-    const maxD = Math.max(cv.width, cv.height);
-    const s    = maxD * 1.5;
+    const cv = viewport.getCurrentViewport(camera, new THREE.Vector3(0, 0, z));
+    const image = tex.image as { width?: number; height?: number } | undefined;
+    const imageAspect = image?.width && image?.height ? image.width / image.height : 16 / 10;
+    const viewportAspect = cv.width / cv.height;
+    const containScale: [number, number] = imageAspect > viewportAspect
+        ? [cv.width * 0.9, (cv.width * 0.9) / imageAspect]
+        : [cv.height * 0.9 * imageAspect, cv.height * 0.9];
 
     const materialRef = useRef<any>(null);
     const meshRef     = useRef<THREE.Mesh>(null);
@@ -155,23 +159,23 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1, scrollProgress }: 
 
     useFrame((state, delta) => {
         lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-        const heroProgress = Math.min(1, Math.max(0, lerpedP.current / 0.2));
+        const heroProgress = Math.min(1, Math.max(0, lerpedP.current / 0.18));
 
         if (materialRef.current) {
             materialRef.current.uTime = state.clock.elapsedTime;
             materialRef.current.uMouse.lerp(mousePos.current, 0.1);
         }
         if (meshRef.current) {
-            const targetY = baseY + heroProgress * (18 * speed);
+            const targetY = baseY + heroProgress * (10 * speed);
             meshRef.current.position.y = THREE.MathUtils.damp(meshRef.current.position.y, targetY, 5, delta);
-            meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, mousePos.current.y * 0.05, 0.05);
-            meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, mousePos.current.x * 0.05, 0.05);
+            meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, mousePos.current.y * 0.025, 0.05);
+            meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, mousePos.current.x * 0.03, 0.05);
         }
     });
 
     return (
         <mesh ref={meshRef} position={[0, baseY, z]}>
-            <planeGeometry args={[s * 1.5, s * 1.5, 64, 64]} />
+            <planeGeometry args={[containScale[0], containScale[1], 64, 64]} />
             <WoodcutShader ref={materialRef} transparent depthWrite={false} uTexture={tex} />
         </mesh>
     );
@@ -191,10 +195,8 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
     });
 
     return (
-        <group ref={groupRef} position={[0, -2, -5]}>
-            <ParallaxLayer textureUrl="/bg_layer.webp" z={-80} baseY={20} speed={0.1} scrollProgress={scrollProgress} />
-            <ParallaxLayer textureUrl="/mg_layer.webp" z={-30} baseY={5} speed={0.5} scrollProgress={scrollProgress} />
-            <ParallaxLayer textureUrl="/fg_layer.webp" z={10} baseY={-8} speed={1.0} scrollProgress={scrollProgress} />
+        <group ref={groupRef} position={[0, -1, -12]}>
+            <ParallaxLayer textureUrl="/bg_layer.webp" z={-40} baseY={2} speed={0.35} scrollProgress={scrollProgress} />
         </group>
     );
 }

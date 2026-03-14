@@ -137,8 +137,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   );
 
   const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
-  const heroOpacity = useTransform(heroSectionProgress, [0, 0.18, 0.36], [1, 1, 0]);
-  const heroY = useTransform(heroSectionProgress, [0, 0.36], [0, -72]);
+  const heroOpacity = useTransform(heroSectionProgress, [0, 0.14, 0.28], [1, 1, 0]);
+  const heroY = useTransform(heroSectionProgress, [0, 0.28], [0, -56]);
 
   return (
     <motion.main
@@ -183,7 +183,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           ref={refHero}
           role="region"
           aria-label="Hero — Introduction"
-          className="w-full min-h-screen pb-[180vh]"
+          className="w-full min-h-screen pb-[120vh]"
         >
           <div className="sticky top-0 flex min-h-screen items-center px-4 pb-24 pt-28 md:px-8 lg:px-12">
             <motion.div style={{ opacity: heroOpacity, y: heroY }} className="w-full">
