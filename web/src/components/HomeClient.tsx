@@ -5,6 +5,8 @@ import { motion, useScroll, useTransform, MotionValue } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 import CaseStudyCard from '@/components/CaseStudyCard';
+import CredentialStrip from '@/components/CredentialStrip';
+import ElevationBar from '@/components/ElevationBar';
 import GearRack from '@/components/GearRack';
 
 // Single unified Canvas — avoids 5x WebGL context overhead
@@ -73,6 +75,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
         <UnifiedScene scrollProgress={scrollYProgress} />
       </div>
 
+      {/* Elevation progress bar — fixed right rail */}
+      <ElevationBar scrollProgress={scrollYProgress} />
+
       {/* The Content Overlay Container */}
       <div className="relative z-10 w-full overflow-x-hidden flex flex-col items-center">
 
@@ -107,6 +112,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
             />
           ))}
         </div>
+
+        {/* Between Alpine and Summit: Social Proof / Credential Strip */}
+        <CredentialStrip />
 
         {/* Checkpoint 4: The Summit - Finale & Footer */}
         <section ref={refSummit} className="w-full relative min-h-[160vh] flex flex-col justify-end pb-[20vh] pt-[60vh]">
