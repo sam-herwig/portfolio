@@ -8,6 +8,8 @@ import CaseStudyCard from '@/components/CaseStudyCard';
 import CredentialStrip from '@/components/CredentialStrip';
 import ElevationBar from '@/components/ElevationBar';
 import GearRack from '@/components/GearRack';
+import Preloader from '@/components/Preloader';
+import { useAppStore } from '@/store/useAppStore';
 
 // Single unified Canvas — avoids 5x WebGL context overhead
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
@@ -20,6 +22,8 @@ const fallbackCaseStudies = [
 ];
 
 export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
+
+  const { hasLoaded } = useAppStore();
 
   const refHero = useRef<HTMLDivElement>(null);
   const refForest = useRef<HTMLDivElement>(null);
@@ -53,22 +57,27 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
       className="relative w-full overflow-x-hidden min-h-screen transition-colors duration-100"
     >
 
-      {/* Scroll indicator */}
-      <motion.div
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
-        style={{ opacity: scrollHintOpacity }}
-      >
-        <span className="text-xs font-mono uppercase tracking-[0.3em] text-foreground/40">Scroll</span>
+      {/* Preloader — overlays everything until assets are loaded */}
+      <Preloader />
+
+      {/* Scroll indicator — only shown after loading completes */}
+      {hasLoaded && (
         <motion.div
-          className="w-5 h-8 rounded-full border-2 border-foreground/30 flex items-start justify-center p-1"
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
+          style={{ opacity: scrollHintOpacity }}
         >
+          <span className="text-xs font-mono uppercase tracking-[0.3em] text-foreground/40">Scroll</span>
           <motion.div
-            className="w-1.5 h-1.5 rounded-full bg-foreground/50"
-            animate={{ y: [0, 12, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          />
+            className="w-5 h-8 rounded-full border-2 border-foreground/30 flex items-start justify-center p-1"
+          >
+            <motion.div
+              className="w-1.5 h-1.5 rounded-full bg-foreground/50"
+              animate={{ y: [0, 12, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
 
       {/* Persistent 3D Background System — single Canvas, unified scene */}
       <div className="fixed inset-0 z-0 pointer-events-none">

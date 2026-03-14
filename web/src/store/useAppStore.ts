@@ -6,6 +6,6 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  hasLoaded: true,
+  hasLoaded: false,
   setHasLoaded: (loaded) => set({ hasLoaded: loaded }),
 }));
