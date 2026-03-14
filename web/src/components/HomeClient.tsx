@@ -120,7 +120,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   });
   const { scrollYProgress: forestSectionProgress } = useScroll({
     target: refForest,
-    offset: ['start end', 'end start'],
+    offset: ['start start', 'end start'],
   });
 
   // Background Color Transition tied exclusively to the Night Camp global bounds [0.45 - 0.70]
