@@ -129,8 +129,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   );
 
   const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.14, 0.22], [1, 1, 0]);
-  const heroY = useTransform(scrollYProgress, [0, 0.18], [0, -48]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.07, 0.14], [1, 1, 0]);
+  const heroY = useTransform(scrollYProgress, [0, 0.14], [0, -72]);
 
   return (
     <motion.main

@@ -214,7 +214,7 @@ function ForestSceneGroup({ scrollProgress, scrollVelocity }: {
     useFrame((state, delta) => {
         if (groupRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-            groupRef.current.visible = lerpedP.current > 0.19 && lerpedP.current < 0.51;
+            groupRef.current.visible = lerpedP.current > 0.24 && lerpedP.current < 0.58;
 
             if (groupRef.current.visible) {
                 const vel = Math.min(scrollVelocity.current * 30, 1.5);
