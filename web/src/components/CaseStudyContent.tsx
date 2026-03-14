@@ -1,5 +1,5 @@
-import { PortableText } from '@portabletext/react';
 import Link from 'next/link';
+import { Project } from '@/data/projects';
 
 interface AdjacentStudy {
   title: string;
@@ -7,42 +7,22 @@ interface AdjacentStudy {
 }
 
 interface CaseStudyProps {
-  caseStudy: {
-    title: string;
-    subtitle: string;
-    slug: string;
-    tags: string[];
-    projectUrl?: string;
-    overview?: {
-      headline: string;
-      richtext: any;
-    };
-    heroImage?: string;
-    caseStudyProblem?: any;
-    caseStudyApproach?: any;
-    caseStudyResults?: any;
-    gallery?: Array<{ url: string; alt?: string; caption?: string }>;
-  };
+  project: Project;
   prev?: AdjacentStudy | null;
   next?: AdjacentStudy | null;
 }
 
-export default function CaseStudyContent({ caseStudy, prev, next }: CaseStudyProps) {
-  const { title, subtitle, tags, projectUrl, overview, heroImage, caseStudyProblem, caseStudyApproach, caseStudyResults, gallery } = caseStudy;
+function renderBody(body: string) {
+  return body.split('\n\n').map((para, i) => (
+    <p key={i} className="mb-4 last:mb-0">{para}</p>
+  ));
+}
+
+export default function CaseStudyContent({ project, prev, next }: CaseStudyProps) {
+  const { title, subtitle, tags, projectUrl, overview, caseStudy } = project;
 
   return (
     <article className="w-full">
-      {/* Hero */}
-      {heroImage && (
-        <div className="relative w-full aspect-[16/9] md:aspect-[21/9] overflow-hidden rounded-t-2xl">
-          <img
-            src={heroImage}
-            alt={title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-
       <div className="px-4 py-8 md:px-16 md:py-12 space-y-10 md:space-y-16">
         {/* Header */}
         <header className="space-y-4">
@@ -69,66 +49,44 @@ export default function CaseStudyContent({ caseStudy, prev, next }: CaseStudyPro
           )}
         </header>
 
-        {/* Overview (from existing Sanity field) */}
-        {overview?.richtext && (
+        {/* Overview */}
+        {overview && (
           <section>
             {overview.headline && (
               <h2 className="text-2xl font-bold mb-4">{overview.headline}</h2>
             )}
             <div className="prose prose-lg max-w-none text-foreground/80">
-              <PortableText value={overview.richtext} />
+              {renderBody(overview.body)}
             </div>
           </section>
         )}
 
         {/* The Brief */}
-        {caseStudyProblem && (
+        {caseStudy?.problem && (
           <section>
             <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">The Brief</h2>
             <div className="prose prose-lg max-w-none text-foreground/80">
-              <PortableText value={caseStudyProblem} />
+              {renderBody(caseStudy.problem)}
             </div>
           </section>
         )}
 
         {/* How I Built It */}
-        {caseStudyApproach && (
+        {caseStudy?.approach && (
           <section>
             <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">How I Built It</h2>
             <div className="prose prose-lg max-w-none text-foreground/80">
-              <PortableText value={caseStudyApproach} />
-            </div>
-          </section>
-        )}
-
-        {/* Gallery */}
-        {gallery && gallery.length > 0 && (
-          <section>
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-6">Key Visuals</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {gallery.map((img, i) => (
-                <div key={i} className="relative overflow-hidden rounded-xl border border-foreground/10">
-                  <img
-                    src={img.url}
-                    alt={img.alt || `${title} screenshot ${i + 1}`}
-                    className="w-full h-auto"
-                    loading="lazy"
-                  />
-                  {img.caption && (
-                    <p className="text-xs text-foreground/50 p-3 font-mono">{img.caption}</p>
-                  )}
-                </div>
-              ))}
+              {renderBody(caseStudy.approach)}
             </div>
           </section>
         )}
 
         {/* What Shipped */}
-        {caseStudyResults && (
+        {caseStudy?.results && (
           <section>
             <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">What Shipped</h2>
             <div className="prose prose-lg max-w-none text-foreground/80">
-              <PortableText value={caseStudyResults} />
+              {renderBody(caseStudy.results)}
             </div>
           </section>
         )}

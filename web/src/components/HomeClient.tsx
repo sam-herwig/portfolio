@@ -11,18 +11,12 @@ import ElevationBar from '@/components/ElevationBar';
 import GearRack from '@/components/GearRack';
 import Preloader from '@/components/Preloader';
 import { useAppStore } from '@/store/useAppStore';
+import { Project } from '@/data/projects';
 
 // Single unified Canvas — avoids 5x WebGL context overhead
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
 
-const fallbackCaseStudies = [
-  { slug: 'deepmind', title: 'Google DeepMind', subtitle: 'Real-time 3D visualization for AI research data.', tags: [], thumbnail: undefined },
-  { slug: 'vision-pro', title: 'Apple Vision Pro', subtitle: 'Prototyping spatial interfaces for visionOS in WebXR.', tags: [], thumbnail: undefined },
-  { slug: 'taste-and-skill', title: 'Taste & Skill', subtitle: 'Where design intuition meets engineering precision.', tags: [], thumbnail: undefined },
-  { slug: 'oura-ring', title: 'Oura Ring', subtitle: 'Interactive biometric data rendered in real-time WebGL.', tags: [], thumbnail: undefined },
-];
-
-export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
+export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) {
 
   const { hasLoaded } = useAppStore();
 
@@ -49,8 +43,6 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
   );
 
   const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
-
-  const displayCaseStudies = caseStudies.length > 0 ? caseStudies : fallbackCaseStudies;
 
   return (
     <motion.main
@@ -118,7 +110,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
         {/* Checkpoint 3: The High Alpine - Case Studies */}
         <div ref={refAlpine} role="region" aria-label="Selected Work" className="w-full flex flex-col items-center max-w-7xl mx-auto py-[80vh]">
           <h2 className="sr-only">Selected Work</h2>
-          {displayCaseStudies.map((cs: any, i: number) => (
+          {caseStudies.map((cs, i) => (
             <CaseStudyCard
               key={cs.slug}
               title={cs.title}
@@ -127,7 +119,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
               thumbnail={cs.thumbnail}
               tags={cs.tags}
               side={i % 2 === 0 ? 'right' : 'left'}
-              linkable={caseStudies.length > 0}
+              linkable={true}
             />
           ))}
         </div>

@@ -4,12 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CaseStudyContent from './CaseStudyContent';
+import { Project } from '@/data/projects';
 
 interface CaseStudyModalProps {
-  caseStudy: any;
+  project: Project;
 }
 
-export default function CaseStudyModal({ caseStudy }: CaseStudyModalProps) {
+export default function CaseStudyModal({ project }: CaseStudyModalProps) {
   const router = useRouter();
   const [isClosing, setIsClosing] = useState(false);
 
@@ -68,7 +69,7 @@ export default function CaseStudyModal({ caseStudy }: CaseStudyModalProps) {
                 ✕
               </button>
 
-              <CaseStudyContent caseStudy={caseStudy} />
+              <CaseStudyContent project={project} />
 
               {/* Continue the Climb */}
               <div className="text-center py-12">

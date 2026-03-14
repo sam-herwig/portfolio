@@ -1,7 +1,7 @@
-import { getFeaturedCaseStudies } from '@/sanity/queries';
+import { getFeaturedProjects } from '@/data/projects';
 import HomeClient from '@/components/HomeClient';
 
-export default async function Home() {
-  const caseStudies = await getFeaturedCaseStudies();
-  return <HomeClient caseStudies={caseStudies || []} />;
+export default function Home() {
+  const projects = getFeaturedProjects();
+  return <HomeClient caseStudies={projects} />;
 }

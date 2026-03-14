@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface CaseStudyCardProps {
   title: string;
@@ -100,10 +101,11 @@ export default function CaseStudyCard({ title, subtitle, slug, thumbnail, tags, 
       {/* Thumbnail */}
       <div className="aspect-[4/3] w-full bg-foreground/10 rounded-xl mb-6 overflow-hidden relative">
         {thumbnail ? (
-          <img
+          <Image
             src={thumbnail}
             alt={title}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
             loading="lazy"
             style={{
               objectPosition: isHovered && !isTouch
