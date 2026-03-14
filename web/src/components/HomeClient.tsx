@@ -10,10 +10,10 @@ import CaseStudyCard from '@/components/CaseStudyCard';
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
 
 const fallbackCaseStudies = [
-  { slug: 'deepmind', title: 'Google DeepMind', subtitle: 'Scaling interactive experiences for global AI research.', tags: [], thumbnail: undefined },
-  { slug: 'vision-pro', title: 'Apple Vision Pro', subtitle: 'Spatial computing interfaces and WebXR container design.', tags: [], thumbnail: undefined },
-  { slug: 'taste-and-skill', title: 'Taste & Skill', subtitle: 'Bridging the gap between front-end engineering and design logic.', tags: [], thumbnail: undefined },
-  { slug: 'oura-ring', title: 'Oura Ring', subtitle: 'Interactive product explorations and real-time biometric visualization.', tags: [], thumbnail: undefined },
+  { slug: 'deepmind', title: 'Google DeepMind', subtitle: 'Real-time 3D visualization for AI research data.', tags: [], thumbnail: undefined },
+  { slug: 'vision-pro', title: 'Apple Vision Pro', subtitle: 'Prototyping spatial interfaces for visionOS in WebXR.', tags: [], thumbnail: undefined },
+  { slug: 'taste-and-skill', title: 'Taste & Skill', subtitle: 'Where design intuition meets engineering precision.', tags: [], thumbnail: undefined },
+  { slug: 'oura-ring', title: 'Oura Ring', subtitle: 'Interactive biometric data rendered in real-time WebGL.', tags: [], thumbnail: undefined },
 ];
 
 export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
@@ -86,9 +86,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
           <div className="w-full min-h-[50vh] flex flex-col items-center justify-center text-center px-4 md:px-24 my-[20vh] transform-gpu relative">
             <div className="absolute inset-0 bg-foreground/5 backdrop-blur-xl rounded-3xl m-4 md:m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
             <div className="relative z-10 p-12">
-              <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 mt-16 text-balance">Relevant Skills.</h2>
+              <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 mt-16 text-balance">The Toolkit.</h2>
               <div className="flex flex-wrap text-center md:text-left justify-center md:justify-start gap-2 md:gap-4 mt-8 max-w-2xl mx-auto opacity-80 text-foreground/80 font-mono tracking-widest uppercase text-xs md:text-sm">
-                <span>React / Next.js</span> • <span>Vue / Nuxt</span> • <span>Three.js / WebGL</span> • <span>GLSL</span> • <span>TypeScript</span> • <span>Framer Motion</span> • <span>Tailwind CSS</span> • <span>GSAP</span> • <span>Sanity CMS</span> • <span>AI Agent Systems</span>
+                <span>Three.js / WebGL</span> • <span>GLSL Shaders</span> • <span>React / Next.js</span> • <span>TypeScript</span> • <span>Vue / Nuxt</span> • <span>GSAP</span> • <span>Framer Motion</span> • <span>Tailwind CSS</span> • <span>Sanity CMS</span> • <span>AI Agent Pipelines</span>
               </div>
             </div>
           </div>
@@ -119,15 +119,15 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
             }}
             className="w-full flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto mix-blend-multiply"
           >
-            <h2 className="text-4xl md:text-6xl lg:text-9xl font-bold tracking-tighter uppercase mb-8">Reach Out.</h2>
+            <h2 className="text-4xl md:text-6xl lg:text-9xl font-bold tracking-tighter uppercase mb-8">The Summit.</h2>
             <p className="text-xl md:text-3xl text-foreground/80 mb-16 max-w-[20ch]">
-              Let's build a reality together.
+              I'm looking for the next big build. Let's talk about yours.
             </p>
             <a
-              href="mailto:Sherwig123@gmail.com"
+              href="mailto:sam@samherwig.dev"
               className="group relative px-8 py-4 md:px-12 md:py-6 overflow-hidden rounded-full border-2 border-foreground bg-transparent text-foreground hover:text-background transition-colors duration-500"
             >
-              <span className="relative z-10 font-mono text-sm uppercase tracking-widest">Say Hello</span>
+              <span className="relative z-10 font-mono text-sm uppercase tracking-widest">Pitch Me Your Mountain →</span>
               <div className="absolute inset-0 h-full w-full bg-foreground transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500 ease-out" />
             </a>
           </motion.div>

@@ -73,20 +73,20 @@ export default function CaseStudyContent({ caseStudy }: CaseStudyProps) {
           </section>
         )}
 
-        {/* The Problem */}
+        {/* The Brief */}
         {caseStudyProblem && (
           <section>
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">The Problem</h2>
+            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">The Brief</h2>
             <div className="prose prose-lg max-w-none text-foreground/80">
               <PortableText value={caseStudyProblem} />
             </div>
           </section>
         )}
 
-        {/* The Approach */}
+        {/* How I Built It */}
         {caseStudyApproach && (
           <section>
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">The Approach</h2>
+            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">How I Built It</h2>
             <div className="prose prose-lg max-w-none text-foreground/80">
               <PortableText value={caseStudyApproach} />
             </div>
@@ -115,10 +115,10 @@ export default function CaseStudyContent({ caseStudy }: CaseStudyProps) {
           </section>
         )}
 
-        {/* The Results */}
+        {/* What Shipped */}
         {caseStudyResults && (
           <section>
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">The Results</h2>
+            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">What Shipped</h2>
             <div className="prose prose-lg max-w-none text-foreground/80">
               <PortableText value={caseStudyResults} />
             </div>

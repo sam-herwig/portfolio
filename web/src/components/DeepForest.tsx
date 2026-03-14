@@ -312,29 +312,29 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
 
             {/* SPATIAL TYPOGRAPHY NODES */}
             <SpatialText 
-                title="Hello, I'm Sam." 
-                subtitle="I build digital realities rooted in analog aesthetics." 
+                title="I'm Sam." 
+                subtitle="I write code that you walk through." 
                 position={[0, 5, -12]} 
                 scrollProgress={scrollProgress} 
                 trees={treeArray} 
             />
             <SpatialText 
-                title="Creative Technologist." 
-                subtitle="Bridging the gap between front-end engineering, immersive WebGL, and high-end design." 
+                title="Creative Engineer." 
+                subtitle="Three.js, shaders, and the browser as a canvas — not a document." 
                 position={[0, 5, -40]} 
                 scrollProgress={scrollProgress} 
                 trees={treeArray} 
             />
             <SpatialText 
-                title="Crafting The Future." 
-                subtitle="Using raw materials and massive architectures to tell stories in the browser." 
+                title="Every Pixel Earned." 
+                subtitle="I don't use templates. I build worlds from geometry and light." 
                 position={[0, 5, -70]} 
                 scrollProgress={scrollProgress} 
                 trees={treeArray} 
             />
             <SpatialText 
-                title="Keep Climbing." 
-                subtitle="Below is a collection of my favorite spatial experiments and digital expeditions." 
+                title="See the View." 
+                subtitle="Selected work from the trail so far." 
                 position={[0, 5, -110]} 
                 scrollProgress={scrollProgress} 
                 trees={treeArray} 
