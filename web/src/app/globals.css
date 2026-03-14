@@ -51,3 +51,8 @@
     @apply backdrop-blur-md bg-white/5 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)];
   }
 }
+
+@keyframes ember-pulse {
+  0%, 100% { box-shadow: 0 0 20px -5px rgba(251, 191, 36, 0.08); }
+  50% { box-shadow: 0 0 30px -5px rgba(251, 191, 36, 0.18); }
+}

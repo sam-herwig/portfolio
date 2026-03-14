@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform, MotionValue } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 import CaseStudyCard from '@/components/CaseStudyCard';
+import GearRack from '@/components/GearRack';
 
 // Single unified Canvas — avoids 5x WebGL context overhead
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
@@ -85,11 +86,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
         <div ref={refCamp} className="w-full flex flex-col items-center justify-center min-h-[200vh] py-[60vh]">
           <div className="w-full min-h-[50vh] flex flex-col items-center justify-center text-center px-4 md:px-24 my-[20vh] transform-gpu relative">
             <div className="absolute inset-0 bg-foreground/5 backdrop-blur-xl rounded-3xl m-4 md:m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
-            <div className="relative z-10 p-12">
-              <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 mt-16 text-balance">The Toolkit.</h2>
-              <div className="flex flex-wrap text-center md:text-left justify-center md:justify-start gap-2 md:gap-4 mt-8 max-w-2xl mx-auto opacity-80 text-foreground/80 font-mono tracking-widest uppercase text-xs md:text-sm">
-                <span>Three.js / WebGL</span> • <span>GLSL Shaders</span> • <span>React / Next.js</span> • <span>TypeScript</span> • <span>Vue / Nuxt</span> • <span>GSAP</span> • <span>Framer Motion</span> • <span>Tailwind CSS</span> • <span>Sanity CMS</span> • <span>AI Agent Pipelines</span>
-              </div>
+            <div className="relative z-10 p-6 md:p-12 w-full max-w-4xl mx-auto">
+              <GearRack />
             </div>
           </div>
         </div>
