@@ -88,8 +88,8 @@ function StoryCard({
 
   return (
     <motion.div
-      style={{ opacity, y }}
-      className={`flex w-full ${side === 'left' ? 'justify-start' : 'justify-end'}`}
+      style={{ opacity, y, pointerEvents: 'none' }}
+      className={`absolute inset-0 flex w-full items-center ${side === 'left' ? 'justify-start' : 'justify-end'}`}
     >
       <GlassPanel className="w-full max-w-2xl px-6 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10">
         <p className="mb-3 text-[0.65rem] font-mono uppercase tracking-[0.35em] text-foreground/45">
@@ -232,23 +232,28 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
         </section>
 
         {/* The Forest Gauntlet — narrative cards driven by global timeline */}
+        {/* Tall scroll region keeps the global timeline progressing; sticky inner
+            container pins cards to the viewport so they're visible during their
+            opacity windows. */}
         <section
           ref={refForest}
           role="region"
           aria-label="About Sam"
-          className="w-full min-h-[360vh] px-4 py-[12vh] md:px-8 lg:px-12"
+          className="relative w-full min-h-[360vh]"
         >
-          <div className="mx-auto flex max-w-6xl flex-col gap-[20vh] pt-[16vh]">
-            {forestNarrative.map((entry) => (
-              <StoryCard
-                key={entry.title}
-                title={entry.title}
-                body={entry.body}
-                side={entry.side}
-                range={entry.range}
-                scrollProgress={scrollYProgress}
-              />
-            ))}
+          <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-8 lg:px-12">
+            <div className="relative mx-auto w-full max-w-6xl">
+              {forestNarrative.map((entry) => (
+                <StoryCard
+                  key={entry.title}
+                  title={entry.title}
+                  body={entry.body}
+                  side={entry.side}
+                  range={entry.range}
+                  scrollProgress={scrollYProgress}
+                />
+              ))}
+            </div>
           </div>
         </section>
 

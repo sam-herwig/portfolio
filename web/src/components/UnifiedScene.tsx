@@ -23,6 +23,8 @@ function applyGroupOpacity(group: THREE.Group, envelope: number): void {
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         for (const mat of mats) {
             if (!('opacity' in mat)) continue;
+            // Skip materials that manage their own opacity (e.g. video textures)
+            if ((mat as any).__selfManagedOpacity) continue;
             // Store base opacity on first visit
             if ((mat as any).__baseOpacity === undefined) {
                 (mat as any).__baseOpacity = mat.opacity;
@@ -391,7 +393,9 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: {
         if (meshRef.current && tex.image) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
             const animP = Math.min(1, Math.max(0, (lerpedP.current - camp.ownStart) / (camp.enterEnd - camp.ownStart)));
-            (meshRef.current.material as THREE.MeshBasicMaterial).opacity = animP;
+            const mat = meshRef.current.material as THREE.MeshBasicMaterial;
+            (mat as any).__selfManagedOpacity = true;
+            mat.opacity = animP;
         }
     });
 
@@ -596,7 +600,9 @@ function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgr
             } else {
                 opacity = 1 - Math.min(1, Math.max(0, (animP - 0.83) / 0.17));
             }
-            (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
+            const mat = meshRef.current.material as THREE.MeshBasicMaterial;
+            (mat as any).__selfManagedOpacity = true;
+            mat.opacity = opacity;
         }
     });
 
@@ -654,7 +660,9 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
             } else {
                 opacity = 1 - Math.min(1, Math.max(0, (animP - 0.83) / 0.17));
             }
-            (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
+            const mat = meshRef.current.material as THREE.MeshBasicMaterial;
+            (mat as any).__selfManagedOpacity = true;
+            mat.opacity = opacity;
         }
     });
 
