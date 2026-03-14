@@ -7,56 +7,45 @@ import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
 import PostProcessingStack from './PostProcessingStack';
 
-function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgress }: any) {
-    const tex = useTexture(textureUrl) as THREE.Texture;
-    const meshRef = useRef<THREE.Mesh>(null);
-    const lerpedProgress = useRef(0);
+type Vec2 = [number, number];
+type Vec3 = [number, number, number];
 
-    useEffect(() => {
-        return () => {
-            tex.dispose();
-        };
-    }, [tex]);
+type VideoPanoramaLedgeProps = {
+    videoUrl: string;
+    position: Vec3;
+    parallaxX?: number;
+    playThreshold?: number;
+    scrollProgress: MotionValue<number>;
+};
 
-    useFrame((state, delta) => {
-        if (meshRef.current) {
-            lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
-            const progress = lerpedProgress.current;
-            // Map global scroll [0.85 -> 1.0] to local progress [0.0 -> 1.0]
-            const animProgress = Math.min(1, Math.max(0, (progress - 0.85) / 0.15));
+type ForegroundLedgeProps = {
+    textureUrl: string;
+    position: Vec3;
+    startZ: number;
+    endZ: number;
+    startY: number;
+    endY: number;
+    scrollProgress: MotionValue<number>;
+};
 
-            // Start panning background only AFTER it completely fades in at 0.66
-            const panProgress = Math.min(1, Math.max(0, (animProgress - 0.66) / 0.34));
-            meshRef.current.position.x = position[0] - (panProgress * parallaxX);
+type OneShotAnimatedFoxProps = {
+    textureUrl: string;
+    startX: number;
+    endX: number;
+    startYOffset: number;
+    endYOffset: number;
+    startZ: number;
+    endZ: number;
+    scale: Vec2;
+    rotation?: number;
+    frames?: number;
+    scrollStart: number;
+    scrollEnd: number;
+    cycles?: number;
+    scrollProgress: MotionValue<number>;
+};
 
-            // Fade the massive vista in dramatically AFTER fox settles (0.50 -> 0.66)
-            let opacity = 0;
-            if (animProgress < 0.83) {
-                opacity = Math.min(1, Math.max(0, (animProgress - 0.50) / 0.16));
-            } else {
-                // Fade out at end
-                opacity = 1 - Math.min(1, Math.max(0, (animProgress - 0.83) / 0.17));
-            }
-
-            (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
-        }
-    });
-
-    return (
-        <mesh ref={meshRef} position={position}>
-            <planeGeometry args={scale} />
-            <meshBasicMaterial
-                map={tex}
-                transparent
-                depthWrite={true}
-                alphaTest={0.5}
-                opacity={0} // Start invisible until the sequence triggers
-            />
-        </mesh>
-    );
-}
-
-function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold = 0.33, scrollProgress }: { videoUrl: string, position: any, parallaxX?: number, playThreshold?: number, scrollProgress: MotionValue<number> }) {
+function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold = 0.33, scrollProgress }: VideoPanoramaLedgeProps) {
     // Start video paused so we can trigger it mathematically with the scroll wheel
     const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
     const meshRef = useRef<THREE.Mesh>(null);
@@ -146,7 +135,7 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
     );
 }
 
-function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scrollProgress }: { textureUrl: string, position: any, startZ: number, endZ: number, startY: number, endY: number, scrollProgress: MotionValue<number> }) {
+function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scrollProgress }: ForegroundLedgeProps) {
     const tex = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
     const { viewport, camera } = useThree();
@@ -197,7 +186,7 @@ function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scr
 }
 
 // A one-shot animated sprite that locks to the final frame when its scroll cycle completes
-function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset, startZ, endZ, scale, rotation = 0, frames = 8, scrollStart, scrollEnd, cycles = 6, scrollProgress }: any) {
+function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset, startZ, endZ, scale, rotation = 0, frames = 8, scrollStart, scrollEnd, cycles = 6, scrollProgress }: OneShotAnimatedFoxProps) {
     const tex = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
 
@@ -226,11 +215,11 @@ function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset
             const animProgress = Math.min(1, Math.max(0, (progress - 0.85) / 0.15));
 
             // Wait for the ledge to rise (0.0 - 0.25), then start walking
-            const clamped = Math.min(1, Math.max(0, (animProgress - scrollStart) / (scrollEnd - scrollStart)));
+            const localWalkProgress = Math.min(1, Math.max(0, (animProgress - scrollStart) / (scrollEnd - scrollStart)));
 
             // Move fox horizontally
             // Wait for the ledge to completely finish arriving before walking (0.25 -> 0.50)
-            const walkProgress = Math.min(1, Math.max(0, (animProgress - 0.25) / 0.25));
+            const walkProgress = localWalkProgress;
             meshRef.current.position.x = THREE.MathUtils.lerp(startX, endX, walkProgress);
 
             // Move fox vertically and in Z in tandem with the flying ForegroundLedge so it stays grounded
@@ -252,10 +241,8 @@ function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset
                 // Loop normally while walking
                 const totalFrames = walkProgress * cycles * frames;
                 const currentFrame = Math.floor(totalFrames) % frames;
-                // eslint-disable-next-line react-hooks/immutability
                 clonedTex.offset.x = currentFrame / frames;
             } else if (walkProgress === 0) {
-                // eslint-disable-next-line react-hooks/immutability
                 clonedTex.offset.x = 0;
             }
         }

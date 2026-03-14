@@ -1,5 +1,6 @@
-// @ts-nocheck
-'use client';import { useFrame } from '@react-three/fiber';
+'use client';
+
+import { useFrame } from '@react-three/fiber';
 import { EffectComposer, Noise, ChromaticAberration, Vignette, DepthOfField, Bloom } from '@react-three/postprocessing';
 import { useState, useRef } from 'react';
 import * as THREE from 'three';
@@ -27,42 +28,43 @@ export default function PostProcessingStack({ bloomIntensity = 0 }: { bloomInten
     });
 
     return (
-        // @ts-expect-error - React 18 strict children mismatch with postprocessing types
-        <EffectComposer disableNormalPass multisampling={isMobile ? 0 : 4}>
-            {/* 1. Cinematic Grain: Binds the transparent PNGs and vectors together to feel like physical medium */}
-            <Noise opacity={0.06} />
+        <EffectComposer multisampling={isMobile ? 0 : 4}>
+            <>
+                {/* 1. Cinematic Grain: Binds the transparent PNGs and vectors together to feel like physical medium */}
+                <Noise opacity={0.06} />
 
-            {/* 2. Lens Distortion: Creates a subtle analog camera imperfection at the edges */}
-            {!isMobile && (
-                <ChromaticAberration
-                    offset={new THREE.Vector2(0.0008, 0.0008)}
-                    radialModulation={true}
-                    modulationOffset={0.5}
-                />
-            )}
+                {/* 2. Lens Distortion: Creates a subtle analog camera imperfection at the edges */}
+                {isMobile ? null : (
+                    <ChromaticAberration
+                        offset={new THREE.Vector2(0.0008, 0.0008)}
+                        radialModulation={true}
+                        modulationOffset={0.5}
+                    />
+                )}
 
-            {/* 3. Vignette: Focuses the user's eye towards the center of the viewport naturally */}
-            <Vignette eskil={false} offset={0.1} darkness={0.8} />
+                {/* 3. Vignette: Focuses the user's eye towards the center of the viewport naturally */}
+                <Vignette eskil={false} offset={0.1} darkness={0.8} />
 
-            {/* 4. Cinematic Depth of Field: Only on desktop and if the machine can handle it */}
-            {!isMobile && performanceOk && (
-                <DepthOfField
-                    focusDistance={0.0} // Focus on the immediate screen plane
-                    focalLength={0.02}
-                    bokehScale={2}
-                    height={480}
-                />
-            )}
+                {/* 4. Cinematic Depth of Field: Only on desktop and if the machine can handle it */}
+                {isMobile || !performanceOk ? null : (
+                    <DepthOfField
+                        focusDistance={0.0} // Focus on the immediate screen plane
+                        focalLength={0.02}
+                        bokehScale={2}
+                        height={480}
+                    />
+                )}
 
-            {/* 5. Dynamic Bloom (Optional for CampModule) */}
-            {bloomIntensity > 0.01 && (
-                <Bloom 
-                    intensity={bloomIntensity} 
-                    luminanceThreshold={0.5} 
-                    luminanceSmoothing={0.9} 
-                    mipmapBlur 
-                />
-            )}
+                {/* 5. Dynamic Bloom (Optional for CampModule) */}
+                {bloomIntensity > 0.01 ? (
+                    <Bloom 
+                        intensity={bloomIntensity} 
+                        luminanceThreshold={0.5} 
+                        luminanceSmoothing={0.9} 
+                        mipmapBlur 
+                    />
+                ) : null}
+            </>
         </EffectComposer>
     );
 }

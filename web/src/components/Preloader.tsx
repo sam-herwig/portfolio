@@ -29,7 +29,7 @@ export default function Preloader() {
   useEffect(() => {
     const manager = THREE.DefaultLoadingManager;
 
-    manager.onStart = (_url: string, _itemsLoaded: number, _itemsTotal: number) => {
+    manager.onStart = () => {
       // total tracked via onProgress
     };
 

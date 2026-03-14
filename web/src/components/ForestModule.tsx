@@ -1,15 +1,13 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Suspense, useRef, useEffect } from 'react';
+import { Suspense, useRef } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 
 import * as THREE from 'three';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
 import PostProcessingStack from './PostProcessingStack';
-
-const WoodcutShader = 'woodcutShaderMaterial' as any;
 
 function ForestCamera({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const { camera } = useThree();
@@ -25,6 +23,7 @@ function ForestCamera({ scrollProgress }: { scrollProgress: MotionValue<number> 
 
         // Z Travel: We start outside the forest at Z=20, and walk deep through it to Z=-90
         const targetZ = THREE.MathUtils.lerp(20, -90, forestProgress);
+        // eslint-disable-next-line react-hooks/immutability
         camera.position.z = targetZ;
 
         // Simulate walking footsteps (head bobbing side to side and up and down)

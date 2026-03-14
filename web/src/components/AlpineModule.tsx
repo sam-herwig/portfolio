@@ -7,12 +7,28 @@ import { motion, useTransform, MotionValue } from 'framer-motion';
 import * as THREE from 'three';
 import PostProcessingStack from './PostProcessingStack';
 
+type Vec2 = [number, number];
+type Vec3 = [number, number, number];
+type WoodcutMaterialRef = {
+    uTime: number;
+    uWind: number;
+    uMouse: THREE.Vector2;
+};
+
+type LedgeProps = {
+    textureUrl: string;
+    position: Vec3;
+    scale: Vec2;
+    rotation?: number;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WoodcutShader = 'woodcutShaderMaterial' as any;
 
-function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, frames = 8, scrollStart, scrollEnd, cycles = 6, scrollProgress }: { textureUrl: string, startX: number, endX: number, y: number, z: number, scale: [number, number], rotation?: number, frames?: number, scrollStart: number, scrollEnd: number, cycles?: number, scrollProgress: MotionValue<number> }) {
+function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, frames = 8, scrollStart, scrollEnd, cycles = 6, scrollProgress }: { textureUrl: string, startX: number, endX: number, y: number, z: number, scale: Vec2, rotation?: number, frames?: number, scrollStart: number, scrollEnd: number, cycles?: number, scrollProgress: MotionValue<number> }) {
     const tex = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
-    const materialRef = useRef<any>(null);
+    const materialRef = useRef<WoodcutMaterialRef | null>(null);
     const lerpedProgress = useRef(0);
     const playhead = useRef(0);
 
@@ -47,10 +63,12 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
 
             // Only animate if the sprite is active
             if (clamped > 0 && clamped < 1) {
-                playhead.current += animationSpeed * delta;
+                playhead.current += animationSpeed * delta * (cycles / 6);
             }
             
             const currentFrame = Math.floor(playhead.current) % frames;
+            // Imperative texture animation is intentional in the render loop.
+            // eslint-disable-next-line react-hooks/immutability
             clonedTex.offset.x = currentFrame / frames;
         }
         if (materialRef.current) {
@@ -65,7 +83,7 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
         <mesh ref={meshRef} position={[startX, y, z]} rotation-z={rotation}>
             <planeGeometry args={scale} />
             <WoodcutShader
-                ref={materialRef}
+                ref={materialRef as never}
                 uTexture={clonedTex}
                 transparent={true}
                 depthWrite={true}
@@ -75,7 +93,7 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
     );
 }
 
-function RockLedge({ textureUrl, position, scale, rotation = 0 }: any) {
+function RockLedge({ textureUrl, position, scale, rotation = 0 }: LedgeProps) {
     const tex = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
 
@@ -98,72 +116,7 @@ function RockLedge({ textureUrl, position, scale, rotation = 0 }: any) {
     );
 }
 
-function FogLedge({ textureUrl, position, scale }: any) {
-    const tex = useTexture(textureUrl) as THREE.Texture;
-
-    const clonedTex = useMemo(() => {
-        const clone = tex.clone();
-        clone.wrapS = THREE.MirroredRepeatWrapping;
-        clone.wrapT = THREE.MirroredRepeatWrapping;
-        return clone;
-    }, [tex]);
-
-    useEffect(() => {
-        return () => {
-            tex.dispose();
-            clonedTex.dispose();
-        };
-    }, [tex, clonedTex]);
-
-    useFrame((state, delta) => {
-        // Slowly drift the fog texture endlessly to create a rolling weather effect
-        clonedTex.offset.x -= delta * 0.03;
-    });
-
-    return (
-        <mesh position={position}>
-            <planeGeometry args={scale} />
-            <meshBasicMaterial
-                map={clonedTex}
-                transparent
-                depthWrite={true}
-                alphaTest={0.5}
-            />
-        </mesh>
-    );
-}
-
-function BirdFlock({ textureUrl, position, scale, rotation = 0 }: any) {
-    const tex = useTexture(textureUrl) as THREE.Texture;
-    const meshRef = useRef<THREE.Mesh>(null);
-
-    useEffect(() => {
-        return () => {
-            tex.dispose();
-        };
-    }, [tex]);
-
-    useFrame((state, delta) => {
-        if (meshRef.current) {
-            // The flock physically circles overhead
-            meshRef.current.rotation.z -= delta * 0.15;
-        }
-    });
-
-    return (
-        <mesh ref={meshRef} position={position} rotation-z={rotation}>
-            <planeGeometry args={scale} />
-            <meshBasicMaterial
-                map={tex}
-                transparent
-                depthWrite={true}
-                alphaTest={0.5}
-            />
-        </mesh>
-    );
-}
-
-function AlpineWall({ textureUrl, position, scale }: any) {
+function AlpineWall({ textureUrl, position, scale }: Omit<LedgeProps, 'rotation'>) {
     const tex = useTexture(textureUrl) as THREE.Texture;
 
     const clonedTex = useMemo(() => {
@@ -182,6 +135,7 @@ function AlpineWall({ textureUrl, position, scale }: any) {
 
     useFrame((state, delta) => {
         // Slowly drift the background wall to create deep parallax
+        // eslint-disable-next-line react-hooks/immutability
         clonedTex.offset.x -= delta * 0.05;
     });
 
@@ -212,6 +166,8 @@ function AlpineCamera({ scrollProgress }: { scrollProgress: MotionValue<number> 
 
         // Simulate body movement/climbing step sway (creates 3 full organic side-to-side sways)
         const climbSwayX = Math.sin(climbProgress * Math.PI * 6) * 1.5;
+        // Imperative camera motion is intentional inside the render loop.
+        // eslint-disable-next-line react-hooks/immutability
         camera.position.x = climbSwayX;
 
         // Y Travel: We climb vertically up the extremely tall rock face from Y=0 to Y=120

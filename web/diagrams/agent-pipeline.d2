@@ -1,0 +1,331 @@
+direction: down
+
+title: {
+  label: Agent Orchestration Pipeline
+  near: top-center
+  style: {
+    font-size: 32
+    bold: true
+    font-color: "#e2e8f0"
+  }
+}
+
+# ── Human Input ─────────────────────────────────────
+
+sam: {
+  label: "Sam"
+  shape: person
+  style: {
+    fill: "#1e40af"
+    font-color: "#ffffff"
+    stroke: "#3b82f6"
+    font-size: 20
+  }
+}
+
+# ── Orchestrator ────────────────────────────────────
+
+todd: {
+  label: "Todd\nOrchestrator"
+
+  style: {
+    fill: "#1e293b"
+    font-color: "#e2e8f0"
+    stroke: "#64748b"
+    border-radius: 8
+    font-size: 24
+    bold: true
+  }
+}
+
+# ── Research Phase ──────────────────────────────────
+
+research: {
+  label: "Research Phase"
+  style: {
+    fill: "#1e1b4b"
+    font-color: "#c4b5fd"
+    stroke: "#7c3aed"
+    border-radius: 12
+    font-size: 24
+  }
+
+  jackson: {
+    label: "Jackson 📋\nStrategy & Research"
+    style: {
+      fill: "#1e1b4b"
+      font-color: "#c4b5fd"
+      stroke: "#7c3aed"
+      border-radius: 8
+      font-size: 20
+    }
+  }
+
+  brief: {
+    label: "Research Brief"
+    shape: page
+    style: {
+      fill: "#312e81"
+      font-color: "#c4b5fd"
+      stroke: "#7c3aed"
+      font-size: 24
+    }
+  }
+
+  jackson -> brief
+}
+
+# ── Design Phase ────────────────────────────────────
+
+design: {
+  label: "Design Phase"
+  style: {
+    fill: "#1a0d2b"
+    font-color: "#f9a8d4"
+    stroke: "#9d174d"
+    border-radius: 12
+    font-size: 24
+  }
+
+  chad: {
+    label: "Chad 🎨\nDesign & Copy"
+    style: {
+      fill: "#2d1a3e"
+      font-color: "#f9a8d4"
+      stroke: "#ec4899"
+      border-radius: 8
+      font-size: 20
+    }
+  }
+
+  spec: {
+    label: "Implementation Spec"
+    shape: page
+    style: {
+      fill: "#2d1a3e"
+      font-color: "#f9a8d4"
+      stroke: "#ec4899"
+      font-size: 24
+    }
+  }
+
+  chad -> spec
+}
+
+# ── Gates ───────────────────────────────────────────
+
+preflight: {
+  label: "Preflight\nGate"
+  shape: hexagon
+  style: {
+    fill: "#451a03"
+    font-color: "#fbbf24"
+    stroke: "#d97706"
+    font-size: 20
+    bold: true
+  }
+}
+
+# ── Code Execution ──────────────────────────────────
+
+kyle: {
+  label: "Kyle 🔧\nCode Execution"
+  style: {
+    fill: "#052e16"
+    font-color: "#86efac"
+    stroke: "#22c55e"
+    border-radius: 8
+    font-size: 20
+  }
+}
+
+# ── CI Pipeline ─────────────────────────────────────
+
+pipeline: {
+  label: "Lobster CI Pipeline"
+  style: {
+    fill: "#0f172a"
+    font-color: "#e2e8f0"
+    stroke: "#334155"
+    border-radius: 12
+    font-size: 24
+    bold: true
+  }
+
+  typecheck: {
+    label: "TypeScript"
+    shape: hexagon
+    style: {
+      fill: "#1e293b"
+      font-color: "#d6d3d1"
+      stroke: "#334155"
+      font-size: 24
+    }
+  }
+
+  build: {
+    label: "Build"
+    shape: hexagon
+    style: {
+      fill: "#1e293b"
+      font-color: "#d6d3d1"
+      stroke: "#334155"
+      font-size: 24
+    }
+  }
+
+  push: {
+    label: "Push"
+    style: {
+      fill: "#1e293b"
+      font-color: "#d6d3d1"
+      stroke: "#334155"
+      font-size: 24
+    }
+  }
+
+  typecheck -> build: ✅ {
+    style.stroke: "#22c55e"
+    style.font-color: "#4ade80"
+  }
+  build -> push: ✅ {
+    style.stroke: "#22c55e"
+    style.font-color: "#4ade80"
+  }
+}
+
+# ── QA ──────────────────────────────────────────────
+
+brad: {
+  label: "Brad 🔍\nQA Verification"
+  style: {
+    fill: "#1e1b2e"
+    font-color: "#fca5a5"
+    stroke: "#ef4444"
+    border-radius: 8
+    font-size: 20
+  }
+}
+
+# ── Verdict ─────────────────────────────────────────
+
+verdict: {
+  label: "Verdict"
+  shape: diamond
+  style: {
+    fill: "#1e293b"
+    font-color: "#e2e8f0"
+    stroke: "#64748b"
+    font-size: 24
+    bold: true
+  }
+}
+
+ship: {
+  label: "✅ SHIP"
+  style: {
+    fill: "#052e16"
+    font-color: "#4ade80"
+    stroke: "#22c55e"
+    font-size: 24
+    bold: true
+    border-radius: 8
+  }
+}
+
+rework: {
+  label: "❌ REWORK"
+  style: {
+    fill: "#3f0f16"
+    font-color: "#fca5a5"
+    stroke: "#ef4444"
+    font-size: 20
+    bold: true
+    border-radius: 8
+  }
+}
+
+production: {
+  label: "🚀 Production"
+  style: {
+    fill: "#0f172a"
+    font-color: "#e2e8f0"
+    stroke: "#334155"
+    font-size: 24
+    bold: true
+    border-radius: 8
+  }
+}
+
+# ── Flow ────────────────────────────────────────────
+
+sam -> todd: "intake" {
+  style.stroke: "#3b82f6"
+  style.font-color: "#60a5fa"
+  style.font-size: 20
+}
+
+todd -> research: "research brief" {
+  style.stroke: "#7c3aed"
+  style.font-color: "#a78bfa"
+  style.font-size: 20
+}
+
+research -> design: "spec handoff" {
+  style.stroke: "#a78bfa"
+  style.font-color: "#c4b5fd"
+  style.font-size: 20
+}
+
+design -> preflight: "ready for build" {
+  style.stroke: "#ec4899"
+  style.font-color: "#f472b6"
+  style.font-size: 20
+}
+
+preflight -> kyle: "approved" {
+  style.stroke: "#22c55e"
+  style.font-color: "#4ade80"
+  style.font-size: 20
+}
+
+kyle -> pipeline: "push to CI" {
+  style.stroke: "#22c55e"
+  style.font-color: "#86efac"
+  style.font-size: 24
+}
+
+pipeline -> brad: "checks passed" {
+  style.stroke: "#64748b"
+  style.font-color: "#94a3b8"
+  style.font-size: 24
+}
+
+brad -> verdict: "QA result" {
+  style.stroke: "#64748b"
+  style.font-color: "#94a3b8"
+  style.font-size: 24
+}
+
+verdict -> ship: "approved" {
+  style.stroke: "#22c55e"
+  style.font-color: "#4ade80"
+  style.font-size: 24
+}
+
+verdict -> rework: "rework" {
+  style.stroke: "#ef4444"
+  style.font-color: "#fca5a5"
+  style.font-size: 24
+}
+
+ship -> production {
+  style.stroke: "#22c55e"
+}
+
+rework -> todd: "loop back" {
+  style.stroke: "#ef4444"
+  style.font-color: "#fca5a5"
+  style.stroke-dash: 5
+  style.font-size: 24
+}

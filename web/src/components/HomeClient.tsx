@@ -1,7 +1,6 @@
 'use client';
 
-
-import { motion, useScroll, useTransform, MotionValue } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 import CaseStudyCard from '@/components/CaseStudyCard';
@@ -138,7 +137,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           >
             <h2 className="text-4xl md:text-6xl lg:text-9xl font-bold tracking-tighter uppercase mb-8">The Summit.</h2>
             <p className="text-xl md:text-3xl text-foreground/80 mb-16 max-w-[20ch]">
-              I'm looking for the next big build. Let's talk about yours.
+              I&apos;m looking for the next big build. Let&apos;s talk about yours.
             </p>
             <a
               href="mailto:sam@samherwig.dev"

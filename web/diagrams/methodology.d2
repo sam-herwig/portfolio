@@ -1,0 +1,306 @@
+direction: down
+
+title: {
+  label: Development Methodology
+  near: top-center
+  style: {
+    font-size: 32
+    bold: true
+    font-color: "#e2e8f0"
+  }
+}
+
+# ── Shaping ─────────────────────────────────────────
+
+shaping: {
+  label: "Shaping"
+  style: {
+    fill: "#1e1b4b"
+    font-color: "#c4b5fd"
+    stroke: "#7c3aed"
+    border-radius: 12
+    font-size: 24
+  }
+
+  trigger: {
+    label: "Shaping\nTrigger"
+    shape: diamond
+    style: {
+      fill: "#312e81"
+      font-color: "#a5b4fc"
+      stroke: "#7c3aed"
+      font-size: 24
+    }
+  }
+
+  doc: {
+    label: "Shaping Doc"
+    shape: page
+    style: {
+      fill: "#312e81"
+      font-color: "#c4b5fd"
+      stroke: "#7c3aed"
+      font-size: 24
+    }
+  }
+
+  trigger -> doc: "scope + approach" {
+    style.stroke: "#7c3aed"
+    style.font-color: "#a5b4fc"
+    style.font-size: 20
+  }
+}
+
+# ── Breadboarding ───────────────────────────────────
+
+breadboarding: {
+  label: "Breadboarding"
+  style: {
+    fill: "#1a0d2b"
+    font-color: "#f9a8d4"
+    stroke: "#9d174d"
+    border-radius: 12
+    font-size: 24
+  }
+
+  board: {
+    label: "Breadboard\nSketch"
+    style: {
+      fill: "#2d1a3e"
+      font-color: "#f472b6"
+      stroke: "#ec4899"
+      border-radius: 8
+      font-size: 24
+    }
+  }
+
+  slices: {
+    label: "Thin Slices"
+    style: {
+      fill: "#2d1a3e"
+      font-color: "#f9a8d4"
+      stroke: "#ec4899"
+      border-radius: 8
+      font-size: 24
+    }
+  }
+
+  board -> slices: "decompose" {
+    style.stroke: "#ec4899"
+    style.font-color: "#f472b6"
+    style.font-size: 20
+  }
+}
+
+# ── Git Strategy ────────────────────────────────────
+
+git: {
+  label: "Git Branch Strategy"
+  style: {
+    fill: "#021a0b"
+    font-color: "#86efac"
+    stroke: "#166534"
+    border-radius: 12
+    font-size: 24
+  }
+
+  playground: {
+    label: "playground\nR&D"
+    style: {
+      fill: "#14532d"
+      font-color: "#86efac"
+      stroke: "#22c55e"
+      border-radius: 8
+      font-size: 24
+    }
+  }
+
+  preview: {
+    label: "preview\nReview"
+    style: {
+      fill: "#14532d"
+      font-color: "#fbbf24"
+      stroke: "#f59e0b"
+      border-radius: 8
+      font-size: 24
+    }
+  }
+
+  main: {
+    label: "main\nProduction"
+    style: {
+      fill: "#14532d"
+      font-color: "#4ade80"
+      stroke: "#22c55e"
+      border-radius: 8
+      font-size: 24
+      bold: true
+    }
+  }
+
+  playground -> preview: "promote" {
+    style.stroke: "#22c55e"
+    style.font-color: "#86efac"
+    style.font-size: 20
+  }
+
+  preview -> main: "after QA gate" {
+    style.stroke: "#22c55e"
+    style.font-color: "#4ade80"
+    style.font-size: 20
+  }
+}
+
+# ── Skill Map ───────────────────────────────────────
+
+skill_map: {
+  label: "Dynamic Skill Map"
+  style: {
+    fill: "#0f172a"
+    font-color: "#e2e8f0"
+    stroke: "#334155"
+    border-radius: 12
+    font-size: 24
+  }
+
+  planning: {
+    label: "📋 Planning"
+    style: {
+      fill: "#312e81"
+      font-color: "#c4b5fd"
+      stroke: "#7c3aed"
+      border-radius: 8
+      font-size: 24
+    }
+  }
+
+  dev: {
+    label: "🔧 Dev"
+    style: {
+      fill: "#052e16"
+      font-color: "#86efac"
+      stroke: "#22c55e"
+      border-radius: 8
+      font-size: 24
+    }
+  }
+
+  design_skill: {
+    label: "🎨 Design"
+    style: {
+      fill: "#2d1a3e"
+      font-color: "#f9a8d4"
+      stroke: "#ec4899"
+      border-radius: 8
+      font-size: 24
+    }
+  }
+
+  qa: {
+    label: "🔍 QA"
+    style: {
+      fill: "#1e1b2e"
+      font-color: "#fca5a5"
+      stroke: "#ef4444"
+      border-radius: 8
+      font-size: 24
+    }
+  }
+}
+
+# ── Memory System ───────────────────────────────────
+
+memory_sys: {
+  label: "Self-Improving Memory"
+  style: {
+    fill: "#1a1000"
+    font-color: "#fbbf24"
+    stroke: "#92400e"
+    border-radius: 12
+    font-size: 24
+  }
+
+  long_term: {
+    label: "MEMORY.md\nPermanent"
+    shape: page
+    style: {
+      fill: "#451a03"
+      font-color: "#fbbf24"
+      stroke: "#f59e0b"
+      font-size: 24
+    }
+  }
+
+  daily: {
+    label: "Daily Logs\nDecisions"
+    shape: page
+    style: {
+      fill: "#451a03"
+      font-color: "#fbbf24"
+      stroke: "#f59e0b"
+      font-size: 24
+    }
+  }
+
+  learnings: {
+    label: "Learnings\nErrors → Rules"
+    shape: page
+    style: {
+      fill: "#451a03"
+      font-color: "#fbbf24"
+      stroke: "#f59e0b"
+      font-size: 24
+    }
+  }
+
+  nightly: {
+    label: "Nightly\nPromotion"
+    shape: hexagon
+    style: {
+      fill: "#78350f"
+      font-color: "#fbbf24"
+      stroke: "#f59e0b"
+      font-size: 24
+      bold: true
+    }
+  }
+
+  learnings -> nightly: "scan" {
+    style.stroke: "#f59e0b"
+    style.font-color: "#fbbf24"
+    style.font-size: 20
+  }
+}
+
+# ── Top-level flow ──────────────────────────────────
+
+shaping -> breadboarding: "shapes feed\nbreadboards" {
+  style.stroke: "#7c3aed"
+  style.font-color: "#a78bfa"
+  style.font-size: 20
+}
+
+breadboarding -> git: "slices become\nbranches" {
+  style.stroke: "#ec4899"
+  style.font-color: "#f472b6"
+  style.font-size: 20
+}
+
+git -> skill_map: "work loads\nskills" {
+  style.stroke: "#22c55e"
+  style.font-color: "#86efac"
+  style.font-size: 20
+}
+
+skill_map -> memory_sys: "outcomes feed\nmemory" {
+  style.stroke: "#475569"
+  style.font-color: "#94a3b8"
+  style.font-size: 20
+}
+
+memory_sys -> shaping: "memory improves\nshaping" {
+  style.stroke: "#f59e0b"
+  style.font-color: "#fbbf24"
+  style.stroke-dash: 5
+  style.font-size: 20
+}

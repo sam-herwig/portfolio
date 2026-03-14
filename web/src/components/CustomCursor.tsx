@@ -8,19 +8,12 @@ interface CustomCursorProps {
 }
 
 export default function CustomCursor({ scrollProgress }: CustomCursorProps) {
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [isTouchDevice] = useState(() => typeof window !== 'undefined' && 'ontouchstart' in window);
   const [isHovering, setIsHovering] = useState(false);
   const [isInCampZone, setIsInCampZone] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
   const pos = useRef({ x: 0, y: 0 });
   const target = useRef({ x: 0, y: 0 });
-
-  // Detect touch device on mount
-  useEffect(() => {
-    if ('ontouchstart' in window) {
-      setIsTouchDevice(true);
-    }
-  }, []);
 
   // Zone detection via scrollProgress
   const zone = useTransform(scrollProgress, (p) => {

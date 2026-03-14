@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Instrument_Serif } from 'next/font/google';
 import './globals.css';
 
@@ -16,7 +16,6 @@ const instrument = Instrument_Serif({
 export const metadata: Metadata = {
   title: 'Sam Herwig | Creative Engineer',
   description: 'I write code that you walk through. Three.js, shaders, and the browser as a canvas.',
-  themeColor: '#f5f5f4',
   metadataBase: new URL('https://samherwig.dev'),
   openGraph: {
     title: 'Sam Herwig | Creative Engineer',
@@ -39,6 +38,10 @@ export const metadata: Metadata = {
     description: 'I write code that you walk through. Three.js, shaders, and the browser as a canvas.',
     images: ['/og.jpg'],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#f5f5f4',
 };
 
 export default function RootLayout({

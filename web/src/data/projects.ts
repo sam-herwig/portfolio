@@ -127,7 +127,11 @@ export const projects: Project[] = [
     slug: 'ai-agent-pipeline',
     tags: ['Multi-Agent Systems', 'OpenClaw', 'LLM Orchestration', 'Claude Opus 4.6', 'Vercel', 'TypeScript', 'Pipeline Architecture'],
     projectUrl: '',
-    thumbnail: '',
+    thumbnail: '/images/diagrams/agent-pipeline.png',
+    gallery: [
+      '/images/diagrams/agent-pipeline.png',
+      '/images/diagrams/methodology.png',
+    ],
     overview: {
       headline: 'Orchestrating a 4-Agent AI System That Builds, Reviews, and Deploys Code While I Sleep',
       body: "The real bottleneck in solo AI-assisted development isn't \"can the model write code?\" — it's whether you can coordinate multiple agents without them clobbering each other, deploying unverified work, or producing green signals that mean nothing. I learned this the hard way on February 28th, when five parallel dispatches to the same repo turned into a cascade of bad state. The failures were specific, and so were the fixes.\n\nI built a 4-agent production pipeline — Kyle (code), Brad (QA gate), Chad (design), Jackson (strategy) — orchestrated through OpenClaw with deterministic Lobster workflows enforcing every transition. Preflight tokens, Git hooks, and Brad's mandatory SHIP/NEEDS_WORK verdict mean no code moves without proof. The system tracks three distinct states — Accepted, Spawned, Landed — because most pipelines celebrate the wrong one. A nightly cron loop has Chad implement new product concepts, Kyle review and fix them, and automated QA verify the output; I wake up to candidates that were built, reviewed, and gated while I slept. 29 premium WebGL/animation products shipped this way. Every failure gets logged to ERRORS.md and promoted into permanent system rules — the pipeline literally gets better at preventing its own mistakes.",

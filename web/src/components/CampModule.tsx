@@ -7,21 +7,37 @@ import * as THREE from 'three';
 import { useVideoTexture, PointMaterial, Points } from '@react-three/drei';
 import PostProcessingStack from './PostProcessingStack';
 
+type Vec3 = [number, number, number];
+type Vec2 = [number, number];
+
+function createSeededRandom(seed: number) {
+    let value = seed;
+    return () => {
+        value = (value * 1664525 + 1013904223) % 4294967296;
+        return value / 4294967296;
+    };
+}
+
+function buildStarfieldPositions(count: number, seed: number) {
+    const random = createSeededRandom(seed);
+    const positions = new Float32Array(count * 3);
+
+    for (let i = 0; i < count; i++) {
+        // Spread them in a large dome behind the camp
+        positions[i * 3] = (random() - 0.5) * 400; // x
+        positions[i * 3 + 1] = random() * 200; // y (only above ground)
+        positions[i * 3 + 2] = -50 - random() * 200; // z (deep behind)
+    }
+
+    return positions;
+}
+
 // Generates procedural twinkling stars
 function Starfield() {
-    const ref = useRef(null) as any;
+    const ref = useRef<THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>>(null);
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const count = isMobile ? 800 : 2000;
-    const positions = useMemo(() => {
-        const positions = new Float32Array(count * 3);
-        for (let i = 0; i < count; i++) {
-            // Spread them in a large dome behind the camp
-            positions[i * 3] = (Math.random() - 0.5) * 400; // x
-            positions[i * 3 + 1] = Math.random() * 200; // y (only above ground)
-            positions[i * 3 + 2] = -50 - Math.random() * 200; // z (deep behind)
-        }
-        return positions;
-    }, [count]);
+    const positions = useMemo(() => buildStarfieldPositions(count, 1337), [count]);
 
     useFrame((state) => {
         if (ref.current) {
@@ -45,7 +61,7 @@ function Starfield() {
     );
 }
 
-function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: { videoUrl: string, position: any, scale: any, scrollProgress: MotionValue<number> }) {
+function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: { videoUrl: string, position: Vec3, scale: Vec2, scrollProgress: MotionValue<number> }) {
     const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
     const meshRef = useRef<THREE.Mesh>(null);
     const lerpedProgress = useRef(0);
@@ -135,6 +151,8 @@ function NightCampScene({ scrollProgress }: { scrollProgress: MotionValue<number
         const targetY = THREE.MathUtils.lerp(-10, 15, animProgress);
         const targetZ = THREE.MathUtils.lerp(30, -10, animProgress);
 
+        // Imperative camera motion is the intended Three.js pattern here.
+        // eslint-disable-next-line react-hooks/immutability
         camera.position.x = swayX;
         camera.position.y = targetY;
         camera.position.z = targetZ;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -26,11 +26,7 @@ export default function CaseStudyCard({ title, subtitle, slug, thumbnail, tags, 
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isTouch, setIsTouch] = useState(false);
-
-  useEffect(() => {
-    setIsTouch('ontouchstart' in window);
-  }, []);
+  const [isTouch] = useState(() => typeof window !== 'undefined' && 'ontouchstart' in window);
 
   const { scrollYProgress } = useScroll({
     target: ref,
