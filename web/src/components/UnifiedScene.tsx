@@ -781,6 +781,8 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
 // =============================================================================
 
 const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+const prefersReducedMotion = typeof window !== 'undefined'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function UnifiedScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
     const scrollVelocity = useRef(0);
@@ -793,6 +795,18 @@ export default function UnifiedScene({ scrollProgress }: { scrollProgress: Motio
         });
         return unsubscribe;
     }, [scrollProgress]);
+
+    if (prefersReducedMotion) {
+        return (
+            <div className="fixed inset-0 z-0">
+                <img
+                    src="/bg_layer.webp"
+                    alt="Mountain landscape"
+                    className="w-full h-full object-cover opacity-30"
+                />
+            </div>
+        );
+    }
 
     return (
         <Canvas

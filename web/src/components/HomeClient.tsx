@@ -92,16 +92,21 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
       <ElevationBar scrollProgress={scrollYProgress} />
 
       {/* The Content Overlay Container */}
-      <div className="relative z-10 w-full overflow-x-hidden flex flex-col items-center">
+      <div id="main-content" className="relative z-10 w-full overflow-x-hidden flex flex-col items-center">
 
         {/* Checkpoint 1: Basecamp - Hero Content (Migrated to 3D Canvas) */}
-        <div ref={refHero} className="w-full min-h-screen pb-[300vh]" />
+        <div ref={refHero} role="region" aria-label="Hero — Introduction" className="w-full min-h-screen pb-[300vh]">
+          <h2 className="sr-only">Hero — Introduction</h2>
+        </div>
 
         {/* The Forest Gauntlet Text Nodes (Migrated to 3D Canvas) */}
-        <div ref={refForest} className="w-full min-h-[400vh]" />
+        <div ref={refForest} role="region" aria-label="About Sam" className="w-full min-h-[400vh]">
+          <h2 className="sr-only">About Sam</h2>
+        </div>
 
         {/* Checkpoint 2.5: The Night Camp */}
-        <div ref={refCamp} className="w-full flex flex-col items-center justify-center min-h-[200vh] py-[60vh]">
+        <div ref={refCamp} role="region" aria-label="Technical Skills" className="w-full flex flex-col items-center justify-center min-h-[200vh] py-[60vh]">
+          <h2 className="sr-only">Technical Skills</h2>
           <div className="w-full min-h-[50vh] flex flex-col items-center justify-center text-center px-4 md:px-24 my-[20vh] transform-gpu relative">
             <div className="absolute inset-0 bg-foreground/5 backdrop-blur-xl rounded-3xl m-4 md:m-8 border border-foreground/10 -z-10 shadow-2xl max-w-4xl mx-auto" />
             <div className="relative z-10 p-6 md:p-12 w-full max-w-4xl mx-auto">
@@ -111,7 +116,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
         </div>
 
         {/* Checkpoint 3: The High Alpine - Case Studies */}
-        <div ref={refAlpine} className="w-full flex flex-col items-center max-w-7xl mx-auto py-[80vh]">
+        <div ref={refAlpine} role="region" aria-label="Selected Work" className="w-full flex flex-col items-center max-w-7xl mx-auto py-[80vh]">
+          <h2 className="sr-only">Selected Work</h2>
           {displayCaseStudies.map((cs: any, i: number) => (
             <CaseStudyCard
               key={cs.slug}
@@ -130,7 +136,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
         <CredentialStrip />
 
         {/* Checkpoint 4: The Summit - Finale & Footer */}
-        <section ref={refSummit} className="w-full relative min-h-[160vh] flex flex-col justify-end pb-[20vh] pt-[60vh]">
+        <section ref={refSummit} role="region" aria-label="Contact" className="w-full relative min-h-[160vh] flex flex-col justify-end pb-[20vh] pt-[60vh]">
           <motion.div
             style={{
               opacity: useTransform(scrollYProgress, [0.85, 0.95], [0, 1]),

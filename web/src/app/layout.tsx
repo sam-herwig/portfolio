@@ -16,6 +16,7 @@ const instrument = Instrument_Serif({
 export const metadata: Metadata = {
   title: 'Sam Herwig | Creative Engineer',
   description: 'I write code that you walk through. Three.js, shaders, and the browser as a canvas.',
+  themeColor: '#f5f5f4',
   metadataBase: new URL('https://samherwig.dev'),
   openGraph: {
     title: 'Sam Herwig | Creative Engineer',
@@ -50,6 +51,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${instrument.variable} antialiased transition-colors duration-1000 bg-background text-foreground font-inter`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:bg-background focus:text-foreground focus:px-4 focus:py-2 focus:rounded-lg focus:border focus:border-foreground/20"
+        >
+          Skip to content
+        </a>
         {children}
         {modal}
       </body>
