@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 import CaseStudyCard from '@/components/CaseStudyCard';
 import CredentialStrip from '@/components/CredentialStrip';
+import CustomCursor from '@/components/CustomCursor';
 import ElevationBar from '@/components/ElevationBar';
 import GearRack from '@/components/GearRack';
 import Preloader from '@/components/Preloader';
@@ -56,6 +57,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: any[] }) {
       style={{ backgroundColor, color }}
       className="relative w-full overflow-x-hidden min-h-screen transition-colors duration-100"
     >
+
+      {/* Custom cursor — zone-aware, inertia-driven, touch-gated */}
+      <CustomCursor scrollProgress={scrollYProgress} />
 
       {/* Preloader — overlays everything until assets are loaded */}
       <Preloader />

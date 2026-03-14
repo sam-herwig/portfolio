@@ -45,6 +45,16 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Custom cursor — hide system cursor on pointer-capable devices */
+  @media (hover: hover) {
+    body {
+      cursor: none;
+    }
+    a, button, [role="button"] {
+      cursor: none;
+    }
+  }
   
   /* Taste-Skill liquid glass refraction */
   .glassmorphism {
