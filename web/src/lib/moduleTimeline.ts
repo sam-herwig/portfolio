@@ -60,17 +60,31 @@ export const MODULE_TIMELINE = {
 export type ModuleName = keyof typeof MODULE_TIMELINE;
 export type ModuleWindow = (typeof MODULE_TIMELINE)[ModuleName];
 
-/* ── Scene visibility helpers ──────────────────────────────────────────────
- * Scene groups need a slightly wider window than content so transitions
- * feel smooth (geometry should be ready before content fades in and linger
- * briefly after content fades out).  The padding adds a small buffer on
- * each side of the ownership window.
+/* ── Scene envelope helpers ─────────────────────────────────────────────
+ * Scene groups crossfade using the enter/exit windows already defined in
+ * the contract.  XFADE adds a tiny margin so the 3D geometry is ready
+ * just before content fades in and lingers just after content fades out.
+ *
+ * sceneOpacity() returns 0→1 during enter, 1 during hold, 1→0 during exit.
+ * sceneVisible()  returns true when opacity > 0 (for unmounting).
  */
-const SCENE_PAD = 0.03;
+const XFADE = 0.01; // small pre/post margin for geometry readiness
+
+export function sceneOpacity(module: ModuleName, progress: number): number {
+  const w = MODULE_TIMELINE[module];
+  const fadeInStart  = w.enterStart - XFADE;
+  const fadeInEnd    = w.enterEnd;
+  const fadeOutStart = w.exitStart;
+  const fadeOutEnd   = w.exitEnd + XFADE;
+
+  if (progress <= fadeInStart || progress >= fadeOutEnd) return 0;
+  if (progress < fadeInEnd) return Math.max(0, Math.min(1, (progress - fadeInStart) / (fadeInEnd - fadeInStart)));
+  if (progress > fadeOutStart) return Math.max(0, Math.min(1, (fadeOutEnd - progress) / (fadeOutEnd - fadeOutStart)));
+  return 1;
+}
 
 export function sceneVisible(module: ModuleName, progress: number): boolean {
-  const w = MODULE_TIMELINE[module];
-  return progress > w.ownStart - SCENE_PAD && progress < w.ownEnd + SCENE_PAD;
+  return sceneOpacity(module, progress) > 0;
 }
 
 /* ── Content-level helpers ─────────────────────────────────────────────────

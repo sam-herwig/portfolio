@@ -10,7 +10,28 @@ import * as THREE from 'three';
 import PostProcessingStack from './PostProcessingStack';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
-import { MODULE_TIMELINE, sceneVisible } from '@/lib/moduleTimeline';
+import { MODULE_TIMELINE, sceneVisible, sceneOpacity } from '@/lib/moduleTimeline';
+
+
+// ── Scene envelope helper ─────────────────────────────────────────────
+// Applies sceneOpacity as a multiplier on all materials in a group,
+// preserving each material's base opacity (set on first encounter).
+function applyGroupOpacity(group: THREE.Group, envelope: number): void {
+    group.traverse((child) => {
+        const mesh = child as THREE.Mesh | THREE.Points;
+        if (!mesh.material) return;
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const mat of mats) {
+            if (!('opacity' in mat)) continue;
+            // Store base opacity on first visit
+            if ((mat as any).__baseOpacity === undefined) {
+                (mat as any).__baseOpacity = mat.opacity;
+            }
+            mat.opacity = (mat as any).__baseOpacity * envelope;
+            mat.transparent = true;
+        }
+    });
+}
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
 
@@ -209,7 +230,9 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
     useFrame((_, delta) => {
         lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
         if (groupRef.current) {
-            groupRef.current.visible = sceneVisible('hero', lerpedP.current);
+            const opacity = sceneOpacity('hero', lerpedP.current);
+            groupRef.current.visible = opacity > 0;
+            if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
         }
     });
 
@@ -234,9 +257,11 @@ function ForestSceneGroup({ scrollProgress, scrollVelocity }: {
     useFrame((state, delta) => {
         if (groupRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-            groupRef.current.visible = sceneVisible('forest', lerpedP.current);
+            const opacity = sceneOpacity('forest', lerpedP.current);
+            groupRef.current.visible = opacity > 0;
 
             if (groupRef.current.visible) {
+                applyGroupOpacity(groupRef.current, opacity);
                 const vel = Math.min(scrollVelocity.current * 30, 1.5);
                 const wind = Math.sin(state.clock.elapsedTime * 2) * vel * 0.02;
                 groupRef.current.rotation.x = THREE.MathUtils.damp(
@@ -392,11 +417,15 @@ function CampSceneGroup({ scrollProgress, scrollVelocity }: {
     useFrame((state, delta) => {
         lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
         const p = lerpedP.current;
-        if (groupRef.current) groupRef.current.visible = sceneVisible('camp', p);
+        const opacity = sceneOpacity('camp', p);
+        if (groupRef.current) {
+            groupRef.current.visible = opacity > 0;
+            if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
+        }
         if (lightRef.current) {
             const mix = Math.min(1, Math.max(0, (p - camp.ownStart) / (camp.enterEnd - camp.ownStart)));
             lightRef.current.color.lerpColors(colorNight, colorFire, mix);
-            lightRef.current.intensity = 0.2 + mix * 1.5;
+            lightRef.current.intensity = (0.2 + mix * 1.5) * opacity;
         }
     });
 
@@ -512,7 +541,9 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
     useFrame((state, delta) => {
         if (groupRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-            groupRef.current.visible = sceneVisible('alpine', lerpedP.current);
+            const opacity = sceneOpacity('alpine', lerpedP.current);
+            groupRef.current.visible = opacity > 0;
+            if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
         }
     });
 
@@ -730,7 +761,9 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
     useFrame((state, delta) => {
         if (groupRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-            groupRef.current.visible = sceneVisible('summit', lerpedP.current);
+            const opacity = sceneOpacity('summit', lerpedP.current);
+            groupRef.current.visible = opacity > 0;
+            if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
         }
     });
 

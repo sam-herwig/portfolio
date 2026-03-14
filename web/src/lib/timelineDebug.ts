@@ -10,7 +10,7 @@
  * TEMPORARY — remove after timing issues are resolved.
  */
 
-import { MODULE_TIMELINE, type ModuleName, childRanges } from './moduleTimeline';
+import { MODULE_TIMELINE, type ModuleName, childRanges, sceneOpacity } from './moduleTimeline';
 
 // ── Debug gate ──────────────────────────────────────────────────────────
 let _debugEnabled: boolean | null = null;
@@ -172,8 +172,9 @@ function updateHUD(p: number): void {
   const bar = (mod: ModuleName): string => {
     const w = MODULE_TIMELINE[mod];
     const phase = state.phases[mod];
+    const sOp = sceneOpacity(mod, p);
     const dot = phase === 'own' ? '🟢' : phase === 'entering' ? '🔵' : phase === 'exiting' ? '🟡' : '⚫';
-    return `${dot} ${mod.padEnd(7)} ${w.ownStart.toFixed(2)}–${w.ownEnd.toFixed(2)}  [${phase}]`;
+    return `${dot} ${mod.padEnd(7)} ${w.ownStart.toFixed(2)}–${w.ownEnd.toFixed(2)}  [${phase}] op:${sOp.toFixed(2)}`;
   };
 
   const cardLine = (label: string, ranges: ReadonlyArray<readonly [number, number, number, number]>, visArr: boolean[]): string => {

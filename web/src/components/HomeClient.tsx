@@ -20,9 +20,9 @@ const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: f
 /* ── Derive all content ranges from the shared contract ──────────────── */
 
 const heroRange = moduleRange('hero');
-const forestChildRanges = childRanges('forest', 4);
+const forestChildRanges = childRanges('forest', 4, 0.90);
 const campWindow = MODULE_TIMELINE.camp;
-const alpineChildRanges = childRanges('alpine', 4);
+const alpineChildRanges = childRanges('alpine', 4, 0.82);
 const summitWindow = MODULE_TIMELINE.summit;
 
 const forestNarrative = [
