@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform, MotionValue } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import CaseStudyCard from '@/components/CaseStudyCard';
 import CredentialStrip from '@/components/CredentialStrip';
 import CustomCursor from '@/components/CustomCursor';
@@ -12,6 +12,7 @@ import Preloader from '@/components/Preloader';
 import { useAppStore } from '@/store/useAppStore';
 import { Project } from '@/data/projects';
 import { MODULE_TIMELINE, moduleRange, childRanges } from '@/lib/moduleTimeline';
+import { isTimelineDebugEnabled, tickTimelineDebug, dumpTimeline, destroyTimelineDebug } from '@/lib/timelineDebug';
 
 // Single unified Canvas — avoids 5x WebGL context overhead
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
@@ -116,6 +117,15 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
 
   // Global Scroll Tracker — single source for the unified module timeline [0.0 – 1.0]
   const { scrollYProgress } = useScroll();
+
+  // ── Timeline debug instrumentation (gated behind ?debugTimeline) ──
+  useEffect(() => {
+    if (!isTimelineDebugEnabled()) return;
+    dumpTimeline();
+    const unsub = scrollYProgress.on("change", (v: number) => tickTimelineDebug(v));
+    return () => { unsub(); destroyTimelineDebug(); };
+  }, [scrollYProgress]);
+
 
   // Background Color Transition tied to the Night Camp module ownership window
   const backgroundColor = useTransform(
