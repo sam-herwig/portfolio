@@ -128,3 +128,13 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Test & debug artifacts
+web/e2e/screenshots/
+web/test-results/
+
+# Source art / raw graphics (processed into WebP already)
+web/public/assets/graphics/
+
+# Claude session duplicates
+claude [0-9]*.md

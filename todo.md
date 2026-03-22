@@ -1,115 +1,53 @@
-# Circular Text Component Optimization
+# Codebase Audit Remediation
 
 ## Todo List
-- [x] Analyze current BuilderCircularText component implementation
-- [x] Identify performance bottlenecks and inefficiencies
-- [x] Research optimization techniques for SVG animations
-- [x] Plan refactoring approach for better performance
-- [x] Implement optimizations
-- [x] Create optimized version with SVG text path
-- [x] Add CSS-only animation
-- [x] Implement resize debouncing
-- [x] Test performance improvements
-- [x] Update existing component with optimizations
+
+### Phase 1: Delete Dead Code
+- [x] Delete `WatercolorCursorMaterial.ts` (unused)
+- [x] Delete `InteractiveHero.tsx` (unused)
+- [x] Delete `RefractionMaterial.ts` (only imported by InteractiveHero)
+- [x] Delete orphaned e2e test files (card-diag, firefox-debug, layout-diag, real-render, webgl-test)
+
+### Phase 2: Error Boundary
+- [x] Create `src/app/error.tsx` with retry button
+
+### Phase 3: Accessibility
+- [x] Fix cursor hiding for keyboard users (pointer: fine + focus-visible restore)
+- [x] Make ElevationBar waypoints keyboard-accessible (button elements, aria-labels, 44px touch targets)
+- [x] Add `aria-hidden="true"` to decorative Canvas wrapper
+- [x] Boost contrast on low-opacity text (/45 → /60, /40 → /60)
+- [x] Add reduced-motion support (UnifiedScene reactive listener, scroll indicator, pulse animation)
+- [x] Add aria-labels to icons and links (GearRack SVGs, CaseStudyCard links, mailto links)
+- [x] Add section IDs for deep linking (about, skills, contact)
+
+### Phase 4: Performance
+- [x] Gate console.warn in PostProcessingStack behind NODE_ENV
+
+### Phase 5: Code Quality
+- [x] Replace blanket `eslint-disable` with targeted rule suppressions in DeepForest + UnifiedScene
+- [x] Add section IDs for deep linking
+
+## Verification
+- [x] `npm run build` — passes clean, no TypeScript/build errors
+- [x] `npm run lint` — no new warnings from modified files (remaining are pre-existing e2e + CaseStudyContent)
 
 ## Review
 
-### Performance Improvements Made:
-1. **Replaced GSAP with CSS animations** - Removed heavy JavaScript animation library in favor of native CSS
-2. **Switched to SVG text path** - Much more efficient than individual character transforms
-3. **Added GPU acceleration** - Using `transform: translateZ(0)` and `will-change` property
-4. **Implemented resize debouncing** - Prevents excessive recalculations during window resize
-5. **Removed per-character DOM manipulation** - Single rotating container instead of multiple elements
+### Files Deleted (8)
+- `src/components/shaders/WatercolorCursorMaterial.ts` — unused, 75 lines
+- `src/components/InteractiveHero.tsx` — unused, 232 lines
+- `src/components/shaders/RefractionMaterial.ts` — only used by InteractiveHero
+- 5 orphaned e2e test files (card-diag, firefox-debug, layout-diag, real-render, webgl-test)
 
-### Technical Changes:
-- Uses CSS `@keyframes` for smooth, performant rotation
-- SVG `<textPath>` follows circular path for text layout
-- CSS custom properties for dynamic duration and direction
-- Debounced resize handler (150ms delay)
-- Hover to pause animation for better UX
+### Files Created (1)
+- `src/app/error.tsx` — Next.js error boundary, catches runtime errors with "Try Again" button
 
-### Performance Benefits:
-- ~90% reduction in JavaScript execution time
-- No more layout thrashing from individual character transforms
-- Smooth 60fps animation even on lower-end devices
-- Significantly reduced memory usage
-- Better browser paint performance
-
----
-
-# About Page Implementation
-
-## Todo List
-- [x] Analyze existing portfolio structure and theme
-- [x] Review theme.json for design system
-- [x] Create About page wireframe design
-- [x] Implement About page component
-- [x] Create Sanity schema for About page
-- [x] Add About page to Sanity schema index
-- [x] Create About page Vue component
-- [x] Add route for About page
-- [x] Add About link to navigation
-
-## Review
-
-### Summary of Changes Made:
-1. **Created Sanity Schema** - Added comprehensive schema for About page with all sections (hero, intro, skills, experience, personal, CTA)
-2. **Implemented Vue Component** - Built fully responsive About page with all wireframe sections
-3. **Updated Navigation** - Added About link to header navigation
-4. **Integrated with CMS** - Connected to Sanity for content management
-
-### Key Features Implemented:
-- Hero section with circular text animation component
-- Skills grid with color-coded cards and hover effects
-- Experience timeline with alternating layout
-- Personal section with textured background
-- Call-to-action section with primary/secondary buttons
-- Fully responsive design following existing design system
-
-### Technical Details:
-- Used existing BuilderCircularText component for hero animation
-- Leveraged RichTextContent component for formatted text
-- Followed established SCSS variables and mixins
-- Maintained consistency with existing color palette and typography
-
----
-
-# Masonry Wall Modal Implementation
-
-## Todo List
-- [x] Create a reusable modal/lightbox component for displaying media
-- [x] Add click handlers to masonry wall items
-- [x] Implement modal state management in BuilderMasonryWall.vue
-- [x] Style the modal overlay with backdrop and close button
-- [x] Handle keyboard navigation (ESC to close)
-- [x] Ensure proper video playback in modal
-- [x] Test responsive behavior on mobile and desktop
-
-## Review
-
-### Changes Made:
-1. **Created MediaModal.vue** - A reusable modal component that:
-   - Supports both images and videos
-   - Uses Teleport to render at body level for proper z-index
-   - Includes smooth fade-in/out transitions
-   - Has a dark backdrop (90% opacity)
-   - Shows X button in top-right corner
-   - Closes when clicking outside the media
-   - Handles ESC key to close
-   - Prevents body scroll when open
-   - Pauses videos when closing
-
-2. **Updated BuilderMasonryWall.vue** to:
-   - Import and use the MediaModal component
-   - Add click handlers to all masonry items
-   - Manage modal state (open/closed, selected media)
-   - Pause background videos when modal opens
-   - Resume visible videos when modal closes
-   - Added cursor pointer style to indicate clickability
-
-### Key Features:
-- Minimal code changes following the simplicity principle
-- Responsive design works on mobile and desktop
-- Smooth user experience with proper video handling
-- Accessible with keyboard navigation
-- Clean, modern UI with subtle animations
+### Files Modified (8)
+1. **`globals.css`** — Cursor hiding now requires `(pointer: fine) and (hover: hover)`, restores cursor during keyboard nav via `:has(:focus-visible)`
+2. **`ElevationBar.tsx`** — Waypoints changed from `<div>` to `<button>` with aria-labels and 44px touch targets (17px padding around 10px dot). Pulse animation disabled in reduced-motion.
+3. **`HomeClient.tsx`** — aria-hidden on Canvas wrapper, section IDs (about/skills/contact), reduced-motion check on scroll indicator bounce, aria-labels on mailto links, contrast boost on subtitle text (/45→/60, /40→/60)
+4. **`GearRack.tsx`** — `aria-hidden="true"` on all decorative SVG icons, contrast boost on labels (/45→/60, /40→/60)
+5. **`CaseStudyCard.tsx`** — `aria-label="View {title} case study"` on card links
+6. **`UnifiedScene.tsx`** — Reduced-motion detection now reactive via `matchMedia` change listener (responds to OS setting toggle). Blanket eslint-disable replaced with targeted rules.
+7. **`PostProcessingStack.tsx`** — `console.warn` gated behind `process.env.NODE_ENV === 'development'`
+8. **`DeepForest.tsx`** — Blanket eslint-disable replaced with targeted rules

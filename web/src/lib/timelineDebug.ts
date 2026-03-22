@@ -10,7 +10,7 @@
  * TEMPORARY — remove after timing issues are resolved.
  */
 
-import { MODULE_TIMELINE, type ModuleName, childRanges, sceneOpacity } from './moduleTimeline';
+import { MODULE_TIMELINE, type ModuleName, sceneChildRanges, sceneOpacity } from './moduleTimeline';
 
 // ── Debug gate ──────────────────────────────────────────────────────────
 let _debugEnabled: boolean | null = null;
@@ -65,8 +65,8 @@ function isCardVisible(range: readonly [number, number, number, number], p: numb
 }
 
 // Pre-compute child ranges
-const forestRanges = childRanges('forest', 4);
-const alpineRanges = childRanges('alpine', 4);
+const forestRanges = sceneChildRanges('forest', 4);
+const alpineRanges = sceneChildRanges('alpine', 4);
 
 // ── Main tick function — call from requestAnimationFrame or useFrame ────
 export function tickTimelineDebug(progress: number): void {

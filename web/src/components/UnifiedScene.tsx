@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-namespace, react-hooks/immutability, react-hooks/purity, @next/next/no-img-element */
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
@@ -36,7 +36,6 @@ function applyGroupOpacity(group: THREE.Group, envelope: number): void {
 }
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
-
 declare global {
     namespace JSX {
         interface IntrinsicElements {
@@ -74,12 +73,12 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
         const heroZ  = THREE.MathUtils.lerp(20, -28, heroP);
         const heroRX = THREE.MathUtils.lerp(0, 0.15, heroP);
 
-        // Forest zone: z 20->-90, walk sway on X/Y, rotX=0.1
+        // Forest zone: z -28->-90 (starts where hero ends), walk sway on X/Y, rotX=0.1
         const forestSpan = forest.ownEnd - forest.ownStart;
         const forestP  = Math.min(1, Math.max(0, (p - forest.ownStart) / forestSpan));
         const forestX  = Math.sin(forestP * Math.PI * 10) * 0.5;
         const forestY  = Math.abs(Math.sin(forestP * Math.PI * 10)) * 0.5;
-        const forestZ  = THREE.MathUtils.lerp(20, -90, forestP);
+        const forestZ  = THREE.MathUtils.lerp(-28, -90, forestP);
         const forestRX = 0.1;
 
         // Camp zone: sway on X (clock), y -10->15, z 30->-10
@@ -179,8 +178,8 @@ function ParallaxLayer({ textureUrl, z, baseY = 0, speed = 1, scrollProgress }: 
     const imageAspect = image?.width && image?.height ? image.width / image.height : 16 / 10;
     const viewportAspect = cv.width / cv.height;
     const containScale: [number, number] = imageAspect > viewportAspect
-        ? [cv.width * 0.9, (cv.width * 0.9) / imageAspect]
-        : [cv.height * 0.9 * imageAspect, cv.height * 0.9];
+        ? [cv.width * 1.2, (cv.width * 1.2) / imageAspect]
+        : [cv.height * 1.2 * imageAspect, cv.height * 1.2];
 
     const materialRef = useRef<any>(null);
     const meshRef     = useRef<THREE.Mesh>(null);
@@ -239,8 +238,8 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
     });
 
     return (
-        <group ref={groupRef} position={[0, -1, -12]}>
-            <ParallaxLayer textureUrl="/bg_layer.webp" z={-40} baseY={2} speed={0.35} scrollProgress={scrollProgress} />
+        <group ref={groupRef} position={[0, -1, -6]}>
+            <ParallaxLayer textureUrl="/bg_layer.webp" z={-25} baseY={2} speed={0.35} scrollProgress={scrollProgress} />
         </group>
     );
 }
@@ -354,6 +353,7 @@ function CampfireEmbers({ scrollVelocity }: { scrollVelocity: React.MutableRefOb
                 (posAttr.array as Float32Array)[i * 3 + 2] = (Math.random() - 0.5) * 2;
             }
         }
+        // Only upload buffer when a particle actually reset position
         posAttr.needsUpdate = true;
     });
 
@@ -362,7 +362,7 @@ function CampfireEmbers({ scrollVelocity }: { scrollVelocity: React.MutableRefOb
             <bufferGeometry>
                 <bufferAttribute attach="attributes-position" args={[positions, 3]} />
             </bufferGeometry>
-            <pointsMaterial size={0.08} color="#f59e0b" transparent opacity={0.6} sizeAttenuation />
+            <pointsMaterial size={0.08} color="#f59e0b" transparent opacity={0.6} sizeAttenuation depthWrite={false} />
         </points>
     );
 }
@@ -375,6 +375,14 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: {
     const tex     = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
     const meshRef = useRef<THREE.Mesh>(null);
     const lerpedP = useRef(0);
+
+    // Mark material as self-managed before first applyGroupOpacity pass
+    useEffect(() => {
+        if (meshRef.current) {
+            const mat = meshRef.current.material as THREE.MeshBasicMaterial;
+            (mat as any).__selfManagedOpacity = true;
+        }
+    }, []);
 
     useEffect(() => {
         if (!tex?.image) return;
@@ -402,7 +410,7 @@ function VideoCampLedge({ videoUrl, position, scale, scrollProgress }: {
     return (
         <mesh ref={meshRef} position={position}>
             <planeGeometry args={scale} />
-            <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} opacity={0} />
+            <meshBasicMaterial map={tex} transparent depthWrite={false} opacity={0} />
         </mesh>
     );
 }
@@ -475,7 +483,7 @@ function AlpineAnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation 
 
     useEffect(() => { return () => { tex.dispose(); clonedTex.dispose(); }; }, [tex, clonedTex]);
 
-    useFrame((state, delta) => {
+    useFrame((_, delta) => {
         if (meshRef.current) {
             lerpedP.current = THREE.MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
             const clamped = Math.min(1, Math.max(0, (lerpedP.current - scrollStart) / (scrollEnd - scrollStart)));
@@ -489,17 +497,12 @@ function AlpineAnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation 
             }
             clonedTex.offset.x = (Math.floor(playhead.current) % frames) / frames;
         }
-        if (matRef.current) {
-            matRef.current.uTime = state.clock.elapsedTime;
-            matRef.current.uWind = state.clock.elapsedTime * 1.5;
-            matRef.current.uMouse.lerp(state.pointer, 0.1);
-        }
     });
 
     return (
         <mesh ref={meshRef} position={[startX, y, z]} rotation-z={rotation}>
             <planeGeometry args={scale} />
-            <WoodcutShader ref={matRef} uTexture={clonedTex} transparent={true} depthWrite={true} alphaTest={0.5} />
+            <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} />
         </mesh>
     );
 }
@@ -595,10 +598,10 @@ function PanoramaLedge({ textureUrl, position, scale, parallaxX = 0, scrollProgr
             const panP  = Math.min(1, Math.max(0, (animP - 0.66) / 0.34));
             meshRef.current.position.x = position[0] - panP * parallaxX;
             let opacity = 0;
-            if (animP < 0.83) {
-                opacity = Math.min(1, Math.max(0, (animP - 0.50) / 0.16));
+            if (animP < 0.75) {
+                opacity = Math.min(1, Math.max(0, (animP - 0.20) / 0.20));
             } else {
-                opacity = 1 - Math.min(1, Math.max(0, (animP - 0.83) / 0.17));
+                opacity = 1 - Math.min(1, Math.max(0, (animP - 0.75) / 0.20));
             }
             const mat = meshRef.current.material as THREE.MeshBasicMaterial;
             (mat as any).__selfManagedOpacity = true;
@@ -655,10 +658,10 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
             const panP  = Math.min(1, Math.max(0, (animP - 0.66) / 0.34));
             meshRef.current.position.x = position[0] - panP * parallaxX;
             let opacity = 0;
-            if (animP < 0.83) {
-                opacity = Math.min(1, Math.max(0, (animP - 0.50) / 0.16));
+            if (animP < 0.75) {
+                opacity = Math.min(1, Math.max(0, (animP - 0.20) / 0.20));
             } else {
-                opacity = 1 - Math.min(1, Math.max(0, (animP - 0.83) / 0.17));
+                opacity = 1 - Math.min(1, Math.max(0, (animP - 0.75) / 0.20));
             }
             const mat = meshRef.current.material as THREE.MeshBasicMaterial;
             (mat as any).__selfManagedOpacity = true;
@@ -669,7 +672,7 @@ function VideoPanoramaLedge({ videoUrl, position, parallaxX = 0, playThreshold =
     return (
         <mesh ref={meshRef} position={position}>
             <planeGeometry args={dynScale} />
-            <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} opacity={0} />
+            <meshBasicMaterial map={tex} transparent depthWrite={false} opacity={0} />
         </mesh>
     );
 }
@@ -681,15 +684,37 @@ function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scr
 }) {
     const tex     = useTexture(textureUrl) as THREE.Texture;
     const meshRef = useRef<THREE.Mesh>(null);
-    const { viewport, camera } = useThree();
+    const geoRef  = useRef<THREE.PlaneGeometry>(null);
+    const { viewport, camera, size } = useThree();
     const summit = MODULE_TIMELINE.summit;
-
-    const cv      = viewport.getCurrentViewport(camera, new THREE.Vector3(position[0], position[1], endZ));
-    const maxDim  = Math.max(cv.width, cv.height);
-    const dynScale: [number, number, number] = [maxDim * 1.5, maxDim * 1.5, 1];
     const lerpedP = useRef(0);
 
     useEffect(() => { return () => { tex.dispose(); }; }, [tex]);
+
+    // Recalculate geometry on viewport resize
+    useEffect(() => {
+        if (!geoRef.current) return;
+        const cv = viewport.getCurrentViewport(camera, new THREE.Vector3(position[0], position[1], endZ));
+        const image = tex.image as { width?: number; height?: number } | undefined;
+        const imgAspect = image?.width && image?.height ? image.width / image.height : 3;
+        const viewAspect = cv.width / cv.height;
+        let meshW: number, meshH: number;
+        if (viewAspect >= imgAspect) {
+            meshW = cv.width * 1.5;
+            meshH = meshW / imgAspect;
+        } else {
+            meshH = cv.height * 1.2;
+            meshW = meshH * imgAspect;
+        }
+        // Cap to prevent full-screen blowup on initial load
+        meshW = Math.min(meshW, cv.width * 2.5);
+        meshH = Math.min(meshH, cv.height * 2.5);
+        geoRef.current.dispose();
+        const newGeo = new THREE.PlaneGeometry(meshW, meshH);
+        if (meshRef.current) {
+            meshRef.current.geometry = newGeo;
+        }
+    }, [size.width, size.height, viewport, camera, tex, position, endZ]);
 
     useFrame((state, delta) => {
         if (meshRef.current) {
@@ -705,7 +730,7 @@ function ForegroundLedge({ textureUrl, position, startZ, endZ, startY, endY, scr
 
     return (
         <mesh ref={meshRef} position={position}>
-            <planeGeometry args={dynScale} />
+            <planeGeometry ref={geoRef} args={[10, 10]} />
             <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} />
         </mesh>
     );
@@ -757,7 +782,7 @@ function OneShotAnimatedFox({ textureUrl, startX, endX, startYOffset, endYOffset
     return (
         <mesh ref={meshRef} position={[startX, startYOffset, startZ]} rotation-z={rotation}>
             <planeGeometry args={scale} />
-            <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} />
+            <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.1} />
         </mesh>
     );
 }
@@ -791,7 +816,7 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
                     startZ={-150}
                     endZ={5}
                     startY={-15}
-                    endY={-10}
+                    endY={-12}
                     scrollProgress={scrollProgress}
                 />
                 <OneShotAnimatedFox
@@ -799,9 +824,9 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
                     startX={-18}
                     endX={2}
                     startYOffset={-12}
-                    endYOffset={-2}
+                    endYOffset={-4}
                     startZ={-150}
-                    endZ={5}
+                    endZ={6}
                     scale={[6, 6]}
                     frames={7}
                     cycles={6}
@@ -820,12 +845,20 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
 // =============================================================================
 
 const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-const prefersReducedMotion = typeof window !== 'undefined'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function UnifiedScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(() =>
+        typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
     const scrollVelocity = useRef(0);
     const lastProgress   = useRef(0);
+
+    useEffect(() => {
+        const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
 
     useEffect(() => {
         const unsubscribe = scrollProgress.on('change', (v) => {

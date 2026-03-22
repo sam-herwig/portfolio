@@ -48,7 +48,7 @@ export default function CaseStudyModal({ project }: CaseStudyModalProps) {
               animate={{ opacity: 1, backdropFilter: 'blur(4px)' }}
               exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
               transition={{ duration: 0.3 }}
-              className="fixed inset-0 z-40 bg-black/60"
+              className="fixed inset-0 z-40 bg-black/80"
               onClick={handleClose}
             />
 

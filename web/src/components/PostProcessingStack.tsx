@@ -19,7 +19,9 @@ export default function PostProcessingStack({ bloomIntensity = 0 }: { bloomInten
         if (time - fpsTracker.current.lastTime >= 1.0) {
             const fps = fpsTracker.current.frames;
             if (fps < 50 && performanceOk) {
-                console.warn('PostProcessingStack: Dropping DepthOfField to maintain 120Hz target.');
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('PostProcessingStack: Dropping DepthOfField to maintain 120Hz target.');
+                }
                 setPerformanceOk(false);
             }
             fpsTracker.current.frames = 0;

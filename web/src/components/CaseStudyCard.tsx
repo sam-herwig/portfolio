@@ -23,20 +23,30 @@ function hash(str: string): number {
   return Math.abs(h);
 }
 
-export default function CaseStudyCard({ title, subtitle, slug, thumbnail, tags, side, linkable = true }: CaseStudyCardProps) {
+export default function CaseStudyCard({ title, subtitle, slug, thumbnail, tags, side, linkable = true, scrollProgress, range }: CaseStudyCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isTouch] = useState(() => typeof window !== 'undefined' && 'ontouchstart' in window);
 
-  const { scrollYProgress } = useScroll({
+  // Use global timeline range when provided, fall back to local scroll tracking
+  const { scrollYProgress: localProgress } = useScroll({
     target: ref,
     offset: ['start end', 'end start'],
   });
 
-  const opacity = useTransform(scrollYProgress, [0.3, 0.5, 0.7, 0.9], [0, 1, 1, 0]);
-  const y = useTransform(scrollYProgress, [0.3, 0.5, 0.7, 0.9], [100, 0, 0, -100]);
+  const isOverlay = !!scrollProgress && !!range;
+  const driver = scrollProgress && range ? scrollProgress : localProgress;
+  const progressRange = range ? [...range] : [0.3, 0.5, 0.7, 0.9];
+
+  const opacity = useTransform(driver, progressRange, [0, 1, 1, 0]);
+  const pointerEvents = useTransform(opacity, (v: number) => v > 0.15 ? 'auto' as const : 'none' as const);
+  const y = useTransform(
+    driver,
+    [progressRange[0], progressRange[1], progressRange[3]],
+    isOverlay ? [60, 0, -40] : [100, 0, -100],
+  );
 
   const alignmentClass =
     side === 'left'
@@ -166,13 +176,20 @@ export default function CaseStudyCard({ title, subtitle, slug, thumbnail, tags, 
   return (
     <motion.div
       ref={ref}
+      data-case-card={slug}
       style={{ opacity, y }}
-      className={`w-full min-h-[30vh] md:min-h-[40vh] flex flex-col justify-center px-4 md:px-32 my-[5vh] md:my-[10vh] transform-gpu ${alignmentClass}`}
+      className={
+        isOverlay
+          ? `absolute inset-0 flex w-full items-center pointer-events-none transform-gpu ${side === 'left' ? 'justify-start' : 'justify-end'}`
+          : `w-full min-h-[30vh] md:min-h-[40vh] flex flex-col justify-center px-4 md:px-32 my-[5vh] md:my-[10vh] transform-gpu ${alignmentClass}`
+      }
     >
       {linkable ? (
-        <Link href={`/work/${slug}`} className="w-full md:w-[60%] block">
-          {cardInner}
-        </Link>
+        <motion.div style={{ pointerEvents: isOverlay ? pointerEvents : 'auto' }} className="w-full md:w-[60%] block">
+          <Link href={`/work/${slug}`} aria-label={`View ${title} case study`}>
+            {cardInner}
+          </Link>
+        </motion.div>
       ) : (
         <div className="w-full md:w-[60%] block">{cardInner}</div>
       )}

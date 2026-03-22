@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Project } from '@/data/projects';
 
@@ -38,10 +39,12 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
           className="w-full"
         >
           <div className="relative aspect-[16/9] md:aspect-[21/9] rounded-lg overflow-hidden mx-4 md:mx-16 mt-8">
-            <img
+            <Image
               src={heroImage}
               alt={`${title} hero`}
-              className="object-cover w-full h-full"
+              fill
+              className="object-cover"
+              priority
             />
           </div>
         </motion.div>
@@ -90,7 +93,7 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
                 viewport={{ once: true, margin: '-100px' }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
               >
-                <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">
+                <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/60 mb-4">
                   {section.heading}
                 </h2>
                 <div className="prose prose-lg max-w-none text-foreground/80">
@@ -113,7 +116,7 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
         {/* Gallery (remaining images after hero) */}
         {remainingImages.length > 0 && (
           <section>
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/50 mb-4">The Work</h2>
+            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/60 mb-4">The Work</h2>
             <div className="space-y-4">
               {/* First remaining image: full width */}
               <motion.div
@@ -123,10 +126,12 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
                 transition={{ duration: 0.5, ease: 'easeOut' }}
                 className="group relative aspect-video rounded-lg overflow-hidden bg-foreground/5"
               >
-                <img
+                <Image
                   src={remainingImages[0]}
                   alt={`${title} screenshot 2`}
-                  className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-[1.03]"
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  loading="lazy"
                 />
               </motion.div>
 
@@ -142,10 +147,12 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
                       transition={{ duration: 0.5, delay: (i + 1) * 0.1, ease: 'easeOut' }}
                       className="group relative aspect-video rounded-lg overflow-hidden bg-foreground/5"
                     >
-                      <img
+                      <Image
                         src={src}
                         alt={`${title} screenshot ${i + 3}`}
-                        className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-[1.03]"
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                        loading="lazy"
                       />
                     </motion.div>
                   ))}
@@ -159,7 +166,7 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
         <nav className="flex justify-between items-center border-t border-foreground/10 pt-8 mt-16">
           {prev ? (
             <Link href={`/work/${prev.slug}`} className="group flex flex-col items-start">
-              <span className="text-xs font-mono uppercase tracking-widest text-foreground/40 mb-1 inline-flex items-center gap-1">
+              <span className="text-xs font-mono uppercase tracking-widest text-foreground/60 mb-1 inline-flex items-center gap-1">
                 <span className="inline-block transition-transform duration-300 group-hover:-translate-x-1">←</span> Previous
               </span>
               <span className="text-lg font-bold group-hover:text-foreground/80 transition-colors">{prev.title}</span>
@@ -167,7 +174,7 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
           ) : <div />}
           {next ? (
             <Link href={`/work/${next.slug}`} className="group flex flex-col items-end">
-              <span className="text-xs font-mono uppercase tracking-widest text-foreground/40 mb-1 inline-flex items-center gap-1">
+              <span className="text-xs font-mono uppercase tracking-widest text-foreground/60 mb-1 inline-flex items-center gap-1">
                 Next <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
               </span>
               <span className="text-lg font-bold group-hover:text-foreground/80 transition-colors">{next.title}</span>
@@ -184,7 +191,7 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="h-px bg-foreground/5 mb-12 origin-center"
           />
-          <p className="text-foreground/50 text-sm font-mono uppercase tracking-widest mb-4">Like what you see?</p>
+          <p className="text-foreground/60 text-sm font-mono uppercase tracking-widest mb-4">Like what you see?</p>
           <a
             href="mailto:sam@samherwig.dev"
             className="text-lg font-bold text-foreground hover:text-foreground/80 transition-colors"

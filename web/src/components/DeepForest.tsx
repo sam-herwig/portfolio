@@ -1,9 +1,10 @@
-/* eslint-disable */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/immutability, react/display-name */
 import { useTexture, Html } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useRef, useMemo, useEffect, forwardRef } from 'react';
 import { MotionValue } from 'framer-motion';
+import { MODULE_TIMELINE } from '@/lib/moduleTimeline';
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
 
@@ -28,18 +29,14 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
         };
     }, [tex, clonedTex]);
 
-    useFrame((state, delta) => {
+    useFrame((_, delta) => {
         if (meshRef.current) {
             lerpedProgress.current = THREE.MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
             const progress = lerpedProgress.current;
-            // Map the global scroll progress strictly to this module's local scroll range constraint
             const clamped = Math.min(1, Math.max(0, (progress - scrollStart) / (scrollEnd - scrollStart)));
 
-            // 1. Physical Translation: Move linearly from startX to endX
             meshRef.current.position.x = THREE.MathUtils.lerp(startX, endX, clamped);
 
-            // 2. Sprite Animation: Tie frame selection to local scroll progress instead of velocity.
-            // Velocity-based playback was too brittle on the global 0..1 page progress value.
             if (clamped > 0 && clamped < 1) {
                 playhead.current = clamped * cycles * frames;
             } else if (clamped >= 1) {
@@ -51,24 +48,12 @@ function AnimatedSprite({ textureUrl, startX, endX, y, z, scale, rotation = 0, f
             const currentFrame = Math.floor(playhead.current) % frames;
             clonedTex.offset.x = currentFrame / frames;
         }
-        if (materialRef.current) {
-            materialRef.current.uTime = state.clock.elapsedTime;
-            materialRef.current.uWind = state.clock.elapsedTime * 1.5;
-            // The stag doesn't really need mouse tracking, but the material requires it to prevent throwing errors
-            materialRef.current.uMouse.lerp(state.pointer, 0.1);
-        }
     });
 
     return (
         <mesh ref={meshRef} position={[startX, y, z]} rotation-z={rotation}>
             <planeGeometry args={scale} />
-            <WoodcutShader
-                ref={materialRef}
-                uTexture={clonedTex}
-                transparent={true}
-                depthWrite={true}
-                alphaTest={0.5}
-            />
+            <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} />
         </mesh>
     );
 }
@@ -320,8 +305,8 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
                 endX={34}
                 y={-5}
                 z={-40}
-                scrollStart={0.255}
-                scrollEnd={0.42}
+                scrollStart={MODULE_TIMELINE.forest.enterEnd}
+                scrollEnd={MODULE_TIMELINE.forest.exitStart}
                 scale={[18, 18]}
                 frames={8}
                 cycles={6}

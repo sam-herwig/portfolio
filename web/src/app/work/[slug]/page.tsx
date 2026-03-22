@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getProjectBySlug, getAllSlugs, getAdjacentProjects } from '@/data/projects';
 import CaseStudyContent from '@/components/CaseStudyContent';
 import Link from 'next/link';
@@ -5,6 +6,21 @@ import { notFound } from 'next/navigation';
 
 export function generateStaticParams() {
   return getAllSlugs().map(slug => ({ slug }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const project = getProjectBySlug(slug);
+  if (!project) return {};
+  return {
+    title: `${project.title} — Sam Herwig`,
+    description: project.overview.headline,
+    openGraph: {
+      title: `${project.title} — Sam Herwig`,
+      description: project.overview.headline,
+      images: project.thumbnail ? [{ url: project.thumbnail }] : [],
+    },
+  };
 }
 
 export default async function CaseStudyPage({ params }: { params: Promise<{ slug: string }> }) {

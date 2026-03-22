@@ -36,20 +36,20 @@ export const projects: Project[] = [
     ],
     overview: {
       headline: "A Shared Module System Powering New Belgium's Entire Brand Portfolio",
-      body: "Voodoo Ranger, Fat Tire, Lightstrike, Kirin USA — four wildly different brands, all running on the same modular front-end architecture I built on Optimizely's Episerver. The bet was that a shared component system with SCSS specificity-driven theming could give each brand full visual autonomy without duplicating code across four codebases. A skeleton mascot and a 130-year-old Japanese brewery shouldn't look anything alike — but they should deploy the same way.\n\nThe module set handles everything from navigation patterns to product showcases, with brand-specific SCSS layers controlling typography, color, animation intensity, and layout density. Marketing teams across all four brands get creative freedom within the system without breaking each other's builds. Voodoo Ranger launched during the Juice Force campaign and handled 3× its normal traffic; the same architecture held across all four properties. Maintaining one system instead of four means every performance fix and accessibility improvement ships everywhere at once.",
+      body: "Four beer brands — one front-end architecture. I built a shared component system on Optimizely that gives Voodoo Ranger, Fat Tire, Lightstrike, and Kirin USA full visual autonomy without duplicating code across four codebases. One deploy pipeline, four distinct brand identities, and every performance fix ships everywhere at once.",
     },
     sections: [
       {
         heading: 'The Brief',
-        body: "Voodoo Ranger, Fat Tire, Lightstrike, Kirin USA — four wildly different brands, all running on the same modular front-end architecture I built on Optimizely's Episerver. The bet was that a shared component system with SCSS specificity-driven theming could give each brand full visual autonomy without duplicating code across four codebases. A skeleton mascot and a 130-year-old Japanese brewery shouldn't look anything alike — but they should deploy the same way.",
+        body: "New Belgium needed Voodoo Ranger, Fat Tire, Lightstrike, and Kirin USA to each feel like their own brand — a skeleton mascot and a 130-year-old Japanese brewery shouldn't look anything alike. But maintaining four separate codebases was a maintenance nightmare. The bet: a shared component system with SCSS specificity-driven theming that gives each brand full visual autonomy while deploying the same way.",
       },
       {
         heading: 'How I Built It',
-        body: "The module set handles everything from navigation patterns to product showcases, with brand-specific SCSS layers controlling typography, color, animation intensity, and layout density. Marketing teams across all four brands get creative freedom within the system without breaking each other's builds. Voodoo Ranger launched during the Juice Force campaign and handled 3× its normal traffic; the same architecture held across all four properties. Maintaining one system instead of four means every performance fix and accessibility improvement ships everywhere at once.",
+        body: "I designed a modular architecture on Optimizely's Episerver where brand-specific SCSS layers control typography, color, animation intensity, and layout density. The same module set handles everything from navigation to product showcases, with each brand's theme swapping the visual layer without touching the markup. Marketing teams get creative freedom within the system without the risk of breaking a sibling brand's build.",
       },
       {
         heading: 'What Shipped',
-        body: "Four brands running on one codebase. Marketing teams across Voodoo Ranger, Fat Tire, Lightstrike, and Kirin USA update content independently without breaking each other's builds. The shared module system handled 3× traffic spikes during Voodoo Ranger's Juice Force campaign, and every performance fix ships everywhere at once.",
+        body: "Four brands running on one codebase with independent content workflows. The system handled 3× traffic spikes during Voodoo Ranger's Juice Force campaign without flinching — and the same architecture held across all four properties. Every performance fix and accessibility improvement deploys everywhere at once.",
       },
     ],
     featured: true,
@@ -69,20 +69,20 @@ export const projects: Project[] = [
     ],
     overview: {
       headline: 'GSAP Page Transitions and a CMS a Winery Team Can Actually Use',
-      body: "Wine websites fail in one of two directions: corporate brochure or lifestyle Pinterest board. Mission Bell needed a third option — something that felt like the vineyard actually made it. The technical ask was deceptively simple: smooth transitions, great photography, and a CMS the team could own without a developer on speed dial.\n\nI built the site in Nuxt with GSAP-driven page transitions tuned to feel seamless without announcing themselves, and wired up Sanity CMS so the team has full editorial control over the wine catalog and content — no tickets, no deploys. The Vue component library is mix-and-match modular, so landing pages stay on-brand without starting from scratch each time. WCAG 2.1 AA compliance was baked in from the start, not retrofitted. The client's exact words after launch: \"It finally feels like us.\"",
+      body: "A Nuxt-powered winery site with GSAP transitions tuned to feel seamless, Sanity CMS the team actually owns, and WCAG 2.1 AA baked in from day one. Zero developer tickets for content updates since launch.",
     },
     sections: [
       {
         heading: 'The Brief',
-        body: "Wine websites fail in one of two directions: corporate brochure or lifestyle Pinterest board. Mission Bell needed a third option — something that felt like the vineyard actually made it. The technical ask was deceptively simple: smooth transitions, great photography, and a CMS the team could own without a developer on speed dial.",
+        body: "Wine websites fail in one of two directions: corporate brochure or lifestyle Pinterest board. Mission Bell needed a third option — something that felt like the vineyard actually made it. Smooth transitions, great photography, and a CMS the team could own without a developer on speed dial.",
       },
       {
         heading: 'How I Built It',
-        body: "I built the site in Nuxt with GSAP-driven page transitions tuned to feel seamless without announcing themselves, and wired up Sanity CMS so the team has full editorial control over the wine catalog and content — no tickets, no deploys. The Vue component library is mix-and-match modular, so landing pages stay on-brand without starting from scratch each time. WCAG 2.1 AA compliance was baked in from the start, not retrofitted. The client's exact words after launch: \"It finally feels like us.\"",
+        body: "Nuxt with GSAP-driven page transitions tuned to feel seamless without announcing themselves. Sanity CMS wired up so the team has full editorial control over the wine catalog — no tickets, no deploys. A modular Vue component library keeps landing pages on-brand without starting from scratch each time. WCAG 2.1 AA compliance was baked in from the start, not retrofitted.",
       },
       {
         heading: 'What Shipped',
-        body: "Seamless GSAP page transitions, a Sanity CMS the winery team actually uses daily, WCAG 2.1 AA from day one. Zero developer tickets for content updates since launch.",
+        body: "Seamless page transitions, a CMS the winery team uses daily, and full accessibility compliance. The client's exact words after launch: \"It finally feels like us.\" Zero developer tickets for content updates since go-live.",
       },
     ],
     featured: true,
@@ -102,52 +102,52 @@ export const projects: Project[] = [
     ],
     overview: {
       headline: "High-90s Lighthouse Scores Without Sacrificing the Animation Budget",
-      body: "Building for clients is easier than building for your own team — everyone's a critic and the standards are impossibly high. Rebuilding Consume & Create's agency site meant making something that could sell work while also demonstrating technical credibility to the exact clients we were trying to win. The internal pressure was real.\n\nI built it in Nuxt with Contentful CMS handling content updates without developer involvement, interactive project showcases with hover-state previews, and a contact form that doesn't feel like a DMV visit. The hard part was hitting Lighthouse scores in the high 90s while keeping the animation work intact — that tension usually forces a compromise, but the performance optimization pass made both possible. It's been live for over a year and has become the agency's most consistent new business driver.",
+      body: "An agency site rebuild in Nuxt that had to sell the work while proving the technical credibility. High-90s Lighthouse scores with animations fully intact, Contentful CMS the team runs without developer tickets, and the agency's most consistent new business driver for over a year.",
     },
     sections: [
       {
         heading: 'The Brief',
-        body: "Building for clients is easier than building for your own team — everyone's a critic and the standards are impossibly high. Rebuilding Consume & Create's agency site meant making something that could sell work while also demonstrating technical credibility to the exact clients we were trying to win. The internal pressure was real.",
+        body: "Building for clients is easier than building for your own team — everyone's a critic and the standards are impossibly high. Consume & Create's agency site had to sell the work while also demonstrating the technical credibility to win the exact clients looking at it. The internal pressure was real.",
       },
       {
         heading: 'How I Built It',
-        body: "I built it in Nuxt with Contentful CMS handling content updates without developer involvement, interactive project showcases with hover-state previews, and a contact form that doesn't feel like a DMV visit. The hard part was hitting Lighthouse scores in the high 90s while keeping the animation work intact — that tension usually forces a compromise, but the performance optimization pass made both possible. It's been live for over a year and has become the agency's most consistent new business driver.",
+        body: "Nuxt with Contentful CMS handling content updates without developer involvement. Interactive project showcases with hover-state previews and a contact form that doesn't feel like a DMV visit. The hard part was hitting Lighthouse scores in the high 90s while keeping the animation work intact — that tension usually forces a compromise, but the performance optimization pass made both possible.",
       },
       {
         heading: 'What Shipped',
-        body: "High-90s Lighthouse scores with full animation fidelity intact. Contentful CMS the team updates without developer involvement. The agency's most consistent new business driver for over a year.",
+        body: "High-90s Lighthouse scores with full animation fidelity. A CMS the team updates without filing tickets. The agency's most consistent new business driver for over a year — the site pays for itself.",
       },
     ],
     featured: true,
     order: 3,
   },
   {
-    title: 'AI Agent Pipeline',
-    subtitle: 'Four Agents. One Solo Developer. Ships Nightly.',
-    slug: 'ai-agent-pipeline',
-    tags: ['Multi-Agent Systems', 'OpenClaw', 'LLM Orchestration', 'Claude Opus 4.6', 'Vercel', 'TypeScript', 'Pipeline Architecture'],
-    projectUrl: '',
+    title: 'CraftedKit',
+    subtitle: 'A Solo-Built Studio Powered by AI Agent Pipelines.',
+    slug: 'craftedkit',
+    tags: ['Three.js / R3F', 'GLSL Shaders', 'Multi-Agent AI', 'Next.js', 'TypeScript', 'WebGL', 'Pipeline Architecture'],
+    projectUrl: 'https://craftedkit.io',
     thumbnail: '/images/diagrams/agent-pipeline.png',
     gallery: [
       '/images/diagrams/agent-pipeline.png',
       '/images/diagrams/methodology.png',
     ],
     overview: {
-      headline: 'Orchestrating a 4-Agent AI System That Builds, Reviews, and Deploys Code While I Sleep',
-      body: "The real bottleneck in solo AI-assisted development isn't \"can the model write code?\" — it's whether you can coordinate multiple agents without them clobbering each other, deploying unverified work, or producing green signals that mean nothing. I learned this the hard way on February 28th, when five parallel dispatches to the same repo turned into a cascade of bad state. The failures were specific, and so were the fixes.\n\nI built a 4-agent production pipeline — Kyle (code), Brad (QA gate), Chad (design), Jackson (strategy) — orchestrated through OpenClaw with deterministic Lobster workflows enforcing every transition. Preflight tokens, Git hooks, and Brad's mandatory SHIP/NEEDS_WORK verdict mean no code moves without proof. The system tracks three distinct states — Accepted, Spawned, Landed — because most pipelines celebrate the wrong one. A nightly cron loop has Chad implement new product concepts, Kyle review and fix them, and automated QA verify the output; I wake up to candidates that were built, reviewed, and gated while I slept. 29 premium WebGL/animation products shipped this way. Every failure gets logged to ERRORS.md and promoted into permanent system rules — the pipeline literally gets better at preventing its own mistakes.",
+      headline: '46 Premium WebGL Heroes Built by One Developer and a 4-Agent AI Pipeline',
+      body: "CraftedKit is a premium interactive web studio I built from scratch — the site, the products, and the production system that manufactures them. The catalog features 46 WebGL hero experiences ranging from ferrofluid typography to volumetric god rays, each one a production-grade R3F component with proper resource management, responsive fallbacks, and scroll-driven interactivity.\n\nThe real story is how they got built. I designed a 4-agent AI pipeline — Kyle (code), Brad (QA gate), Chad (design), Jackson (strategy) — that runs nightly build-review-gate cycles. Chad proposes new hero concepts, Kyle implements them in Three.js/R3F with custom GLSL shaders, Brad runs automated smoke tests and issues a SHIP/NEEDS_WORK verdict, and I wake up to candidates that were built, tested, and gated while I slept. Every failure gets logged and promoted into permanent system rules — the pipeline literally improves itself. The result: a solo developer shipping at a pace that would normally require a small team.",
     },
     sections: [
       {
         heading: 'The Brief',
-        body: "The real bottleneck in solo AI-assisted development isn't \"can the model write code?\" — it's whether you can coordinate multiple agents without them clobbering each other, deploying unverified work, or producing green signals that mean nothing. I learned this the hard way on February 28th, when five parallel dispatches to the same repo turned into a cascade of bad state.",
+        body: "I wanted to build a studio that sells what I actually do best — immersive, interactive web experiences using Three.js, custom shaders, and motion systems. But building 40+ premium WebGL products as a solo developer is a volume problem. The question wasn't whether AI could write shader code — it's whether I could orchestrate multiple agents into a reliable production system that ships real work without me babysitting every line.",
       },
       {
         heading: 'How I Built It',
-        body: "I built a 4-agent production pipeline — Kyle (code), Brad (QA gate), Chad (design), Jackson (strategy) — orchestrated through OpenClaw with deterministic Lobster workflows enforcing every transition. Preflight tokens, Git hooks, and Brad's mandatory SHIP/NEEDS_WORK verdict mean no code moves without proof. The system tracks three distinct states — Accepted, Spawned, Landed — because most pipelines celebrate the wrong one. A nightly cron loop has Chad implement new product concepts, Kyle review and fix them, and automated QA verify the output; I wake up to candidates that were built, reviewed, and gated while I slept.",
+        body: "The site runs on Next.js 14 with a monorepo architecture — a shared catalog system, a custom Tailwind design system (Atelier), and 46 hero components each with their own shaders, textures, and scroll-driven behaviors. The AI pipeline orchestrates four specialized agents through deterministic workflows: preflight tokens gate every dispatch, Git hooks enforce quality, and Brad's QA verdict is mandatory before anything merges. A nightly cron loop generates new hero concepts, implements them, runs Puppeteer smoke tests, and stages candidates for my morning review.",
       },
       {
         heading: 'What Shipped',
-        body: "29 premium products shipped through the pipeline. Nightly autonomous build-review-gate cycles. Every failure logged and promoted into permanent system rules — the pipeline improves itself. Three distinct states (Accepted, Spawned, Landed) tracking every dispatch.",
+        body: "46 production-grade WebGL hero experiences. A services funnel that converts visitors into $3.5k–$15k+ custom engagements. An AI pipeline that runs autonomous build-review-gate cycles nightly. Every hero properly disposes Three.js resources, supports reduced motion, and handles WebGL fallbacks. The studio launched as a one-person operation producing at team-scale velocity.",
       },
     ],
     featured: true,

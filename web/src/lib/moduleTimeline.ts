@@ -68,7 +68,7 @@ export type ModuleWindow = (typeof MODULE_TIMELINE)[ModuleName];
  * sceneOpacity() returns 0→1 during enter, 1 during hold, 1→0 during exit.
  * sceneVisible()  returns true when opacity > 0 (for unmounting).
  */
-const XFADE = 0.01; // small pre/post margin for geometry readiness
+const XFADE = 0; // no overlap — outgoing scene must reach 0 before incoming starts
 
 export function sceneOpacity(module: ModuleName, progress: number): number {
   const w = MODULE_TIMELINE[module];
@@ -96,6 +96,31 @@ export function sceneVisible(module: ModuleName, progress: number): boolean {
 export function moduleRange(module: ModuleName): readonly [number, number, number, number] {
   const w = MODULE_TIMELINE[module];
   return [w.enterStart, w.enterEnd, w.exitStart, w.exitEnd] as const;
+}
+
+/**
+ * Subdivide a module's hold+exit window (enterEnd → exitEnd) into N child slots.
+ * Cards only appear after the 3D scene reaches full opacity, staying visible
+ * through the exit phase as the scene fades out.
+ */
+export function sceneChildRanges(
+  module: ModuleName,
+  count: number,
+): ReadonlyArray<readonly [number, number, number, number]> {
+  const w = MODULE_TIMELINE[module];
+  // Start at midpoint of enter phase — cards appear when scene is ~50% visible,
+  // giving more scroll distance for cards instead of waiting for full opacity.
+  const start = w.enterStart + (w.enterEnd - w.enterStart) * 0.5;
+  // Extend end into exit phase so cards have more scroll room before disappearing.
+  const end = w.exitStart + (w.exitEnd - w.exitStart) * 0.5;
+  const slotSize = (end - start) / count;
+  const fadeLen = slotSize * 0.2;
+
+  return Array.from({ length: count }, (_, i) => {
+    const s = start + slotSize * i;
+    const e = s + slotSize;
+    return [s, s + fadeLen, e - fadeLen, e] as const;
+  });
 }
 
 /**

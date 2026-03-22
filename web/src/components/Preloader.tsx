@@ -60,7 +60,7 @@ export default function Preloader() {
         <motion.div
           exit={{ opacity: 0, scale: 1.05 }}
           transition={{ duration: 0.6, ease: 'easeInOut' }}
-          className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center gap-8"
+          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center gap-8"
         >
           {/* Topographic SVG contour */}
           <svg viewBox="0 0 400 200" className="w-full max-w-md" aria-hidden="true">

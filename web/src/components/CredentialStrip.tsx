@@ -18,7 +18,7 @@ export default function CredentialStrip() {
       transition={{ duration: 0.6 }}
     >
       {/* Credential line */}
-      <p className="text-sm font-mono uppercase tracking-widest text-foreground/40 mb-8">
+      <p className="text-sm font-mono uppercase tracking-widest text-foreground/60 mb-8">
         Currently building at <span className="text-foreground/70">Consume &amp; Create</span>
         <span className="mx-2">·</span>
         <span className="text-foreground/70">CU Boulder MS &apos;21</span>
@@ -30,7 +30,7 @@ export default function CredentialStrip() {
           {[...techLogos, ...techLogos].map((logo, i) => (
             <span
               key={i}
-              className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/20 whitespace-nowrap shrink-0"
+              className="text-xs font-mono uppercase tracking-[0.2em] text-foreground/40 whitespace-nowrap shrink-0"
             >
               {logo}
             </span>

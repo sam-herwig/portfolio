@@ -5,10 +5,10 @@ import { useState, useEffect } from 'react';
 
 const waypoints = [
   { label: 'Basecamp', progress: 0.0 },
-  { label: 'Forest', progress: 0.2 },
-  { label: 'Camp', progress: 0.45 },
-  { label: 'Alpine', progress: 0.65 },
-  { label: 'Summit', progress: 0.9 },
+  { label: 'Forest', progress: 0.22 },
+  { label: 'Camp', progress: 0.44 },
+  { label: 'Alpine', progress: 0.64 },
+  { label: 'Summit', progress: 0.84 },
 ];
 
 interface ElevationBarProps {
@@ -46,11 +46,11 @@ export default function ElevationBar({ scrollProgress }: ElevationBarProps) {
   return (
     <motion.div
       style={{ opacity: fadeInOpacity }}
-      className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 flex flex-col items-end"
+      className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 z-30 flex-col items-end"
     >
       <motion.div style={{ opacity: fadeOutOpacity }} className="flex flex-col items-end">
         {/* Outer container: positions dots along the rail */}
-        <div className="relative flex flex-col items-center" style={{ height: `${(waypoints.length - 1) * 48}px`, width: '1px' }}>
+        <div className="relative flex flex-col items-center" style={{ height: `${(waypoints.length - 1) * 36}px`, width: '1px' }}>
 
           {/* Background rail line */}
           <div className="absolute inset-0 left-1/2 -translate-x-1/2 w-[2px] bg-foreground/15 rounded-full" />
@@ -67,10 +67,11 @@ export default function ElevationBar({ scrollProgress }: ElevationBarProps) {
           {waypoints.map((wp, i) => {
             const isActive = activeIndex === i;
             return (
-              <div
+              <button
                 key={wp.label}
-                className="absolute flex items-center gap-2 cursor-pointer group"
-                style={{ top: `${i * 48}px`, transform: 'translateY(-50%)' }}
+                aria-label={`Jump to ${wp.label} section`}
+                className="absolute flex items-center gap-2 cursor-pointer group bg-transparent border-0 p-[17px] -m-[17px]"
+                style={{ top: `${i * 36}px`, transform: 'translateY(-50%)' }}
                 onClick={() => {
                   const scrollTarget = wp.progress * (document.documentElement.scrollHeight - window.innerHeight);
                   window.scrollTo({ top: scrollTarget, behavior: 'smooth' });
@@ -80,7 +81,7 @@ export default function ElevationBar({ scrollProgress }: ElevationBarProps) {
                 <span
                   className={[
                     'hidden md:block text-[10px] font-mono uppercase tracking-widest transition-opacity duration-300',
-                    isActive ? 'text-foreground/70' : 'text-foreground/30 group-hover:text-foreground/50',
+                    isActive ? 'text-foreground/70' : 'text-foreground/50 group-hover:text-foreground/60',
                   ].join(' ')}
                 >
                   {wp.label}
@@ -95,7 +96,7 @@ export default function ElevationBar({ scrollProgress }: ElevationBarProps) {
                       : 'bg-transparent border-foreground/20 group-hover:border-foreground/50',
                   ].join(' ')}
                 />
-              </div>
+              </button>
             );
           })}
         </div>
@@ -108,6 +109,11 @@ export default function ElevationBar({ scrollProgress }: ElevationBarProps) {
         }
         .animate-pulse-dot {
           animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-pulse-dot {
+            animation: none;
+          }
         }
       `}</style>
     </motion.div>
