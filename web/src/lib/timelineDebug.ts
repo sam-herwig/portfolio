@@ -1,12 +1,12 @@
 /**
  * Timeline Debug Instrumentation
- * 
+ *
  * Gated behind ?debugTimeline=1 query param.
  * Provides:
  *  - Fixed on-screen HUD with current progress + active module
  *  - Console logs on module/card state transitions (not every frame)
  *  - All thresholds visible at a glance
- * 
+ *
  * TEMPORARY — remove after timing issues are resolved.
  */
 
@@ -75,25 +75,23 @@ export function tickTimelineDebug(progress: number): void {
   const p = progress;
   const newActive = getActiveModule(p);
 
-
   // Check module phase changes
   for (const mod of MODULES) {
     const newPhase = getPhase(mod, p);
     if (newPhase !== state.phases[mod]) {
-      console.log(
+      console.warn(
         `%c[timeline] ${mod}: ${state.phases[mod]} → ${newPhase} @ progress=${p.toFixed(4)}`,
-        `color: ${phaseColor(newPhase)}; font-weight: bold;`
+        `color: ${phaseColor(newPhase)}; font-weight: bold;`,
       );
       state.phases[mod] = newPhase;
-
     }
   }
 
   // Check active module change
   if (newActive !== state.activeModule) {
-    console.log(
+    console.warn(
       `%c[timeline] ACTIVE MODULE: ${state.activeModule} → ${newActive} @ ${p.toFixed(4)}`,
-      'color: #f59e0b; font-weight: bold; font-size: 13px;'
+      'color: #f59e0b; font-weight: bold; font-size: 13px;',
     );
     state.activeModule = newActive;
   }
@@ -102,12 +100,11 @@ export function tickTimelineDebug(progress: number): void {
   for (let i = 0; i < 4; i++) {
     const vis = isCardVisible(forestRanges[i], p);
     if (vis !== state.forestCards[i]) {
-      console.log(
-        `%c[timeline] forest card ${i}: ${vis ? 'VISIBLE' : 'HIDDEN'} @ ${p.toFixed(4)}  range=[${forestRanges[i].map(v => v.toFixed(3)).join(', ')}]`,
-        `color: ${vis ? '#22c55e' : '#ef4444'};`
+      console.warn(
+        `%c[timeline] forest card ${i}: ${vis ? 'VISIBLE' : 'HIDDEN'} @ ${p.toFixed(4)}  range=[${forestRanges[i].map((v) => v.toFixed(3)).join(', ')}]`,
+        `color: ${vis ? '#22c55e' : '#ef4444'};`,
       );
       state.forestCards[i] = vis;
-
     }
   }
 
@@ -115,12 +112,11 @@ export function tickTimelineDebug(progress: number): void {
   for (let i = 0; i < 4; i++) {
     const vis = isCardVisible(alpineRanges[i], p);
     if (vis !== state.alpineCards[i]) {
-      console.log(
-        `%c[timeline] alpine card ${i}: ${vis ? 'VISIBLE' : 'HIDDEN'} @ ${p.toFixed(4)}  range=[${alpineRanges[i].map(v => v.toFixed(3)).join(', ')}]`,
-        `color: ${vis ? '#22c55e' : '#ef4444'};`
+      console.warn(
+        `%c[timeline] alpine card ${i}: ${vis ? 'VISIBLE' : 'HIDDEN'} @ ${p.toFixed(4)}  range=[${alpineRanges[i].map((v) => v.toFixed(3)).join(', ')}]`,
+        `color: ${vis ? '#22c55e' : '#ef4444'};`,
       );
       state.alpineCards[i] = vis;
-
     }
   }
 
@@ -130,11 +126,16 @@ export function tickTimelineDebug(progress: number): void {
 
 function phaseColor(phase: ModulePhase): string {
   switch (phase) {
-    case 'before': return '#6b7280';
-    case 'entering': return '#3b82f6';
-    case 'own': return '#22c55e';
-    case 'exiting': return '#f59e0b';
-    case 'after': return '#6b7280';
+    case 'before':
+      return '#6b7280';
+    case 'entering':
+      return '#3b82f6';
+    case 'own':
+      return '#22c55e';
+    case 'exiting':
+      return '#f59e0b';
+    case 'after':
+      return '#6b7280';
   }
 }
 
@@ -177,27 +178,37 @@ function updateHUD(p: number): void {
     return `${dot} ${mod.padEnd(7)} ${w.ownStart.toFixed(2)}–${w.ownEnd.toFixed(2)}  [${phase}] op:${sOp.toFixed(2)}`;
   };
 
-  const cardLine = (label: string, ranges: ReadonlyArray<readonly [number, number, number, number]>, visArr: boolean[]): string => {
-    return ranges.map((r, i) => {
-      const vis = visArr[i];
-      return `  ${vis ? '✅' : '❌'} ${label}[${i}] ${r[0].toFixed(3)}–${r[3].toFixed(3)}`;
-    }).join('\n');
+  const cardLine = (
+    label: string,
+    ranges: ReadonlyArray<readonly [number, number, number, number]>,
+    visArr: boolean[],
+  ): string => {
+    return ranges
+      .map((r, i) => {
+        const vis = visArr[i];
+        return `  ${vis ? '✅' : '❌'} ${label}[${i}] ${r[0].toFixed(3)}–${r[3].toFixed(3)}`;
+      })
+      .join('\n');
   };
 
   const summitW = MODULE_TIMELINE.summit;
   const summitRevealStart = summitW.enterStart + (summitW.ownEnd - summitW.ownStart) * 0.45;
   const summitRevealEnd = summitRevealStart + (summitW.ownEnd - summitW.ownStart) * 0.2;
 
-  el.innerHTML = `<pre style="margin:0;white-space:pre;">` +
+  el.innerHTML =
+    `<pre style="margin:0;white-space:pre;">` +
     `<b style="color:#f59e0b;">TIMELINE DEBUG</b>  progress: <b>${p.toFixed(4)}</b>\n` +
     `active: <b style="color:#22c55e;">${state.activeModule}</b>\n` +
     `─────────────────────────────\n` +
-    MODULES.map(bar).join('\n') + '\n' +
+    MODULES.map(bar).join('\n') +
+    '\n' +
     `─────────────────────────────\n` +
     `<b>Forest cards:</b>\n` +
-    cardLine('forest', forestRanges, state.forestCards) + '\n' +
+    cardLine('forest', forestRanges, state.forestCards) +
+    '\n' +
     `<b>Alpine cards:</b>\n` +
-    cardLine('alpine', alpineRanges, state.alpineCards) + '\n' +
+    cardLine('alpine', alpineRanges, state.alpineCards) +
+    '\n' +
     `<b>Camp:</b>  own ${MODULE_TIMELINE.camp.ownStart.toFixed(2)}–${MODULE_TIMELINE.camp.ownEnd.toFixed(2)}\n` +
     `<b>Summit:</b> reveal ${summitRevealStart.toFixed(3)}–${summitRevealEnd.toFixed(3)}\n` +
     `</pre>`;
@@ -206,17 +217,26 @@ function updateHUD(p: number): void {
 // ── Dump full timeline to console (call once) ───────────────────────────
 export function dumpTimeline(): void {
   if (!isTimelineDebugEnabled()) return;
-  console.group('%c[timeline] MODULE_TIMELINE contract', 'color: #a78bfa; font-weight: bold; font-size: 14px;');
+  console.warn('%c[timeline] MODULE_TIMELINE contract', 'color: #a78bfa; font-weight: bold; font-size: 14px;');
   for (const mod of MODULES) {
     const w = MODULE_TIMELINE[mod];
-    console.log(
+    console.warn(
       `%c${mod}%c  own: ${w.ownStart.toFixed(2)}–${w.ownEnd.toFixed(2)}  enter: ${w.enterStart.toFixed(2)}–${w.enterEnd.toFixed(2)}  exit: ${w.exitStart.toFixed(2)}–${w.exitEnd.toFixed(2)}`,
-      'color: #22d3ee; font-weight: bold;', 'color: inherit;'
+      'color: #22d3ee; font-weight: bold;',
+      'color: inherit;',
     );
   }
-  console.log('%cForest child ranges:', 'font-weight: bold;', forestRanges.map((r, i) => `[${i}] ${r.map(v => v.toFixed(3)).join(', ')}`));
-  console.log('%cAlpine child ranges:', 'font-weight: bold;', alpineRanges.map((r, i) => `[${i}] ${r.map(v => v.toFixed(3)).join(', ')}`));
-  console.groupEnd();
+  console.warn(
+    '%cForest child ranges:',
+    'font-weight: bold;',
+    forestRanges.map((r, i) => `[${i}] ${r.map((v) => v.toFixed(3)).join(', ')}`),
+  );
+  console.warn(
+    '%cAlpine child ranges:',
+    'font-weight: bold;',
+    alpineRanges.map((r, i) => `[${i}] ${r.map((v) => v.toFixed(3)).join(', ')}`),
+  );
+  // group end
 }
 
 // ── Cleanup (call on unmount) ───────────────────────────────────────────

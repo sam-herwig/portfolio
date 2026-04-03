@@ -3,14 +3,16 @@ import { Inter, Instrument_Serif } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
-  variable: '--font-inter',
   subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
 });
 
-const instrument = Instrument_Serif({
-  variable: '--font-instrument',
+const instrumentSerif = Instrument_Serif({
   weight: '400',
   subsets: ['latin'],
+  variable: '--font-instrument-serif',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -53,7 +55,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${instrument.variable} antialiased transition-colors duration-1000 bg-background text-foreground font-inter`}>
+      <body
+        className={`${inter.variable} ${instrumentSerif.variable} antialiased transition-colors duration-1000 bg-background text-foreground font-inter`}
+      >
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:bg-background focus:text-foreground focus:px-4 focus:py-2 focus:rounded-lg focus:border focus:border-foreground/20"

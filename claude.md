@@ -32,7 +32,41 @@ npm run start    # Start production server
 npm run lint     # ESLint (eslint-config-next + TypeScript)
 ```
 
+Additional scripts:
+
+```bash
+cd web
+npm run typecheck      # TypeScript check (tsc --noEmit)
+npm run format         # Prettier format all src files
+npm run format:check   # Prettier check (CI)
+npm run guardrails     # lint + typecheck + asset check + build
+```
+
 No test framework is configured.
+
+## Anti-Slop Protocol
+
+Automated enforcement chain — these are not advisory. Violations are blocked.
+
+**Pre-commit (Husky + lint-staged):**
+- Prettier auto-formats all staged `.ts`, `.tsx`, `.css` files
+- ESLint auto-fixes and blocks on errors
+
+**CI (GitHub Actions — `guardrails.yml`):**
+- Format check (Prettier)
+- Lint (ESLint — all rules below are enforced)
+- Typecheck (`tsc --noEmit`)
+- Build (`next build`)
+
+**Claude Code hooks (PostToolUse):**
+- Every Write/Edit on `.ts`/`.tsx`/`.css` auto-runs Prettier
+
+**Banned patterns (ESLint errors):**
+- `import * as THREE from 'three'` — use named imports for tree-shaking
+- `console.log` — use `console.warn` or `console.error` only
+- Unused variables (without `_` prefix)
+
+**Do not suppress lint rules.** Fix the code, don't add `eslint-disable`.
 
 ## Tech Stack (web/)
 

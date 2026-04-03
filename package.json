@@ -4,6 +4,7 @@
   "description": "Puppeteer scripts for taking screenshots of the portfolio website",
   "main": "puppeteer-screenshot.js",
   "scripts": {
+    "prepare": "husky",
     "screenshot": "node puppeteer-screenshot.js",
     "screenshot:component": "node -e \"require('./puppeteer-screenshot').takeComponentScreenshot('http://localhost:3001', '.builder-image-explosion', 'image-explosion-component')\"",
     "screenshot:mobile": "node -e \"require('./puppeteer-screenshot').takeScreenshot('http://localhost:3001', 'homepage-mobile', { width: 375, height: 667 })\"",
@@ -11,11 +12,26 @@
     "screenshot:gradient": "node -e \"require('./puppeteer-screenshot').takeComponentScreenshot('http://localhost:3001', '.builder-gradient-text', 'gradient-text-component')\"",
     "screenshot:transition": "node -e \"require('./puppeteer-screenshot').takeDelayedScreenshot('http://localhost:3001', 'explosion-to-gradient-transition', { width: 1280, height: 800 }, 8000)\""
   },
+  "lint-staged": {
+    "web/src/**/*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --config web/eslint.config.mjs --fix"
+    ],
+    "web/src/**/*.css": [
+      "prettier --write"
+    ]
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "puppeteer": "^21.0.0",
     "swiper": "^11.2.8",
     "three": "^0.177.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1"
   }
 }

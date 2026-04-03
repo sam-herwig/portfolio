@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import * as THREE from 'three';
+import { DefaultLoadingManager } from 'three';
 import { useAppStore } from '@/store/useAppStore';
 
 const milestones = [
@@ -25,9 +25,9 @@ export default function Preloader() {
     }
   }, []);
 
-  // Wire THREE.DefaultLoadingManager for real asset progress
+  // Wire DefaultLoadingManager for real asset progress
   useEffect(() => {
-    const manager = THREE.DefaultLoadingManager;
+    const manager = DefaultLoadingManager;
 
     manager.onStart = () => {
       // total tracked via onProgress

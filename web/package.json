@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write 'src/**/*.{ts,tsx,css}'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx,css}'",
+    "guardrails": "npm run lint && npm run typecheck && node scripts/check-asset-size.mjs && npm run build"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

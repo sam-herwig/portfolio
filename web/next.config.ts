@@ -1,5 +1,19 @@
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  productionBrowserSourceMaps: false,
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
+  experimental: {
+    optimizePackageImports: [
+      'three',
+      '@react-three/drei',
+      '@react-three/fiber',
+      'framer-motion',
+      '@phosphor-icons/react',
+    ],
+  },
+};
 
 export default nextConfig;

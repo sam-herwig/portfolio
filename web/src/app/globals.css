@@ -1,14 +1,14 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-instrument: var(--font-instrument), "Times New Roman", Times, serif;
-  
+  --font-space-mono: var(--font-space-mono), 'Courier New', Courier, monospace;
+  --font-chivo: var(--font-chivo), ui-sans-serif, system-ui, sans-serif;
+
   --color-background-light: #f9fafb;
   --color-background-dark: #09090b; /* zinc-950 */
   --color-foreground-light: #18181b; /* zinc-900 */
   --color-foreground-dark: #fafafa; /* zinc-50 */
-  
+
   /* Taste-Skill Config Variables */
   --design-variance: 8;
   --motion-intensity: 6;
@@ -28,11 +28,13 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     /* Prevents scroll bump */
-    overflow-y: scroll; 
+    overflow-y: scroll;
   }
 
   ::selection {
@@ -46,7 +48,6 @@
     text-wrap: balance;
   }
 
-  
   /* Taste-Skill liquid glass refraction */
   .glassmorphism {
     @apply backdrop-blur-md bg-white/5 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)];
@@ -60,17 +61,28 @@
 }
 
 @keyframes border-rotate {
-  to { --angle: 360deg; }
+  to {
+    --angle: 360deg;
+  }
 }
 
 @keyframes ember-pulse {
-  0%, 100% { box-shadow: 0 0 20px -5px rgba(251, 191, 36, 0.08); }
-  50% { box-shadow: 0 0 30px -5px rgba(251, 191, 36, 0.18); }
+  0%,
+  100% {
+    box-shadow: 0 0 20px -5px rgba(251, 191, 36, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 30px -5px rgba(251, 191, 36, 0.18);
+  }
 }
 
 @keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 .animate-marquee {
   animation: marquee 30s linear infinite;
@@ -84,7 +96,9 @@
 
 /* Reduced motion — disable CSS animations/transitions */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
