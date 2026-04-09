@@ -54,7 +54,7 @@ const forestNarrative = [
 function GlassPanel({ className = '', children }: { className?: string; children: React.ReactNode }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-[2rem] border border-foreground/12 bg-background/85 shadow-[0_30px_80px_-32px_rgba(0,0,0,0.45)] backdrop-blur-xl ${className}`}
+      className={`relative overflow-hidden rounded-[2rem] border border-foreground/12 bg-background/93 shadow-[0_30px_80px_-32px_rgba(0,0,0,0.45)] backdrop-blur-xl ${className}`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),transparent_45%,rgba(0,0,0,0.15))]" />
       <div className="relative z-10">{children}</div>
@@ -101,7 +101,7 @@ function StoryCard({
 }
 
 export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) {
-  const { hasLoaded } = useAppStore();
+  const { hasLoaded, savedScrollY, setSavedScrollY } = useAppStore();
   const reducedMotion = useReducedMotion();
 
   const refHero = useRef<HTMLDivElement>(null);
@@ -127,6 +127,14 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
       destroyTimelineDebug();
     };
   }, [scrollYProgress]);
+
+  // ── Restore scroll position when returning from case study ──
+  useEffect(() => {
+    if (savedScrollY > 0) {
+      window.scrollTo(0, savedScrollY);
+      setSavedScrollY(0);
+    }
+  }, [savedScrollY, setSavedScrollY]);
 
   // Background Color Transition tied to the Night Camp module ownership window
   const backgroundColor = useTransform(
@@ -155,10 +163,10 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   );
 
   // ── Summit child sequencing inside summit ownership window ──
-  const summitRevealStart = summitWindow.enterStart + (summitWindow.ownEnd - summitWindow.ownStart) * 0.15;
-  const summitRevealEnd = summitRevealStart + (summitWindow.ownEnd - summitWindow.ownStart) * 0.25;
-  const summitCtaStart = summitRevealEnd;
-  const summitCtaEnd = summitWindow.ownEnd;
+  // Content appears after 3D elements fade out (animP 0.70+)
+  const summitSpan = summitWindow.ownEnd - summitWindow.ownStart;
+  const summitRevealStart = summitWindow.ownStart + summitSpan * 0.7;
+  const summitRevealEnd = summitWindow.ownStart + summitSpan * 0.85;
 
   return (
     <motion.main
@@ -198,7 +206,12 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
       {/* The Content Overlay Container */}
       <div id="main-content" className="relative z-10 flex w-full flex-col items-center overflow-x-clip">
         {/* Checkpoint 1: Basecamp - Hero Content */}
-        <section ref={refHero} role="region" aria-label="Hero — Introduction" className="relative w-full min-h-[415vh]">
+        <section
+          ref={refHero}
+          role="region"
+          aria-label="Hero — Introduction"
+          className="relative w-full min-h-[260vh] md:min-h-[345vh]"
+        >
           <div className="sticky top-0 flex min-h-screen items-center px-4 pb-24 pt-28 md:px-8 lg:px-12">
             <motion.div style={{ opacity: heroOpacity, y: heroY }} className="w-full">
               <GlassPanel className="mx-auto max-w-3xl p-7 md:mx-0 md:ml-[8vw] md:p-10 lg:p-12">
@@ -244,7 +257,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           ref={refForest}
           role="region"
           aria-label="About Sam"
-          className="relative w-full min-h-[390vh]"
+          className="relative w-full min-h-[420vh] md:min-h-[560vh]"
         >
           <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-8 lg:px-12">
             <div className="relative mx-auto w-full max-w-6xl">
@@ -268,7 +281,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           ref={refCamp}
           role="region"
           aria-label="Technical Skills"
-          className="relative w-full min-h-[350vh]"
+          className="relative w-full min-h-[260vh] md:min-h-[345vh]"
         >
           <h2 className="sr-only">Technical Skills</h2>
           <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-12">
@@ -277,7 +290,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
               style={{ opacity: campContentOpacity }}
               className="w-full max-w-5xl md:mx-auto"
             >
-              <div className="relative overflow-hidden rounded-[2rem] border border-foreground/12 bg-background/85 shadow-[0_30px_80px_-32px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+              <div className="relative overflow-hidden rounded-[2rem] border border-foreground/12 bg-background/93 shadow-[0_30px_80px_-32px_rgba(0,0,0,0.45)] backdrop-blur-xl">
                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),transparent_45%,rgba(0,0,0,0.15))]" />
                 <div className="relative z-10 p-6 md:p-10 lg:p-12">
                   <GearRack scrollProgress={scrollYProgress} />
@@ -293,7 +306,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           ref={refAlpine}
           role="region"
           aria-label="Selected Work"
-          className="relative w-full min-h-[350vh]"
+          className="relative w-full min-h-[455vh] md:min-h-[600vh]"
         >
           <h2 className="sr-only">Selected Work</h2>
           <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-12 lg:px-16">
@@ -310,6 +323,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
                   linkable={true}
                   scrollProgress={scrollYProgress}
                   range={alpineChildRanges[i] ?? alpineChildRanges[alpineChildRanges.length - 1]}
+                  palette={cs.palette}
                 />
               ))}
             </div>
@@ -322,47 +336,43 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           ref={refSummit}
           role="region"
           aria-label="Contact"
-          className="relative min-h-[120vh] w-full"
+          className="relative min-h-[230vh] md:min-h-[300vh] w-full"
         >
           <div className="sticky top-0 flex min-h-screen flex-col items-center justify-center px-4 text-center z-20 pointer-events-auto">
-            {/* Social Proof / Credential Strip */}
-            <CredentialStrip />
-            <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center relative text-foreground">
-              <motion.div
-                style={{
-                  opacity: useTransform(scrollYProgress, [summitRevealStart, summitRevealEnd], [0, 1]),
-                  y: useTransform(scrollYProgress, [summitRevealStart, summitRevealEnd], [72, 0]),
-                }}
-                className="flex flex-col items-center"
-              >
-                <p className="mb-4 text-[0.7rem] font-mono uppercase tracking-[0.35em] text-foreground/60">
-                  Sam Herwig · Creative Engineer
-                </p>
-                <h2 className="text-4xl font-bold tracking-tighter uppercase md:text-6xl lg:text-8xl">The Summit.</h2>
-                <p className="mt-6 max-w-[26ch] text-lg leading-8 text-foreground/78 md:text-2xl md:leading-10">
-                  Front-end systems, motion design, Three.js, and marketing builds that still know how to close.
-                </p>
-              </motion.div>
+            <motion.div
+              style={{
+                opacity: useTransform(scrollYProgress, [summitRevealStart, summitRevealEnd, 1], [0, 1, 1]),
+                y: useTransform(scrollYProgress, [summitRevealStart, summitRevealEnd, 1], [72, 0, 0]),
+              }}
+              className="flex flex-col items-center w-full"
+            >
+              {/* Social Proof / Credential Strip */}
+              <CredentialStrip />
+              <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center relative text-foreground">
+                <div className="flex flex-col items-center">
+                  <p className="mb-4 text-[0.7rem] font-mono uppercase tracking-[0.35em] text-foreground/60">
+                    Sam Herwig · Creative Engineer
+                  </p>
+                  <h2 className="text-4xl font-bold tracking-tighter uppercase md:text-6xl lg:text-8xl">The Summit.</h2>
+                  <p className="mt-6 max-w-[26ch] text-lg leading-8 text-foreground/78 md:text-2xl md:leading-10">
+                    Front-end systems, motion design, Three.js, and marketing builds that still know how to close.
+                  </p>
+                </div>
 
-              <motion.div
-                style={{
-                  opacity: useTransform(scrollYProgress, [summitCtaStart, summitCtaEnd], [0, 1]),
-                  y: useTransform(scrollYProgress, [summitCtaStart, summitCtaEnd], [48, 0]),
-                }}
-                className="mt-10"
-              >
-                <a
-                  href="mailto:sam@samherwig.dev"
-                  aria-label="Send email to start a project"
-                  className="group relative overflow-hidden rounded-sm border-2 border-stone-100 bg-stone-900 px-8 py-4 text-stone-100 transition-colors duration-500 hover:text-stone-900 md:px-12 md:py-6 shadow-2xl"
-                >
-                  <span className="relative z-10 font-space-mono text-sm uppercase tracking-widest font-bold">
-                    Pitch Me Your Mountain →
-                  </span>
-                  <div className="absolute inset-0 h-full w-full origin-left scale-x-0 transform bg-stone-100 transition-transform duration-500 ease-out group-hover:scale-x-100" />
-                </a>
-              </motion.div>
-            </div>
+                <div className="mt-10">
+                  <a
+                    href="mailto:sam@samherwig.dev"
+                    aria-label="Send email to start a project"
+                    className="group relative overflow-hidden rounded-sm border-2 border-stone-100 bg-stone-900 px-8 py-4 text-stone-100 transition-colors duration-500 hover:text-stone-900 md:px-12 md:py-6 shadow-2xl"
+                  >
+                    <span className="relative z-10 font-space-mono text-sm uppercase tracking-widest font-bold">
+                      Pitch Me Your Mountain →
+                    </span>
+                    <div className="absolute inset-0 h-full w-full origin-left scale-x-0 transform bg-stone-100 transition-transform duration-500 ease-out group-hover:scale-x-100" />
+                  </a>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </section>
       </div>

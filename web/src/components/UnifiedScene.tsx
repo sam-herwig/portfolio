@@ -25,7 +25,7 @@ import {
 import PostProcessingStack from './PostProcessingStack';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
-import { MODULE_TIMELINE, sceneVisible, sceneOpacity } from '@/lib/moduleTimeline';
+import { MODULE_TIMELINE, sceneVisible, sceneOpacity, sceneChildRanges } from '@/lib/moduleTimeline';
 
 // ── Scene envelope helper ─────────────────────────────────────────────
 // Applies sceneOpacity as a multiplier on all materials in a group,
@@ -422,18 +422,17 @@ function CampfireEmbers({ scrollVelocity }: { scrollVelocity: React.MutableRefOb
 function VideoCampLedge({
   videoUrl,
   position,
-  scale,
   scrollProgress,
 }: {
   videoUrl: string;
   position: [number, number, number];
-  scale: [number, number];
   scrollProgress: MotionValue<number>;
 }) {
   const camp = MODULE_TIMELINE.camp;
   const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
   const meshRef = useRef<Mesh>(null);
   const lerpedP = useRef(0);
+  const dynScale = useVideoCoverScale(position);
 
   // Mark material as self-managed before first applyGroupOpacity pass
   useEffect(() => {
@@ -473,8 +472,8 @@ function VideoCampLedge({
   });
 
   return (
-    <mesh ref={meshRef} position={position}>
-      <planeGeometry args={scale} />
+    <mesh ref={meshRef} position={position} frustumCulled={false}>
+      <planeGeometry args={dynScale} />
       <meshBasicMaterial map={tex} transparent depthWrite={false} opacity={0} />
     </mesh>
   );
@@ -514,12 +513,7 @@ function CampSceneGroup({
       <ambientLight ref={lightRef} intensity={0.2} color="#020617" />
       <Starfield scrollVelocity={scrollVelocity} />
       <CampfireEmbers scrollVelocity={scrollVelocity} />
-      <VideoCampLedge
-        videoUrl="/assets/videos/campfire.mp4"
-        position={[0, 0, -250]}
-        scale={[400, 225]}
-        scrollProgress={scrollProgress}
-      />
+      <VideoCampLedge videoUrl="/assets/videos/campfire.mp4" position={[0, 0, -250]} scrollProgress={scrollProgress} />
     </group>
   );
 }
@@ -658,42 +652,98 @@ function AlpineWall({
   );
 }
 
+function SyncedRockLedge({
+  textureUrl,
+  position,
+  scale,
+  range,
+  lerpedP,
+}: {
+  textureUrl: string;
+  position: [number, number, number];
+  scale: [number, number];
+  range: readonly [number, number, number, number];
+  lerpedP: React.RefObject<number>;
+}) {
+  const groupRef = useRef<Group>(null);
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    const p = lerpedP.current;
+    let opacity = 0;
+    if (p <= range[0] || p >= range[3]) opacity = 0;
+    else if (p < range[1]) opacity = (p - range[0]) / (range[1] - range[0]);
+    else if (p > range[2]) opacity = (range[3] - p) / (range[3] - range[2]);
+    else opacity = 1;
+    groupRef.current.visible = opacity > 0;
+    if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
+  });
+
+  return (
+    <group ref={groupRef}>
+      <RockLedge textureUrl={textureUrl} position={position} scale={scale} />
+    </group>
+  );
+}
+
 function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
   const groupRef = useRef<Group>(null);
   const lerpedP = useRef(0);
   const alpine = MODULE_TIMELINE.alpine;
+  const ranges = useMemo(() => sceneChildRanges('alpine', 4), []);
 
   useFrame((state, delta) => {
     if (groupRef.current) {
       lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
       const opacity = sceneOpacity('alpine', lerpedP.current);
       groupRef.current.visible = opacity > 0;
-      if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
     }
   });
 
   return (
     <group ref={groupRef}>
       <AlpineWall textureUrl="/alpine_wall.webp" position={[0, 80, -500]} scale={[1200, 1200]} />
-      <group>
-        <RockLedge textureUrl="/alpine_ledge_left.webp" position={[-12, 0, -5]} scale={[25, 25]} />
-        <RockLedge textureUrl="/alpine_ledge_right.webp" position={[12, 30, -10]} scale={[25, 25]} />
-        <RockLedge textureUrl="/alpine_ledge_left_variant_2.webp" position={[-12, 60, -15]} scale={[25, 25]} />
-        <RockLedge textureUrl="/alpine_ledge_right_variant_2.webp" position={[12, 90, -20]} scale={[25, 25]} />
-        <AlpineAnimatedSprite
-          textureUrl="/bird_sprite.webp"
-          startX={-45}
-          endX={45}
-          y={105}
-          z={-30}
-          scrollStart={alpine.exitStart}
-          scrollEnd={alpine.ownEnd}
-          scale={[15, 15]}
-          scrollProgress={scrollProgress}
-          frames={8}
-          cycles={8}
-        />
-      </group>
+      <SyncedRockLedge
+        textureUrl="/alpine_ledge_left.webp"
+        position={[-12, 0, -5]}
+        scale={[25, 25]}
+        range={ranges[0]}
+        lerpedP={lerpedP}
+      />
+      <SyncedRockLedge
+        textureUrl="/alpine_ledge_right.webp"
+        position={[12, 30, -10]}
+        scale={[25, 25]}
+        range={ranges[1]}
+        lerpedP={lerpedP}
+      />
+      <SyncedRockLedge
+        textureUrl="/alpine_ledge_left_variant_2.webp"
+        position={[-12, 60, -15]}
+        scale={[25, 25]}
+        range={ranges[2]}
+        lerpedP={lerpedP}
+      />
+      <SyncedRockLedge
+        textureUrl="/alpine_ledge_right_variant_2.webp"
+        position={[12, 90, -20]}
+        scale={[25, 25]}
+        range={ranges[3]}
+        lerpedP={lerpedP}
+      />
+      <AlpineAnimatedSprite
+        textureUrl="/bird_sprite.webp"
+        startX={-45}
+        endX={45}
+        y={105}
+        z={-30}
+        scrollStart={alpine.exitStart}
+        scrollEnd={alpine.ownEnd}
+        scale={[15, 15]}
+        scrollProgress={scrollProgress}
+        frames={8}
+        cycles={8}
+      />
     </group>
   );
 }
@@ -731,15 +781,19 @@ function PanoramaLedge({
       lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
       const p = lerpedP.current;
       const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
-      // Match VideoPanoramaLedge timing: fade in 0.40→0.55, pan + fade out 0.55→0.70
+      // Match VideoPanoramaLedge timing: fade in 0.20→0.40, hold, fade out 0.55→0.70
       let opacity = 0;
-      if (animP < 0.55) {
-        opacity = Math.min(1, Math.max(0, (animP - 0.4) / 0.15));
+      if (animP < 0.2) {
+        opacity = 0;
+      } else if (animP < 0.4) {
+        opacity = Math.min(1, Math.max(0, (animP - 0.2) / 0.2));
+      } else if (animP < 0.55) {
+        opacity = 1;
       } else {
         opacity = 1 - Math.min(1, Math.max(0, (animP - 0.55) / 0.15));
       }
-      const panP = Math.min(1, Math.max(0, (animP - 0.55) / 0.15));
-      meshRef.current.position.x = position[0] - panP * 25;
+      const panP = Math.min(1, Math.max(0, (animP - 0.4) / 0.3));
+      meshRef.current.position.x = position[0] - panP * 5;
       const mat = meshRef.current.material as MeshBasicMaterial;
       (mat as any).__selfManagedOpacity = true;
       mat.opacity = opacity;
@@ -752,6 +806,42 @@ function PanoramaLedge({
       <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} opacity={0} />
     </mesh>
   );
+}
+
+function useVideoCoverScale(
+  position: [number, number, number],
+  videoAspect = 16 / 9,
+  overscan = 1.3,
+): [number, number, number] {
+  const { viewport, camera } = useThree();
+  const [scale, setScale] = useState<[number, number, number]>(() => {
+    const cv = viewport.getCurrentViewport(camera, new Vector3(...position));
+    const sa = cv.width / cv.height;
+    const w = sa > videoAspect ? cv.width : cv.height * videoAspect;
+    const h = sa > videoAspect ? cv.width / videoAspect : cv.height;
+    return [w * overscan, h * overscan, 1];
+  });
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    const recalc = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        const cv = viewport.getCurrentViewport(camera, new Vector3(...position));
+        const sa = cv.width / cv.height;
+        const w = sa > videoAspect ? cv.width : cv.height * videoAspect;
+        const h = sa > videoAspect ? cv.width / videoAspect : cv.height;
+        setScale([w * overscan, h * overscan, 1]);
+      }, 150);
+    };
+    window.addEventListener('resize', recalc);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener('resize', recalc);
+    };
+  }, [viewport, camera, position, videoAspect, overscan]);
+
+  return scale;
 }
 
 function VideoPanoramaLedge({
@@ -769,25 +859,8 @@ function VideoPanoramaLedge({
 }) {
   const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
   const meshRef = useRef<Mesh>(null);
-  const { viewport, camera } = useThree();
   const summit = MODULE_TIMELINE.summit;
-
-  const cv = viewport.getCurrentViewport(camera, new Vector3(position[0], position[1], position[2]));
-  const videoAspect = 16 / 9;
-  const screenAspect = cv.width / cv.height;
-  let w = cv.width,
-    h = cv.height;
-
-  // Force the video to act as "cover" - ensuring full width and height without gaps
-  if (screenAspect > videoAspect) {
-    w = cv.width;
-    h = w / videoAspect;
-  } else {
-    h = cv.height;
-    w = h * videoAspect;
-  }
-  // Ensure it's slightly oversized (1.2x) to handle tracking parallax successfully
-  const dynScale: [number, number, number] = [w * 1.3, h * 1.3, 1];
+  const dynScale = useVideoCoverScale(position);
 
   const lerpedP = useRef(0);
 
@@ -817,17 +890,19 @@ function VideoPanoramaLedge({
       lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
       const p = lerpedP.current;
       const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
-      // Fade in: animP 0.40→0.55. Hold full opacity mapping through 1.0!
+      // Fade in: animP 0.20→0.40. Hold 0.40→0.55. Fade out: 0.55→0.70.
       let opacity = 0;
-      if (animP < 0.4) {
+      if (animP < 0.2) {
         opacity = 0;
+      } else if (animP < 0.4) {
+        opacity = Math.min(1, Math.max(0, (animP - 0.2) / 0.2));
       } else if (animP < 0.55) {
-        opacity = Math.min(1, Math.max(0, (animP - 0.4) / 0.15));
-      } else {
         opacity = 1;
+      } else {
+        opacity = 1 - Math.min(1, Math.max(0, (animP - 0.55) / 0.15));
       }
-      // Milder cinematic pan scaled specifically so the dynScale 1.3x never exposes edges
-      const panP = Math.min(1, Math.max(0, (animP - 0.55) / 0.45));
+      // Cinematic pan during hold + fade-out
+      const panP = Math.min(1, Math.max(0, (animP - 0.4) / 0.3));
       meshRef.current.position.x = position[0] - panP * 5;
       const mat = meshRef.current.material as MeshBasicMaterial;
       (mat as any).__selfManagedOpacity = true;
@@ -845,20 +920,10 @@ function VideoPanoramaLedge({
 
 function ForegroundLedge({
   textureUrl,
-  position,
-  startZ,
-  endZ,
-  startY,
-  endY,
   scale,
   scrollProgress,
 }: {
   textureUrl: string;
-  position: [number, number, number];
-  startZ: number;
-  endZ: number;
-  startY: number;
-  endY: number;
   scale: [number, number];
   scrollProgress: MotionValue<number>;
 }) {
@@ -866,6 +931,7 @@ function ForegroundLedge({
   const meshRef = useRef<Mesh>(null);
   const summit = MODULE_TIMELINE.summit;
   const lerpedP = useRef(0);
+  const { viewport, camera } = useThree();
 
   useEffect(() => {
     return () => {
@@ -878,17 +944,28 @@ function ForegroundLedge({
       lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
       const p = lerpedP.current;
       const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
-      const flyProgress = Math.min(1, Math.max(0, animP / 0.2));
-      const easeOut = 1 - Math.pow(1 - flyProgress, 3);
-      meshRef.current.position.z = endZ;
-      meshRef.current.position.y = MathUtils.lerp(startY, endY, easeOut);
+      // Fade in 0.00→0.20, hold 0.20→0.55, fade out 0.55→0.70
+      let opacity = 0;
+      if (animP < 0.2) {
+        opacity = animP / 0.2;
+      } else if (animP < 0.55) {
+        opacity = 1;
+      } else if (animP < 0.7) {
+        opacity = 1 - (animP - 0.55) / 0.15;
+      }
+      const mat = meshRef.current.material as MeshBasicMaterial;
+      (mat as any).__selfManagedOpacity = true;
+      mat.opacity = opacity;
+      // Pin to bottom of viewport based on current camera position
+      const cv = viewport.getCurrentViewport(camera, new Vector3(0, 0, 8));
+      meshRef.current.position.y = camera.position.y - cv.height / 2 + scale[1] / 2;
     }
   });
 
   return (
-    <mesh ref={meshRef} position={position}>
+    <mesh ref={meshRef} position={[-3, 0, 8]}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} />
+      <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} opacity={0} />
     </mesh>
   );
 }
@@ -953,13 +1030,26 @@ function OneShotAnimatedFox({
       } else {
         clonedTex.offset.x = 0;
       }
+
+      // Fade in 0.00→0.20, hold 0.20→0.55, fade out 0.55→0.70 (matches cliff)
+      let foxOpacity = 0;
+      if (animP < 0.2) {
+        foxOpacity = animP / 0.2;
+      } else if (animP < 0.55) {
+        foxOpacity = 1;
+      } else if (animP < 0.7) {
+        foxOpacity = 1 - (animP - 0.55) / 0.15;
+      }
+      const mat = meshRef.current.material as MeshBasicMaterial;
+      (mat as any).__selfManagedOpacity = true;
+      mat.opacity = foxOpacity;
     }
   });
 
   return (
     <mesh ref={meshRef} position={[startX, startYOffset, startZ]} rotation-z={rotation}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} />
+      <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} opacity={0} />
     </mesh>
   );
 }
@@ -987,16 +1077,7 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
           playThreshold={0.35}
           scrollProgress={scrollProgress}
         />
-        <ForegroundLedge
-          textureUrl="/cliff_edge.webp"
-          position={[-3, 0, 0]}
-          startZ={8}
-          endZ={8}
-          startY={-18}
-          endY={-2}
-          scale={[18, 6]}
-          scrollProgress={scrollProgress}
-        />
+        <ForegroundLedge textureUrl="/cliff_edge.webp" scale={[18, 6]} scrollProgress={scrollProgress} />
         <OneShotAnimatedFox
           textureUrl="/fox_sprite.webp"
           startX={-12}

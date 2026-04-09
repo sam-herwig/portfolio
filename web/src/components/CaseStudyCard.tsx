@@ -1,9 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, MotionValue } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAppStore } from '@/store/useAppStore';
+import type { ProjectPalette } from '@/data/projects';
 
 interface CaseStudyCardProps {
   title: string;
@@ -15,6 +17,7 @@ interface CaseStudyCardProps {
   linkable?: boolean;
   scrollProgress?: MotionValue<number>;
   range?: readonly [number, number, number, number];
+  palette?: ProjectPalette;
 }
 
 function hash(str: string): number {
@@ -33,12 +36,24 @@ export default function CaseStudyCard({
   linkable = true,
   scrollProgress,
   range,
+  palette,
 }: CaseStudyCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isTouch] = useState(() => typeof window !== 'undefined' && 'ontouchstart' in window);
+  const setSavedScrollY = useAppStore((s) => s.setSavedScrollY);
+  const startTransition = useAppStore((s) => s.startTransition);
+  const handleLinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setSavedScrollY(window.scrollY);
+      const accentColor = palette?.accent ?? '#09090b';
+      startTransition({ x: e.clientX, y: e.clientY }, accentColor, `/work/${slug}`);
+    },
+    [setSavedScrollY, startTransition, slug, palette],
+  );
 
   // Use global timeline range when provided, fall back to local scroll tracking
   const { scrollYProgress: localProgress } = useScroll({
@@ -100,7 +115,7 @@ export default function CaseStudyCard({
             : '0 20px 40px -10px rgba(0,0,0,0.3)',
         transition: 'box-shadow 0.3s ease-out, transform 0.3s',
       }}
-      className="relative p-6 md:p-12 bg-background/88 backdrop-blur-md rounded-3xl border border-foreground/10 shadow-2xl group cursor-pointer hover:bg-foreground/5 transition-colors duration-500 overflow-hidden"
+      className="relative p-6 md:p-12 bg-background/93 backdrop-blur-xl rounded-3xl border border-foreground/10 shadow-2xl group cursor-pointer hover:bg-foreground/5 transition-colors duration-500 overflow-hidden"
     >
       <div className="relative z-10 w-full h-full flex flex-col">
         {/* Gradient border trace on hover */}
@@ -204,7 +219,7 @@ export default function CaseStudyCard({
     >
       {linkable ? (
         <motion.div style={{ pointerEvents: isOverlay ? pointerEvents : 'auto' }} className="w-full md:w-[60%] block">
-          <Link href={`/work/${slug}`} aria-label={`View ${title} case study`}>
+          <Link href={`/work/${slug}`} aria-label={`View ${title} case study`} onClick={handleLinkClick}>
             {cardInner}
           </Link>
         </motion.div>

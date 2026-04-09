@@ -10,9 +10,10 @@ const WoodcutShaderMaterial = shaderMaterial(
     uColorBase: new THREE.Color('#18181b'), // Charcoal Ink
     uColorPaper: new THREE.Color('#f5f5f4'), // Warm Stone Paper
     uColorWater: new THREE.Color('#d1e8e2'), // Pale Map Blue
-    uColorSun: new THREE.Color('#fcd34d'),  // Faded Sunset Orange
-    uColorAlt: new THREE.Color('#10b981'),  // Neon Emerald
+    uColorSun: new THREE.Color('#fcd34d'), // Faded Sunset Orange
+    uColorAlt: new THREE.Color('#10b981'), // Neon Emerald
     uOpacity: 1.0,
+    uPaperOpacity: 1.0, // 1.0 = opaque paper (homepage), 0.0 = transparent paper (hero)
     uWind: 0.0, // Global synchronized continuous wind
     uMouse: new THREE.Vector2(0, 0), // Track normalized mouse coordinates
   },
@@ -87,6 +88,7 @@ void main() {
     uniform vec3 uColorSun;
     uniform vec3 uColorAlt;
     uniform float uOpacity;
+    uniform float uPaperOpacity;
     uniform vec2 uMouse;
 
     float getLuminance(vec3 color) {
@@ -131,13 +133,15 @@ void main() {
       // Overall alpha for the fragment
       // We keep the ink perfectly opaque, and fade the paper out into the sky, but bound everything by the PNG's innate transparency
       float baseAlpha = texColorG.a;
-      float alphaOut = max(inkIntensity, paperAlpha) * uOpacity * baseAlpha;
+      // uPaperOpacity controls paper visibility: 1.0 = fully opaque paper, 0.0 = only ink visible
+      float adjustedPaperAlpha = paperAlpha * uPaperOpacity;
+      float alphaOut = max(inkIntensity, adjustedPaperAlpha) * uOpacity * baseAlpha;
 
       if (alphaOut < 0.05) discard;
 
       gl_FragColor = vec4(finalColor, alphaOut);
 }
-`
+`,
 );
 
 extend({ WoodcutShaderMaterial });

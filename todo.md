@@ -1,53 +1,77 @@
-# Codebase Audit Remediation
+# Case Study Page Redesign
 
-## Todo List
+Craft-forward scrollytelling case studies with trail-themed framing and bespoke spotlight slots.
 
-### Phase 1: Delete Dead Code
-- [x] Delete `WatercolorCursorMaterial.ts` (unused)
-- [x] Delete `InteractiveHero.tsx` (unused)
-- [x] Delete `RefractionMaterial.ts` (only imported by InteractiveHero)
-- [x] Delete orphaned e2e test files (card-diag, firefox-debug, layout-diag, real-render, webgl-test)
+## Phase 1: Foundation (DONE)
 
-### Phase 2: Error Boundary
-- [x] Create `src/app/error.tsx` with retry button
+- [x] 1. Define typed block data model in `projects.ts`
+- [x] 2. Migrate existing project content into the new block structure
+- [x] 3. Kill the modal intercept route, add scroll position preservation on return
+- [x] 4. Build the shared case study skeleton component (scrollytelling framework)
+- [x] 5. Capture video recordings and screenshots for all projects
+- [x] 6. Compress/convert assets (MP4 <5s, WebP statics)
+- [x] 7. Write and humanize copy for all 4 projects
+- [x] 8. Wire blocks, assets, and copy into `projects.ts`
+- [x] 9. Frostier glass panels (bumped to bg-background/93)
 
-### Phase 3: Accessibility
-- [x] Fix cursor hiding for keyboard users (pointer: fine + focus-visible restore)
-- [x] Make ElevationBar waypoints keyboard-accessible (button elements, aria-labels, 44px touch targets)
-- [x] Add `aria-hidden="true"` to decorative Canvas wrapper
-- [x] Boost contrast on low-opacity text (/45 → /60, /40 → /60)
-- [x] Add reduced-motion support (UnifiedScene reactive listener, scroll indicator, pulse animation)
-- [x] Add aria-labels to icons and links (GearRack SVGs, CaseStudyCard links, mailto links)
-- [x] Add section IDs for deep linking (about, skills, contact)
+## Phase 2: Atmosphere & Hero (CURRENT)
 
-### Phase 4: Performance
-- [x] Gate console.warn in PostProcessingStack behind NODE_ENV
+- [x] 10. **E — Velocity-reactive paper texture atmosphere**
+  - PaperAtmosphereMaterial GLSL shader (simplex noise, fBm, fiber texture)
+  - CaseStudyScene R3F canvas, fullscreen quad at z=-10 (depth-scaled)
+  - Scroll velocity drives directional ripple + grain stretch
+  - Per-project accent color watercolor seep from edges
+- [x] 11. **H — Generative trail hero (parallax scroll-through)**
+  - 130vh header, 3 parallax layers (bg/mid/fg) with depth-aware sizing
+  - Per-project biomes: NB, CK, MB, CC with unique landmark compositions
+  - WoodcutMaterial + uPaperOpacity for transparent paper, per-layer ink opacity
+  - Desktop: mouse hover watercolor + gentle ambient sway
+  - Mobile: scroll-velocity wind + scroll-position watercolor
+  - Sticky title at top-[55vh], timestamp-seeded daily layout variation
+  - **Needs visual tuning pass** (element positions, opacity balance)
 
-### Phase 5: Code Quality
-- [x] Replace blanket `eslint-disable` with targeted rule suppressions in DeepForest + UnifiedScene
-- [x] Add section IDs for deep linking
+## Phase 3: Media & Navigation
 
-## Verification
-- [x] `npm run build` — passes clean, no TypeScript/build errors
-- [x] `npm run lint` — no new warnings from modified files (remaining are pre-existing e2e + CaseStudyContent)
+- [x] 12. **A — Woodcut border dissolve on media blocks**
+  - WoodcutBorder component: torn-edge mask, scroll-driven dissolve inward
+  - Tinted with `--cs-accent`, applied to MediaBlockRenderer only
+- [x] 13. **F — Topographic elevation profile progress indicator**
+  - ElevationProfile component: SVG path from block density, glowing dot, chapter waypoints
+  - Accent-colored active portion, fixed right sidebar (desktop only)
 
-## Review
+## Phase 4: Transitions
 
-### Files Deleted (8)
-- `src/components/shaders/WatercolorCursorMaterial.ts` — unused, 75 lines
-- `src/components/InteractiveHero.tsx` — unused, 232 lines
-- `src/components/shaders/RefractionMaterial.ts` — only used by InteractiveHero
-- 5 orphaned e2e test files (card-diag, firefox-debug, layout-diag, real-render, webgl-test)
+- [ ] 14. **D — Watercolor bleed chapter wipes**
+  - Overlay flow, no scroll pinning
+  - Accent color bleeds across viewport as fixed overlay
+  - Content continues scrolling beneath the wash
+  - Per-chapter hue variation from project palette
+  - Velocity-responsive: fast scroll = quick wash, slow = lingers
+- [x] 15. **B — Ink wash page transition (homepage → case study)**
+  - InkWashTransition component: click-origin radial spread, 0.7s enter / 0.6s exit
+  - ink-wash-horizontal.webp as CSS mask, tinted with project accent color
+  - Zustand transition state (entering/exiting), router.push on enter complete
+  - BackToTrail reverse transition with dark ink
+  - Graceful fallback: native Link still works if JS fails
 
-### Files Created (1)
-- `src/app/error.tsx` — Next.js error boundary, catches runtime errors with "Try Again" button
+## Phase 5: Spotlight Slots
 
-### Files Modified (8)
-1. **`globals.css`** — Cursor hiding now requires `(pointer: fine) and (hover: hover)`, restores cursor during keyboard nav via `:has(:focus-visible)`
-2. **`ElevationBar.tsx`** — Waypoints changed from `<div>` to `<button>` with aria-labels and 44px touch targets (17px padding around 10px dot). Pulse animation disabled in reduced-motion.
-3. **`HomeClient.tsx`** — aria-hidden on Canvas wrapper, section IDs (about/skills/contact), reduced-motion check on scroll indicator bounce, aria-labels on mailto links, contrast boost on subtitle text (/45→/60, /40→/60)
-4. **`GearRack.tsx`** — `aria-hidden="true"` on all decorative SVG icons, contrast boost on labels (/45→/60, /40→/60)
-5. **`CaseStudyCard.tsx`** — `aria-label="View {title} case study"` on card links
-6. **`UnifiedScene.tsx`** — Reduced-motion detection now reactive via `matchMedia` change listener (responds to OS setting toggle). Blanket eslint-disable replaced with targeted rules.
-7. **`PostProcessingStack.tsx`** — `console.warn` gated behind `process.env.NODE_ENV === 'development'`
-8. **`DeepForest.tsx`** — Blanket eslint-disable replaced with targeted rules
+- [ ] 16. New Belgium theme-switcher interactive demo
+- [ ] 17. CraftedKit pipeline diagrams (Claude workflow — need to create net new)
+- [ ] 18. Mission Bell spotlight (GSAP transition replay/scrubber)
+- [ ] 19. C&C spotlight (performance metrics visualization)
+
+## Phase 6: Polish
+
+- [ ] 20. Homepage canvas teardown on case study navigate, rebuild on return
+- [ ] 21. Progressive enhancement (capability detection, fallbacks)
+- [ ] 22. Per-project color palettes fully applied
+
+## Assets
+
+All 24 case study illustration assets processed and ready:
+- `web/public/assets/graphics/case-study/` — transparent WebP, ~3.4MB total
+- Shared nature elements (12): rocks, ridgelines, clouds, terrain, trees, trail marker
+- Per-project themed (8): NB hop vine + cabin, CK crystals + fern, MB mesa + tower, CC cliff + lighthouse
+- Transition textures (2): ink wash horizontal + vertical
+- Border masks (2): organic edge + torn edge

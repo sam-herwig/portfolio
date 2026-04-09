@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { getProjectBySlug, getAllSlugs, getAdjacentProjects } from '@/data/projects';
 import CaseStudyContent from '@/components/CaseStudyContent';
-import Link from 'next/link';
+import CaseStudyScene from '@/components/CaseStudyScene';
 import { notFound } from 'next/navigation';
+import BackToTrail from '@/components/BackToTrail';
 
 export function generateStaticParams() {
-  return getAllSlugs().map(slug => ({ slug }));
+  return getAllSlugs().map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -31,13 +32,12 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   const { prev, next } = getAdjacentProjects(slug);
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="fixed top-6 left-6 z-50">
-        <Link href="/" className="text-sm font-mono uppercase tracking-widest text-foreground/60 hover:text-foreground transition-colors">
-          ← Back
-        </Link>
+    <main className="min-h-screen text-foreground">
+      <CaseStudyScene slug={slug} accentColor={project.palette?.accent ?? '#f59e0b'} />
+      <div className="relative z-10">
+        <BackToTrail />
+        <CaseStudyContent project={project} prev={prev} next={next} />
       </div>
-      <CaseStudyContent project={project} prev={prev} next={next} />
     </main>
   );
 }

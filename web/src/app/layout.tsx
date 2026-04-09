@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Instrument_Serif } from 'next/font/google';
 import './globals.css';
+import InkWashTransition from '@/components/InkWashTransition';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -48,10 +49,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-  modal,
 }: Readonly<{
   children: React.ReactNode;
-  modal: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -65,7 +64,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
-        {modal}
+        <InkWashTransition />
       </body>
     </html>
   );

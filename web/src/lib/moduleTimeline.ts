@@ -17,40 +17,40 @@
 export const MODULE_TIMELINE = {
   hero: {
     ownStart: 0.0,
-    ownEnd: 0.22,
+    ownEnd: 0.16,
     enterStart: 0.0,
-    enterEnd: 0.06,
-    exitStart: 0.14,
-    exitEnd: 0.22,
+    enterEnd: 0.04,
+    exitStart: 0.1,
+    exitEnd: 0.16,
   },
   forest: {
-    ownStart: 0.22,
-    ownEnd: 0.44,
-    enterStart: 0.22,
-    enterEnd: 0.28,
-    exitStart: 0.38,
-    exitEnd: 0.44,
+    ownStart: 0.16,
+    ownEnd: 0.42,
+    enterStart: 0.16,
+    enterEnd: 0.22,
+    exitStart: 0.36,
+    exitEnd: 0.42,
   },
   camp: {
-    ownStart: 0.44,
-    ownEnd: 0.64,
-    enterStart: 0.44,
-    enterEnd: 0.50,
-    exitStart: 0.58,
-    exitEnd: 0.64,
+    ownStart: 0.42,
+    ownEnd: 0.58,
+    enterStart: 0.42,
+    enterEnd: 0.47,
+    exitStart: 0.53,
+    exitEnd: 0.58,
   },
   alpine: {
-    ownStart: 0.64,
-    ownEnd: 0.84,
-    enterStart: 0.64,
-    enterEnd: 0.72,
-    exitStart: 0.78,
-    exitEnd: 0.84,
+    ownStart: 0.58,
+    ownEnd: 0.86,
+    enterStart: 0.58,
+    enterEnd: 0.64,
+    exitStart: 0.8,
+    exitEnd: 0.86,
   },
   summit: {
-    ownStart: 0.84,
+    ownStart: 0.86,
     ownEnd: 1.0,
-    enterStart: 0.84,
+    enterStart: 0.86,
     enterEnd: 0.92,
     exitStart: 0.96,
     exitEnd: 1.0,
@@ -72,10 +72,10 @@ const XFADE = 0; // no overlap — outgoing scene must reach 0 before incoming s
 
 export function sceneOpacity(module: ModuleName, progress: number): number {
   const w = MODULE_TIMELINE[module];
-  const fadeInStart  = w.enterStart - XFADE;
-  const fadeInEnd    = w.enterEnd;
+  const fadeInStart = w.enterStart - XFADE;
+  const fadeInEnd = w.enterEnd;
   const fadeOutStart = w.exitStart;
-  const fadeOutEnd   = w.exitEnd + XFADE;
+  const fadeOutEnd = w.exitEnd + XFADE;
 
   if (progress <= fadeInStart || progress >= fadeOutEnd) return 0;
   if (progress < fadeInEnd) return Math.max(0, Math.min(1, (progress - fadeInStart) / (fadeInEnd - fadeInStart)));
@@ -108,11 +108,9 @@ export function sceneChildRanges(
   count: number,
 ): ReadonlyArray<readonly [number, number, number, number]> {
   const w = MODULE_TIMELINE[module];
-  // Start at midpoint of enter phase — cards appear when scene is ~50% visible,
-  // giving more scroll distance for cards instead of waiting for full opacity.
-  const start = w.enterStart + (w.enterEnd - w.enterStart) * 0.5;
-  // Extend end into exit phase so cards have more scroll room before disappearing.
-  const end = w.exitStart + (w.exitEnd - w.exitStart) * 0.5;
+  // Use the full module window — cards fade in with the scene and fade out with it.
+  const start = w.enterStart;
+  const end = w.exitEnd;
   const slotSize = (end - start) / count;
   const fadeLen = slotSize * 0.2;
 
