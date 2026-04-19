@@ -1,120 +1,121 @@
 'use client';
 
-import { useRef, useMemo, useState, Suspense } from 'react';
+import { useRef, useMemo, useEffect, useState, Suspense } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
-import { Color, Mesh, Vector2, MathUtils } from 'three';
-import {
-  heroBiomes,
-  LAYER_SPEED,
-  LAYER_Z,
-  LAYER_OPACITY,
-  LAYER_PAPER_OPACITY,
-  CAMERA_Z,
-  seededRandom,
-  getDaySeed,
-  type HeroElement,
-} from '@/lib/heroAssets';
+import { Color, Mesh, MathUtils, Vector2, Vector3 } from 'three';
+
+import { HERO_SCENES, HERO_SCENES_MOBILE, DEFAULT_HERO, DEFAULT_HERO_MOBILE } from '@/lib/heroAssets';
 import '@/components/shaders/WoodcutMaterial';
 import type { WoodcutShaderMaterial as WoodcutShaderMaterialType } from '@/components/shaders/WoodcutMaterial';
 
-/* ── Single woodcut sprite ──────────────────────────────── */
+/* ── Hoisted constants ──────────────────────────────────── */
+const COLOR_BASE = new Color('#18181b'); // Foreground token — ink
+const COLOR_PAPER = new Color('#f9fafb'); // Background token — paper
+const PLANE_Z = -5;
+const MOBILE_QUERY = '(max-width: 767px)';
+// Off-screen resting position so smoothstep(1.5, 0.0, distToMouse) → 0
+const OFFSCREEN_MOUSE = new Vector2(10, 10);
 
-interface SpriteProps {
-  element: HeroElement;
-  worldX: number;
-  worldY: number;
-  worldScale: number;
-  layerOpacity: number;
-  layerPaperOpacity: number;
-  scrollProgress: React.RefObject<number>;
-  scrollVelocity: React.RefObject<number>;
-  mouse: React.RefObject<{ x: number; y: number }>;
-  accentColor: string;
-  heroFade: React.RefObject<number>;
-  isTouch: boolean;
+/* ── useIsMobile — SSR-safe media-query hook ────────────── */
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia(MOBILE_QUERY);
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+  return isMobile;
 }
 
-function WoodcutSprite({
-  element,
-  worldX,
-  worldY,
-  worldScale,
-  layerOpacity,
-  layerPaperOpacity,
-  scrollProgress,
-  scrollVelocity,
-  mouse,
-  accentColor,
-  heroFade,
-  isTouch,
-}: SpriteProps) {
-  const texture = useTexture(element.src);
+/* ── Single-plane hero scene ────────────────────────────── */
+
+interface HeroPlaneProps {
+  textureUrl: string;
+  scrollProgress: React.RefObject<number>;
+  isMobile: boolean;
+}
+
+function HeroPlane({ textureUrl, scrollProgress, isMobile }: HeroPlaneProps) {
+  const texture = useTexture(textureUrl);
   const meshRef = useRef<Mesh>(null);
   const matRef = useRef<InstanceType<typeof WoodcutShaderMaterialType>>(null);
-  const { viewport } = useThree();
+  const mousePos = useRef(new Vector2(OFFSCREEN_MOUSE.x, OFFSCREEN_MOUSE.y));
+  const touchTarget = useRef(new Vector2(OFFSCREEN_MOUSE.x, OFFSCREEN_MOUSE.y));
+  const { viewport, camera } = useThree();
 
-  const layerSpeed = LAYER_SPEED[element.layer];
-  const z = LAYER_Z[element.layer];
+  // Contain-fit the texture to the viewport at this depth
+  const zVec = useMemo(() => new Vector3(0, 0, PLANE_Z), []);
+  const cv = viewport.getCurrentViewport(camera, zVec);
+  const image = texture.image as { width?: number; height?: number } | undefined;
+  const imageAspect = image?.width && image?.height ? image.width / image.height : 16 / 10;
+  const viewportAspect = cv.width / cv.height;
+  const containScale: [number, number] =
+    imageAspect > viewportAspect
+      ? [cv.width * 1.2, (cv.width * 1.2) / imageAspect]
+      : [cv.height * 1.2 * imageAspect, cv.height * 1.2];
 
-  // Compute aspect ratio from the loaded texture
-  const img = texture.image as { width: number; height: number } | undefined;
-  const aspect = img ? img.width / img.height : 1;
+  // Desktop: cursor tracking for watercolor injection (always-on).
+  // Mobile: scroll-driven — target drifts top→bottom as the reader descends,
+  // so the watercolor bloom trails through the plate on every scroll.
+  useEffect(() => {
+    if (isMobile) return;
 
-  const baseY = worldY;
+    const onMouse = (e: MouseEvent) => {
+      const nx = (e.clientX / window.innerWidth) * 2 - 1;
+      const ny = -(e.clientY / window.innerHeight) * 2 + 1;
+      touchTarget.current.set(nx, ny);
+    };
+    window.addEventListener('mousemove', onMouse, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', onMouse);
+    };
+  }, [isMobile]);
 
   useFrame((state) => {
-    if (!meshRef.current) return;
-
-    // Parallax: translate Y based on scroll progress and layer speed
-    const travel = viewport.height * 1.3; // total Y travel range
+    if (!matRef.current) return;
+    // Hero fade: start receding as the overlay text enters near 40% of the
+    // plate height, fully out by 90%. Leaves breathing room before container fade.
     const progress = scrollProgress.current ?? 0;
-    const yOffset = -progress * layerSpeed * travel;
-    meshRef.current.position.y = baseY + yOffset;
-
-    // Fade with hero — multiply layer base opacity by hero fade-out
-    const fade = heroFade.current ?? 1;
-    if (matRef.current) {
-      matRef.current.uOpacity = layerOpacity * fade;
-
-      // Slow ambient time for watercolor flow distortion
-      matRef.current.uTime = state.clock.elapsedTime * 0.15;
-
-      if (isTouch) {
-        // Mobile: wind + watercolor driven by scroll velocity
-        const vel = scrollVelocity.current ?? 0;
-        matRef.current.uWind = state.clock.elapsedTime * 0.1 + vel * 3;
-        // Watercolor tracks scroll position vertically through the scene
-        const scrollY = -(progress * 2 - 1);
-        matRef.current.uMouse.set(0, scrollY);
-      } else {
-        // Desktop: gentle ambient sway, watercolor follows mouse hover
-        matRef.current.uWind = state.clock.elapsedTime * 0.15;
-        matRef.current.uMouse.set(mouse.current?.x ?? 0, mouse.current?.y ?? 0);
-      }
+    const heroFade = 1 - MathUtils.smoothstep(progress, 0.4, 0.9);
+    matRef.current.uOpacity = heroFade;
+    // uTime drives fragment watercolor flow distortion (sin/cos ripple)
+    matRef.current.uTime = state.clock.elapsedTime * 0.15;
+    matRef.current.uWind = state.clock.elapsedTime * 0.15;
+    // Mobile: scroll becomes the "cursor" — y travels +1 (top) → -1 (bottom),
+    // with a gentle x wobble so the bloom doesn't run in a straight line.
+    if (isMobile) {
+      const y = 1 - progress * 2;
+      const x = Math.sin(progress * Math.PI * 2) * 0.35;
+      touchTarget.current.set(x, y);
+    }
+    // Lerp mousePos toward touchTarget (smooth chase for both desktop + mobile)
+    mousePos.current.lerp(touchTarget.current, 0.1);
+    matRef.current.uMouse.copy(mousePos.current);
+    // Desktop: gentle parallax tilt that follows the cursor — plane leans toward
+    // whichever corner you're hovering. Mobile stays flat (touchTarget is scroll-driven).
+    if (!isMobile && meshRef.current) {
+      meshRef.current.rotation.y = mousePos.current.x * 0.08;
+      meshRef.current.rotation.x = -mousePos.current.y * 0.08;
     }
   });
 
-  // Scale plane to preserve aspect ratio
-  const planeW = worldScale;
-  const planeH = worldScale / aspect;
-
   return (
-    <mesh ref={meshRef} position={[worldX, baseY, z]}>
-      <planeGeometry args={[planeW, planeH]} />
+    <mesh ref={meshRef} position={[0, 0, PLANE_Z]}>
+      {/* 64x64 subdivision kept for easy vertex-effect re-enable via shader uncomment */}
+      <planeGeometry args={[containScale[0], containScale[1], 64, 64]} />
       {/* @ts-expect-error - R3F JSX element registered via extend() */}
       <woodcutShaderMaterial
         ref={matRef}
         uTexture={texture}
-        uColorBase={new Color('#18181b')}
-        uColorPaper={new Color('#f5f5f4')}
-        uColorWater={new Color(accentColor)}
-        uColorSun={new Color('#fcd34d')}
-        uColorAlt={new Color(accentColor)}
-        uOpacity={layerOpacity}
-        uPaperOpacity={layerPaperOpacity}
+        uColorBase={COLOR_BASE}
+        uColorPaper={COLOR_PAPER}
+        uOpacity={1}
+        uPaperOpacity={1}
         uWind={0}
-        uMouse={new Vector2(0, 0)}
         transparent
         depthWrite={false}
       />
@@ -122,91 +123,20 @@ function WoodcutSprite({
   );
 }
 
-/* ── Full landscape ─────────────────────────────────────── */
-
-interface LandscapeInnerProps {
-  slug: string;
-  accentColor: string;
-  scrollProgress: React.RefObject<number>;
-  scrollVelocity: React.RefObject<number>;
-  mouse: React.RefObject<{ x: number; y: number }>;
-}
-
-function LandscapeInner({ slug, accentColor, scrollProgress, scrollVelocity, mouse }: LandscapeInnerProps) {
-  const { viewport } = useThree();
-  const heroFade = useRef(1);
-  const [isTouch] = useState(() => typeof window !== 'undefined' && 'ontouchstart' in window);
-
-  // Resolve biome (fallback to new-belgium)
-  const biome = heroBiomes[slug] ?? heroBiomes['new-belgium'];
-
-  // Seed placement once per day
-  const placements = useMemo(() => {
-    const rng = seededRandom(getDaySeed() + slug.length);
-    return biome.elements.map((el) => {
-      const xOffset = (rng() - 0.5) * 2 * el.xVariance;
-      return { xOffset };
-    });
-  }, [biome, slug]);
-
-  // Update hero fade based on scroll progress
-  useFrame(() => {
-    const progress = scrollProgress.current ?? 0;
-    // Fade out from 0.75 → 1.0
-    heroFade.current = 1 - MathUtils.smoothstep(progress, 0.75, 1.0);
-  });
-
-  return (
-    <group>
-      {biome.elements.map((el, i) => {
-        const placement = placements[i];
-        const z = LAYER_Z[el.layer];
-        // Visible area at this Z depth (perspective scaling)
-        const depthScale = (CAMERA_Z - z) / CAMERA_Z;
-        const visibleW = viewport.width * depthScale;
-        const visibleH = viewport.height * depthScale;
-        // Convert normalized coords to world coords at this depth
-        const worldX = (el.basePosition[0] + placement.xOffset) * visibleW * 0.5;
-        const worldY = el.basePosition[1] * visibleH * 0.5;
-        // Scale = fraction of visible width at depth
-        const worldScale = el.scale * visibleW;
-
-        return (
-          <WoodcutSprite
-            key={`${el.src}-${i}`}
-            element={el}
-            worldX={worldX}
-            worldY={worldY}
-            worldScale={worldScale}
-            layerOpacity={LAYER_OPACITY[el.layer]}
-            layerPaperOpacity={LAYER_PAPER_OPACITY[el.layer]}
-            scrollProgress={scrollProgress}
-            scrollVelocity={scrollVelocity}
-            mouse={mouse}
-            accentColor={accentColor}
-            heroFade={heroFade}
-            isTouch={isTouch}
-          />
-        );
-      })}
-    </group>
-  );
-}
-
 /* ── Exported wrapper with Suspense ─────────────────────── */
 
 interface HeroLandscapeProps {
   slug: string;
-  accentColor: string;
   scrollProgress: React.RefObject<number>;
-  scrollVelocity: React.RefObject<number>;
-  mouse: React.RefObject<{ x: number; y: number }>;
 }
 
-export default function HeroLandscape(props: HeroLandscapeProps) {
+export default function HeroLandscape({ slug, scrollProgress }: HeroLandscapeProps) {
+  const isMobile = useIsMobile();
+  const textureUrl = isMobile ? (HERO_SCENES_MOBILE[slug] ?? DEFAULT_HERO_MOBILE) : (HERO_SCENES[slug] ?? DEFAULT_HERO);
+
   return (
     <Suspense fallback={null}>
-      <LandscapeInner {...props} />
+      <HeroPlane textureUrl={textureUrl} scrollProgress={scrollProgress} isMobile={isMobile} />
     </Suspense>
   );
 }

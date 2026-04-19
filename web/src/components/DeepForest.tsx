@@ -63,16 +63,13 @@ function AnimatedSprite({
 
       meshRef.current.position.x = MathUtils.lerp(startX, endX, clamped);
 
+      // Walk cycle advances on real time (not scroll) so legs never flicker
+      // with scroll velocity or step backward when you scroll up.
       if (clamped > 0 && clamped < 1) {
-        playhead.current = clamped * cycles * frames;
-      } else if (clamped >= 1) {
-        playhead.current = cycles * frames;
-      } else {
-        playhead.current = 0;
+        playhead.current += delta * cycles;
+        const currentFrame = Math.floor(playhead.current) % frames;
+        clonedTex.offset.x = currentFrame / frames;
       }
-
-      const currentFrame = Math.floor(playhead.current) % frames;
-      clonedTex.offset.x = currentFrame / frames;
     }
   });
 
@@ -130,8 +127,6 @@ const ForestTree = forwardRef(({ textureUrl, position, scale, rotation = 0 }: an
     if (materialRef.current) {
       materialRef.current.uTime = state.clock.elapsedTime;
       materialRef.current.uWind = state.clock.elapsedTime * 1.5;
-      // Smoothly track mouse pointer for the repulsion effect in WoodcutMaterial
-      materialRef.current.uMouse.lerp(state.pointer, 0.1);
     }
   });
 
@@ -314,16 +309,20 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
       {/* Spatial text removed from the scene layer.
                 Meaningful copy now lives in protected HTML panels so the scene can stay atmospheric. */}
 
-      {/* The Animated Stag (Walking subtly in the midground, tied directly to scroll) */}
+      {/* The Animated Stag — walks through the deep midground. Must sit
+          behind the forest camera's end-of-path z (-90) so it stays in
+          front of the camera throughout its animation window. */}
       <AnimatedSprite
         textureUrl="/stag_sprite.webp"
         startX={-42}
         endX={34}
         y={-5}
-        z={-40}
+        z={-95}
         scrollStart={MODULE_TIMELINE.forest.enterEnd}
-        scrollEnd={MODULE_TIMELINE.forest.exitStart}
-        scale={[18, 18]}
+        scrollEnd={
+          MODULE_TIMELINE.forest.enterEnd + (MODULE_TIMELINE.forest.exitStart - MODULE_TIMELINE.forest.enterEnd) / 3
+        }
+        scale={[32, 32]}
         frames={8}
         cycles={6}
         scrollProgress={scrollProgress}

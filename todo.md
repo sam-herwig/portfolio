@@ -30,6 +30,87 @@ Craft-forward scrollytelling case studies with trail-themed framing and bespoke 
   - Sticky title at top-[55vh], timestamp-seeded daily layout variation
   - **Needs visual tuning pass** (element positions, opacity balance)
 
+## Phase 2.5: Monochrome Sweep & Hero Rework (CURRENT)
+
+Strip all per-project color accents in favor of strict black-and-white via theme tokens
+(`#18181b` foreground / `#f9fafb` background). Rework the case study parallax hero to
+be a pure 100vh woodblock-print moment — keep the commissioned assets, but dial them
+in so they actually read. Title/subtitle/tags move out of the hero frame into a new
+`masthead` block at the top of the content flow. Paper atmosphere shader retracts to
+hero-only scope so the moment has a clean end at 100vh. Mouse interactivity killed
+in favor of a quieter ambient scene.
+
+Grilled decisions:
+- Vibe: **Woodblock print** (high-contrast ink-on-paper, authored composition)
+- Hero structure: **Pure 100vh visual moment**, no text competing
+- Paper shader scope: **Hero-only** (fades at 100vh, content scrolls on clean bg)
+- Biome density: **Trim each biome from 9 → 6 elements** (kill redundancies, keep depth hierarchy)
+- Mouse: **Kill vertex push + watercolor injection**, only time-driven wind sway remains
+- Parallax speeds: **Soften to 0.15 / 0.45 / 0.9** (cinematic, less demo-like)
+- Masthead: **New `MastheadBlock` marker** (empty `{ type: 'masthead' }`, renderer reads from project root)
+
+### A. Strip color — everything becomes theme-token b&w
+
+- [x] A1. Delete `ProjectPalette` interface and `palette` field from `Project` in `projects.ts`
+- [x] A2. Delete `palette: {...}` from all 4 projects
+- [x] A3. `useAppStore` — change transition default color from `#09090b` → `#18181b` (foreground token)
+- [x] A4. `CaseStudyCard.handleLinkClick` — drop palette lookup, always pass `#18181b` to `startTransition`
+- [x] A5. `work/[slug]/page.tsx` — remove `accentColor` prop passed to `CaseStudyScene`
+- [x] A6. `CaseStudyScene.tsx` — remove `accentColor` prop from component + `AtmosphereLayer`
+- [x] A7. `HeroLandscape.tsx` — remove `accentColor` prop + `colorWater` memo
+- [x] A8. `CaseStudyContent.tsx` — remove `--cs-accent` / `--cs-accent-muted` CSS var injection from article `style`
+
+### B. Woodblock tuning — make the assets actually read
+
+- [x] B1. `WoodcutMaterial.ts` fragment — delete watercolor math (`waterRadius`, `sunRadius`, `flow`, `injectedPaperColor`). `finalColor = mix(uColorPaper, uColorBase, inkIntensity)` only.
+- [x] B2. `WoodcutMaterial.ts` vertex — delete mouse-push math (`worldMouse`, `distToMouse`, `mousePush`, `pushDir`, `pos.x += pushDir.x * mousePush; pos.z -= mousePush * 0.5;`). Keep wind sway.
+- [x] B3. `WoodcutMaterial.ts` uniforms — remove `uColorWater`, `uColorSun`, `uColorAlt`, `uMouse`. Defaults `uColorBase = #18181b`, `uColorPaper = #f9fafb`.
+- [x] B4. `heroAssets.ts` — `LAYER_OPACITY` `{bg:0.2, mid:0.3, fg:0.4}` → `{bg:0.65, mid:0.8, fg:0.92}`
+- [x] B5. `heroAssets.ts` — `LAYER_PAPER_OPACITY` all → `0` (single paper source via atmosphere shader)
+- [x] B6. `heroAssets.ts` — `LAYER_SPEED` `{bg:0.3, mid:0.6, fg:1.0}` → `{bg:0.15, mid:0.45, fg:0.9}`
+- [x] B7. `heroAssets.ts` — trim `new-belgium`: drop cumulus cluster, trail marker, hop vine
+- [x] B8. `heroAssets.ts` — trim `mission-bell`: drop cumulus cluster, trail marker, dead tree snag
+- [x] B9. `heroAssets.ts` — trim `corners-and-coasts`: drop wispy stratus, trail marker, jagged outcrop
+- [x] B10. `heroAssets.ts` — trim `crafted-kit`: drop wispy stratus, trail marker, jagged outcrop
+- [x] B11. `heroAssets.ts` — set `xVariance: 0` on all remaining elements (locked composition)
+- [x] B12. `HeroLandscape.tsx` — drop `xOffset` randomization (always 0 now)
+- [x] B13. `PaperAtmosphereMaterial.ts` — remove `uAccentColor` uniform entirely
+- [x] B14. `PaperAtmosphereMaterial.ts` fragment — delete watercolor edge seep (`edgeL/R/T/B`, `edgeMask`, `bleedNoise`, `bleedShape`, `bleedStrength`, `watercolorTint`)
+- [x] B15. `PaperAtmosphereMaterial.ts` fragment — delete velocity fiber stretch + wind ripple (keep only time-driven `fbm` fiber grain + speckle)
+- [x] B16. `PaperAtmosphereMaterial.ts` fragment — delete warm color shift (`color.r += 0.005; color.g += 0.002;`)
+- [x] B17. `PaperAtmosphereMaterial.ts` — `uPaperColor` default `#f9fafb` (bg token), `uInkColor` stays `#18181b`
+- [x] B18. `CaseStudyScene.tsx` — drop `uVelocity` wiring to paper shader, drop `velocity` prop chain if no other consumer
+- [x] B19. `HeroLandscape.tsx` — drop `mouse` prop chain to `WoodcutSprite`
+- [x] B20. `CaseStudyScene.tsx` — remove `handleMouseMove`, `mouseRef`, `<div onMouseMove>` handler, `useVelocity`, `useSpring` plumbing if unused
+
+### C. Hero structure — pure 100vh moment, canvas fades past it
+
+- [x] C1. `CaseStudyContent.tsx` — delete the sticky 130vh `<header>` entirely
+- [x] C2. `CaseStudyScene.tsx` — fade Canvas opacity to 0 as `scrollY` crosses 100vh (keeps fixed positioning, just makes it invisible past the moment)
+- [x] C3. `CaseStudyScene.tsx` — `heroHeight = window.innerHeight * 1.3` → `* 1.0` so `scrollProgress` tracks 0→1 across exactly one viewport
+- [x] C4. `HeroLandscape.tsx` — tighten hero fade smoothstep `(0.75, 1.0)` → `(0.8, 1.0)` so fade finishes before content arrives
+- [x] C5. Verify `BackToTrail` overlay positioning still works over the new hero
+
+### D. Masthead block (empty marker pattern)
+
+- [x] D1. `projects.ts` — add `interface MastheadBlock { type: 'masthead' }` (no data)
+- [x] D2. `projects.ts` — add `| MastheadBlock` to `ContentBlock` union
+- [x] D3. `projects.ts` — insert `{ type: 'masthead' }` at `blocks[0]` of all 4 projects
+- [x] D4. `CaseStudyContent.tsx` — add `MastheadBlockRenderer({ project })` component (reuses markup from deleted hero header, sans sticky positioning)
+- [x] D5. `CaseStudyContent.tsx` — `BlockRenderer` signature gains `project` prop
+- [x] D6. `CaseStudyContent.tsx` — add `case 'masthead': return <MastheadBlockRenderer project={project} />` to switch
+- [x] D7. Update `blocks.map` call site to pass `project` through
+
+### E. Verification
+
+- [x] E1. `npm run guardrails` (format, lint, typecheck, build)
+- [ ] E2. Visual check all 4 case studies: hero is pure woodblock at 100vh, b&w, content starts cleanly below
+- [ ] E3. Visual check ink-wash card-click transition: foreground-token dark ink, no per-project color
+- [ ] E4. Visual check back-to-trail reverse transition
+- [ ] E5. Verify reduced-motion still gracefully skips the transition animation
+
+---
+
 ## Phase 3: Media & Navigation
 
 - [x] 12. **A — Woodcut border dissolve on media blocks**
@@ -38,6 +119,228 @@ Craft-forward scrollytelling case studies with trail-themed framing and bespoke 
 - [x] 13. **F — Topographic elevation profile progress indicator**
   - ElevationProfile component: SVG path from block density, glowing dot, chapter waypoints
   - Accent-colored active portion, fixed right sidebar (desktop only)
+
+## Phase 3.5: Field Journal content layout (CURRENT)
+
+Reframe case studies from "centered column of blocks" into a printed field journal
+with five named trail stations, a scroll-drawn trail line in the margin, specimen
+marginalia lifted from the 24 old hero sprite assets, and authored pacing moments
+(horizontal frieze, cinemascope breakout). Every layout decision flows from one
+metaphor: you're reading an expedition log, not a web article.
+
+### Locked decisions
+- Metaphor: **Field journal / expedition trail log**
+- Structure: **5 named stations** — Trailhead, Ascent, Ridge, Summit, Descent
+- Grid: **12-col asymmetric** — text in 5–6 col swings, media full-bleed via negative margin, marginalia in outer rail
+- Trail spine: **vertical SVG path draw in left margin**, scroll-driven, waypoint dots replaced by `trail-marker-signpost.webp` sprites
+- Typography: **display serif + sans metadata**, Roman numerals for station marks, `Fig. N` captions, 5-line drop caps on post-station paragraphs
+- Asset reuse: **all 24 old sprite assets reborn as specimens, landmarks, chapter backdrops, friezes, and ornaments** (see asset map below)
+- Counter: **running `07 / 24` case-study index** fixed bottom-right, replaces `ElevationProfile` as the progress indicator
+- Breakouts per case study: **1 horizontal specimen frieze + 1 full-bleed cinemascope shot + 1 sticky metric counter**
+
+### Asset integration map (old sprite → new role)
+
+| Asset bucket | Files | New role in Field Journal |
+|---|---|---|
+| Station markers | `trail-marker-signpost.webp` | Waypoint dot sprites on TrailSpine + running counter icon |
+| Specimen marginalia | `pine-tree-dense.webp`, `dead-tree-snag.webp`, `rock-boulder-cluster.webp`, `rock-jagged-outcrop.webp`, `wildflower-meadow-strip.webp` | Small sprites in outer margin w/ `Fig. N` + italic Latin label |
+| Weather ambients | `cloud-cumulus-cluster.webp`, `cloud-wispy-stratus.webp` | Slow horizontal drift at station footers; CSS infinite translate |
+| Terrain backdrops | `ridgeline-distant.webp`, `ridgeline-close.webp`, `terrain-rocky-trail.webp`, `terrain-rolling-hillside.webp` | Watermarks behind long text blocks at 5–8% opacity |
+| Per-project landmark | `nb-rustic-cabin.webp`, `ck-crystalline-formation.webp`, `mb-mission-bell-tower.webp`, `cc-lighthouse.webp` | Washed at 10% opacity behind Station III "The Ridge" header per project |
+| Secondary landmarks | `nb-hop-vine.webp`, `ck-circuit-fern.webp`, `mb-desert-mesa.webp`, `cc-coastal-cliff.webp` | Marginalia specimens specific to that case study |
+| Ink-wash transitions | `ink-wash-horizontal.webp`, `ink-wash-vertical.webp` | Full-width dividers between stations at 30% opacity |
+| Border masks | `border-organic-edge.webp`, `border-torn-edge.webp` | CSS mask on media blocks + spotlight frames (polaroid effect) |
+
+### A. Data model — station vocabulary + specimen blocks
+
+- [ ] A1. `projects.ts` — rename `TRAIL_CHAPTERS` from 4-chapter to 5-station: `['Trailhead', 'Ascent', 'Ridge', 'Summit', 'Descent']`
+- [ ] A2. `projects.ts` — replace `ChapterBreak` with `StationBreak` block type: `{ type: 'station', roman: 'I'|'II'|'III'|'IV'|'V', title: string, subtitle?: string }`
+- [ ] A3. `projects.ts` — add `SpecimenBlock`: `{ type: 'specimen', src: string, figNumber: string, label: string, side?: 'left'|'right' }`
+- [ ] A4. `projects.ts` — add `FriezeBlock`: `{ type: 'frieze', specimens: string[], title?: string }`
+- [ ] A5. `projects.ts` — add `MetricBlock`: `{ type: 'metric', value: string, unit?: string, label: string }`
+- [ ] A6. `projects.ts` — add `openingQuote: string` and `signatureLandmark: string` to `Project` interface
+- [ ] A7. `projects.ts` — rewrite `blocks[]` for all 4 projects into 5-station narrative (see K)
+
+### B. Specimen catalog + asset helper
+
+- [ ] B1. New `web/src/lib/specimenCatalog.ts` — typed catalog mapping 24 sprite filenames → `{ role, defaultLabel, slug? }`
+- [ ] B2. Helper `getSpecimensForProject(slug)` returns the ordered list of specimen sprites appropriate for that project (mix of shared nature + per-project secondary landmarks)
+
+### C. Trail spine — scroll-drawn SVG path in left margin
+
+- [ ] C1. New `web/src/components/TrailSpine.tsx` — fixed left-margin SVG, desktop-only (`hidden lg:block`)
+- [ ] C2. Scroll-driven `pathLength` via `useScroll` + Framer Motion `useTransform` on `strokeDashoffset`
+- [ ] C3. 5 waypoint dots positioned by station ownership percentages; active dot fills as scroll passes
+- [ ] C4. Replace `ElevationProfile` with `TrailSpine` in `CaseStudyContent.tsx`
+
+### D. Station break renderer — the named chapter head
+
+- [ ] D1. New `StationBreakBlock` component: outline Roman numeral (180px+, foreground/10) floating in outer margin, display-serif title at 72px, optional subtitle, 1px full-width rule above, 40vh breathing room
+- [ ] D2. Station III specifically renders `project.signatureLandmark` at 10% opacity as a full-width background behind the header
+- [ ] D3. First `<p>` after any station break gets a 5-line drop cap via CSS `::first-letter`
+
+### E. Asymmetric grid
+
+- [ ] E1. `CaseStudyContent.tsx` root wrapper → `grid grid-cols-12 gap-x-6 px-6 md:px-16 max-w-[88rem] mx-auto`
+- [ ] E2. `TextBlockRenderer` — `col-span-6` alternating `col-start-2` / `col-start-7` by block index. Drop frosted glass panel. Use serif body, generous leading.
+- [ ] E3. `MediaBlockRenderer` — default `col-span-10 col-start-2`; `fullBleed` becomes `col-span-12 -mx-6 md:-mx-16`
+- [ ] E4. `VideoBlockRenderer` — same rules as media
+- [ ] E5. Outer-margin specimen rail lives at `col-start-1` (left side) or `col-start-12` (right side) via `SpecimenBlock.side`
+
+### F. Block upgrades — editorial flourishes
+
+- [ ] F1. `TextBlockRenderer` — drop frosted glass panel, replace with `prose prose-editorial` (Tailwind v4 typography plugin or custom). Serif body, generous leading, no bg container.
+- [ ] F2. `MediaBlockRenderer` — add `Fig. N` small-caps caption ABOVE image + italic description BELOW, right-aligned flush to image edge
+- [ ] F3. `MastheadBlockRenderer` rework:
+  - Opening italic quote from `project.openingQuote` BEFORE title (Rally National Parks pattern)
+  - All-caps stacked metadata `CLIENT / ROLE / YEAR` underneath title
+  - Title in display serif at 7–8rem
+  - No more frosted glass container
+- [ ] F4. `SpotlightBlockRenderer` — wrap in `border-torn-edge.webp` CSS mask for a polaroid-pasted-in-journal feel
+- [ ] F5. New `SpecimenBlockRenderer` — places specimen sprite in outer margin w/ `Fig. N` label + italic description
+- [ ] F6. New `FriezeBlockRenderer` — sticky horizontal scroll section, tiles at 60vw each, translateX driven by inner scroll progress
+- [ ] F7. New `MetricBlockRenderer` — sticky full-viewport counter, scroll-driven number count-up, `wildflower-meadow-strip.webp` at the bottom
+
+### G. Typography system
+
+- [ ] G1. Verify `font-instrument` (Instrument Serif) is already loaded; if not add `@font-face` or next/font for display serif
+- [ ] G2. `globals.css` — add `.drop-cap-5` utility for 5-line dropped first letter
+- [ ] G3. `globals.css` — add `.fig-caption` utility for italic right-aligned figure captions
+- [ ] G4. Define display scale tokens: `text-display-1` (96px) through `text-display-4` (32px)
+
+### H. Running counter
+
+- [ ] H1. New `TrailCounter.tsx` — fixed bottom-right, renders `{projectIndex}` / `{totalProjects}` w/ a `trail-marker-signpost.webp` icon
+- [ ] H2. Mounts into `CaseStudyContent` top-level
+
+### I. Ambient flourishes
+
+- [ ] I1. Between each station: full-width `ink-wash-horizontal.webp` at 30% opacity as transition ornament
+- [ ] I2. Long text blocks: optional terrain watermark sprite at 5% opacity behind content
+
+### J. Project data — rewrite blocks for 5-station narrative
+
+- [ ] J1. For each of 4 projects, rewrite `blocks[]`:
+  - **Station I Trailhead**: masthead + 1 text block
+  - **Station II Ascent**: station break + 2 text blocks + horizontal frieze + 2 specimen marginalia
+  - **Station III Ridge**: station break + 1 cinemascope + 1 video + 1 text + 2 specimen marginalia
+  - **Station IV Summit**: station break + 1 spotlight + 1 text
+  - **Station V Descent**: station break + 1 metric + 1 text + 1 specimen marginalia
+- [ ] J2. Write `openingQuote` for each project (1-line italic hook)
+- [ ] J3. Assign `signatureLandmark` per project (NB cabin, CK crystals, MB bell tower, CC lighthouse)
+- [ ] J4. Pick per-project specimen mix from the catalog (each project gets 5–7 specimens across the page)
+
+### K. Verification
+
+- [ ] K1. `npm run guardrails` (format, lint, typecheck, build)
+- [ ] K2. Visual QA each of 4 case studies desktop + mobile
+- [ ] K3. Verify trail spine draws correctly, waypoints align to stations
+- [ ] K4. Verify reduced-motion gracefully skips kinetic effects
+
+---
+
+## Phase 3.6: Mobile hero + flat shader (CURRENT)
+
+Hot-swap portrait mobile hero assets for the 4 case studies on phone-size viewports,
+strip all vertex-level distortion out of `WoodcutMaterial` (commented out, not deleted,
+so it's togglable for A/B), and replace mouse-based watercolor on mobile with
+press-to-activate touch interaction on all heroes.
+
+### Locked decisions (via /grill-me)
+
+1. **Vertex effects to kill** — all three: time sway (`uWind` sin), mouse push (radial
+   vertex shove from cursor), and luminance-based Z pop. Commented out with a clear
+   header so toggling back is one uncomment.
+2. **Mobile breakpoint** — `(max-width: 767px)` via `window.matchMedia`, matches
+   Tailwind's `md:` fault line used everywhere else in the project.
+3. **Fit mode** — unchanged `contain @ 1.2×` in `HeroLandscape.tsx` for both desktop
+   and mobile. Portrait asset ≈ portrait viewport aspect ratio, so contain naturally
+   fills the screen without letterbox gaps. No second fit mode, no branching.
+4. **Touch scope** — press-to-activate watercolor on **all** heroes (homepage
+   `UnifiedScene.tsx` ParallaxLayer + case studies `HeroLandscape.tsx`). Desktop
+   `mousemove` listener unchanged; touch listeners are additive, gated by media query.
+5. **Touch feel** — **A + C**: snap `uMouse` to touch position on `touchstart`
+   (instant appearance), lerp toward off-screen `(10, 10)` on `touchend` (natural
+   fade-in-place because `waterRadius = smoothstep(1.5, 0.0, distToMouse)` goes
+   to zero as uMouse moves away).
+6. **Mobile homepage hero** — `bg_layer.webp` stays as-is (no mobile variant provided).
+   Touch interaction still wires up; just the texture doesn't swap.
+
+### A. Shader — comment out all vertex distortion
+
+- [ ] A1. `WoodcutMaterial.ts` vertex shader — wrap time sway block
+      (`swayBlend`, `wind`, `pos.x += wind`, `pos.y += wind * 0.2`) in a comment
+      block with header `/* ── VERTEX EFFECTS DISABLED — uncomment to re-enable ── */`
+- [ ] A2. Same block — wrap mouse push math (`worldMouse`, `distToMouse`, `mousePush`,
+      `pushDir`, `pos.x += pushDir.x * mousePush`, `pos.z -= mousePush * 0.5`)
+- [ ] A3. Same block — wrap luminance Z pop (`texData`, `lum`, `displacement`, `pos.z += displacement`)
+- [ ] A4. Keep `vDisplacement = 0.0` passthrough so the fragment shader's unused
+      varying doesn't error
+- [ ] A5. Keep `vWorldPos = pos.xy` (still used by fragment watercolor distance calc)
+
+### B. Mobile asset pipeline
+
+- [ ] B1. `cwebp -q 88 -m 6 ~/Desktop/nbb-mobile.png -o web/public/assets/graphics/case-study-heroes/new-belgium-mobile.webp`
+- [ ] B2. `cwebp -q 88 -m 6 ~/Desktop/crafted-mobile.jpeg -o web/public/assets/graphics/case-study-heroes/craftedkit-mobile.webp`
+- [ ] B3. `cwebp -q 88 -m 6 ~/Desktop/mission-bell-mobile.jpeg -o web/public/assets/graphics/case-study-heroes/mission-bell-mobile.webp`
+- [ ] B4. `cwebp -q 88 -m 6 ~/Desktop/Consume-mobile.jpeg -o web/public/assets/graphics/case-study-heroes/consume-and-create-mobile.webp`
+- [ ] B5. Verify all 4 new webp files land in the expected folder and are reasonable size
+
+### C. Asset wiring — parallel mobile map
+
+- [ ] C1. `lib/heroAssets.ts` — add `HERO_SCENES_MOBILE: Record<string, string>`
+      parallel to `HERO_SCENES`, keyed by the same 4 slugs
+- [ ] C2. `lib/heroAssets.ts` — export `DEFAULT_HERO_MOBILE` fallback
+
+### D. HeroLandscape — media-query-driven texture swap
+
+- [ ] D1. `HeroLandscape.tsx` — new `useIsMobile()` hook (or inline): SSR-safe
+      `window.matchMedia('(max-width: 767px)')` with change listener, returns
+      boolean. Starts `false` on server, resolves on mount.
+- [ ] D2. `HeroLandscape.tsx` — in `HeroPlane`, pick texture URL via
+      `isMobile ? HERO_SCENES_MOBILE[slug] ?? DEFAULT_HERO_MOBILE : HERO_SCENES[slug] ?? DEFAULT_HERO`
+- [ ] D3. Verify `useTexture` properly re-suspends + reloads when URL changes on
+      media-query flip (drei should handle this natively via the Suspense boundary
+      already wrapping `HeroPlane`)
+
+### E. Press-to-activate touch — HeroLandscape (case study heroes)
+
+- [ ] E1. `HeroLandscape.tsx` — new `useEffect` that attaches passive
+      `touchstart/touchmove/touchend` to `window` when mobile, cleanup on unmount
+- [ ] E2. On `touchstart`: read `touches[0].clientX/Y`, snap `mousePos.current` to
+      normalized (-1..1) coords (bypass lerp)
+- [ ] E3. On `touchmove`: update a `touchTarget` ref (lerp picks it up in useFrame)
+- [ ] E4. On `touchend`: set `touchTarget` to `(10, 10)` — far off-screen so
+      watercolor naturally shrinks to zero via smoothstep
+- [ ] E5. Gate mouse listener: only attach `mousemove` if NOT mobile
+      (avoids listener coexistence confusion)
+- [ ] E6. Update `useFrame` to lerp `mousePos.current` toward `touchTarget.current`
+      on mobile (replaces existing single-source-of-truth lerp)
+
+### F. Press-to-activate touch — UnifiedScene homepage hero
+
+- [ ] F1. `UnifiedScene.tsx` ParallaxLayer — mirror the same `isMobile` +
+      touch listener pattern from E1–E6
+- [ ] F2. Keep the existing `mousemove` listener on desktop unchanged
+- [ ] F3. Note: no texture swap needed (no mobile `bg_layer.webp` asset),
+      only the touch interaction wiring
+
+### G. Verification
+
+- [ ] G1. `npm run guardrails` (format, lint, typecheck, build) — must be green
+- [ ] G2. Desktop visual: case study heroes are rock-steady (no wind, no cursor
+      shove on vertices), watercolor still follows cursor fluidly
+- [ ] G3. Desktop visual: homepage hero parallax layer also rock-steady, watercolor
+      still follows cursor
+- [ ] G4. Mobile visual (device or chrome devtools 375w): case study hero shows
+      the correct portrait asset, fills the viewport, touch-and-drag paints
+      watercolor, lifting finger fades it out in place
+- [ ] G5. Mobile visual: homepage hero touch-and-drag paints watercolor on the
+      parallax layer
+- [ ] G6. Quick A/B: uncomment the vertex block in `WoodcutMaterial.ts`, confirm
+      wind sway comes back, re-comment to lock in the flat behavior
+
+---
 
 ## Phase 4: Transitions
 
@@ -65,7 +368,210 @@ Craft-forward scrollytelling case studies with trail-themed framing and bespoke 
 
 - [ ] 20. Homepage canvas teardown on case study navigate, rebuild on return
 - [ ] 21. Progressive enhancement (capability detection, fallbacks)
-- [ ] 22. Per-project color palettes fully applied
+- [ ] ~~22. Per-project color palettes fully applied~~ — abandoned, superseded by Phase 2.5 (strict monochrome)
+
+## Review — Phase 2.5 implementation (2026-04-11)
+
+### What changed
+
+**Data model (`projects.ts`)**
+- Deleted `ProjectPalette` interface and `palette?` field from `Project`
+- Added `MastheadBlock = { type: 'masthead' }` empty marker type to the `ContentBlock` union
+- Inserted `{ type: 'masthead' }` at `blocks[0]` of all 4 projects
+- Removed `palette: { ... }` from all 4 projects
+
+**Transition store (`useAppStore.ts`)**
+- Default `transitionColor` changed `#09090b` → `#18181b` (foreground token)
+
+**Shader materials**
+- `WoodcutMaterial.ts` rewritten: removed `uColorWater`, `uColorSun`, `uColorAlt`, `uMouse` uniforms; deleted fragment watercolor injection math; deleted vertex mouse-push math; now a pure ink-on-paper mix using theme tokens only. Wind sway + Z displacement preserved.
+- `PaperAtmosphereMaterial.ts` rewritten: removed `uAccentColor` + `uVelocity`; deleted watercolor edge seep, velocity fiber stretch, wind ripple, warm color shift. Now just time-driven `fbm` fiber grain + subtle speckle on theme tokens.
+
+**Biome config (`heroAssets.ts`)**
+- `LAYER_OPACITY` 0.2/0.3/0.4 → 0.65/0.8/0.92 (ink actually reads now)
+- `LAYER_PAPER_OPACITY` → all zero (only the atmosphere shader contributes paper)
+- `LAYER_SPEED` 0.3/0.6/1.0 → 0.15/0.45/0.9 (softened parallax)
+- All biomes trimmed from 9 → 6 elements, `xVariance: 0` on every element (authored composition)
+- **Latent bug fix:** biome keys renamed from `'crafted-kit'` → `craftedkit` and `'corners-and-coasts'` → `'consume-and-create'` so the slug lookup actually hits the right biome. Before this, half the case studies were falling back to the new-belgium biome.
+
+**Scene components**
+- `HeroLandscape.tsx`: dropped `accentColor`, `scrollVelocity`, `mouse` props; removed `seededRandom`/`getDaySeed`/`isTouch`; simplified placement (no more xOffset randomization); fade curve tightened from `(0.75, 1.0)` → `(0.8, 1.0)`
+- `CaseStudyScene.tsx`: dropped `accentColor` prop, `velocity` ref, `mouse` ref, `handleMouseMove` callback, `useVelocity`/`useSpring` plumbing. Added scroll-driven fade that crosses Canvas opacity 1 → 0 as scroll passes 100vh → 110vh. `heroHeight` now `window.innerHeight * 1.0`. Container is now `pointer-events-none` (chrome doesn't need interaction).
+- `CaseStudyContent.tsx`: deleted the entire 130vh sticky `<header>` with title/subtitle/tags/projectUrl. Replaced with a 100vh `<div>` spacer so content starts after the hero fade. Added `MastheadBlockRenderer({ project })` that reads from project root. `BlockRenderer` signature gained a `project` prop. Removed `--cs-accent` / `--cs-accent-muted` CSS var injection.
+- `CaseStudyCard.tsx`: removed `palette` prop and `ProjectPalette` import. `handleLinkClick` always passes `#18181b` (foreground token) to `startTransition`.
+- `HomeClient.tsx`: dropped `palette={cs.palette}` prop on the `CaseStudyCard` render
+- `work/[slug]/page.tsx`: dropped `accentColor` prop passed to `CaseStudyScene`
+- `ElevationProfile.tsx` + `WoodcutBorder.tsx`: `var(--cs-accent, ...)` references swapped to `currentColor` since the CSS var is no longer injected
+
+### Grilled decisions (locked via /grill-me)
+1. All accent uses → black-and-white via theme tokens `#18181b` / `#f9fafb`
+2. Hero vibe: Woodblock print (high-contrast, authored composition, kill color injection)
+3. Hero structure: pure 100vh visual moment, no text competing
+4. Paper shader scope: hero-only, fades past 100vh
+5. Biome density: trim to 6 per biome
+6. Mouse interaction: killed entirely
+7. Parallax speeds: 0.15 / 0.45 / 0.9
+8. Title/subtitle/tags: moved to new `MastheadBlock` at `blocks[0]`
+9. MastheadBlock shape: empty marker, renderer reads from project root
+
+### Guardrails
+- TypeScript clean (`npm run typecheck`)
+- ESLint clean (`npm run lint`)
+- Production build passes, all 4 case studies statically generated
+
+### Out-of-scope notes that surfaced
+- Content layout below the hero is deferred to a follow-up conversation (you flagged this during Q4)
+- The `seededRandom` + `getDaySeed` functions in `heroAssets.ts` are still exported but no longer imported anywhere — left as-is, no dead code cleanup this pass
+- `WoodcutBorder.tsx` still accepts an `accent` prop that nobody passes — the tree-shake path is `currentColor` for now; pruning the prop is future scope
+
+### User visual verification needed (E2–E5 still unchecked)
+- Hero reads as a pure 100vh woodblock moment
+- Content starts cleanly below the hero fade
+- Card click transition uses dark ink (no color)
+- Back-to-trail reverse transition reads correctly
+- Reduced-motion still gracefully skips the ink-wash animation
+
+---
+
+## Phase 3.7: Station atmosphere + Mission Bell rewrite (CURRENT)
+
+The specimen catalog declares 24 sprites across 7 roles, but today the case
+study pages only render the `specimen` and `landmark` roles — the `terrain`,
+`weather`, and `ink-wash` sprites sit unused. Assets land flat. This phase
+wires the missing atmospheric layer so each of the 5 stations feels like a
+different place in the climb. Separately: Mission Bell copy is entirely
+wine-themed in `projects.ts` but the client is actually a commercial
+architectural millwork firm (UCSF Weill Institute, Nvidia Treehouse, Ameswell
+Hotel) — full copy rewrite required.
+
+### Grilled decisions (locked via /grill-me)
+
+1. **Organizing principle**: journey-staged atmosphere — each station gets a
+   characteristic terrain/weather watermark that maps to its place in the climb.
+2. **Render strategy**: station-scoped background layers (render a watermark
+   behind each station's header block, not mid-text).
+3. **Text protection policy**: 6–8% opacity ceiling (reuse the existing
+   Station III landmark + Metric block pattern), `pointer-events-none`,
+   `aria-hidden`, below content z-index, no stacking watermarks.
+4. **Per-project variance**: shared station atlas for all 4 projects; keep
+   existing per-project landmarks at Station III + Fig. 06 marginalia sprites
+   as the per-project accents.
+5. **Out of scope this phase**: ink-wash station-to-station transitions,
+   border-mask on media frames, landmark centerpiece promotion, video-size
+   optimization, canvas error boundary, Alpine→Summit homepage seam.
+
+### A. Station atmosphere map (behind each `StationBreakBlockRenderer`)
+
+| Station | Roman | Watermark sprite | Opacity | Motion |
+|---|---|---|---|---|
+| Trailhead | I | `terrain-rolling-hillside.webp` | 7% | none |
+| The Ascent | II | `terrain-rocky-trail.webp` | 7% | none |
+| The Ridge | III | (existing `signatureLandmark`) | 7% | none |
+| The Summit | IV | `cloud-cumulus-cluster.webp` | 7% | `cloud-wispy-stratus.webp` drifts horizontally 60s loop |
+| The Descent | V | `wildflower-meadow-strip.webp` | 7% | none |
+
+- [x] A1. `CaseStudyContent.tsx` — add `STATION_ATMOSPHERE` map keyed by Roman
+      numeral with sprite src (excl. III which uses `signatureLandmark`)
+- [x] A2. `StationBreakBlockRenderer` — render watermark via same absolute/inset
+      pattern already used for the signature landmark (opacity 0.07,
+      object-contain, pointer-events-none, aria-hidden, -z-10)
+- [x] A3. Station IV only: add a second layer with `cloud-wispy-stratus.webp`
+      animating `translateX(-8%)` → `translateX(8%)` on a 60s ease-in-out
+      infinite loop via Framer Motion
+- [x] A4. Respect `prefers-reduced-motion`: `useReducedMotion()` disables drift
+- [x] A5. Watermarks are scoped to the `py-20 md:py-32` station header padding
+      band only — they never reach into text columns
+
+### B. Mission Bell copy rewrite (architectural millwork firm)
+
+Facts from missionbell.com:
+- Commercial architectural millwork + casework (custom woodwork, interior finishings)
+- Offices in San Jose + Seattle, projects throughout Northern California + PNW
+- Notable: UCSF Weill Institute for Neurosciences, Nvidia Treehouse, Ameswell
+  Hotel, Lucid Showroom, Wells Fargo, Samsara, DPR, Heising-Simons Foundation
+- Tagline: "Spaces built for people" / "New Mission. Same Bell"
+- Voice: craftsmanship + creativity + purpose + pride
+
+- [x] B1. `projects.ts` Mission Bell entry — rewrote `openingQuote` (catalogs
+      stapled to spec sheets → every install as a commission)
+- [x] B2. `overview.headline` + `overview.body` — refocused on commercial
+      architectural millwork firm with SJ + Seattle offices
+- [x] B3. Station I `text-block` ("The Brief") — rewrote with UCSF / Nvidia /
+      Ameswell name-checks, catalog-vs-commission framing
+- [x] B4. Station II subtitle ("Matching the craft to the site") + both
+      `text-block` bodies (stack facts preserved, "winery team" → "shop",
+      "landing page" → "project case study")
+- [x] B5. Station III subtitle ("The site takes on the shop's voice") +
+      "The Transitions" rewrite ("just wine-making" → "the built work"),
+      captions updated (services → capabilities, wine catalog → project
+      portfolio, detail view → project detail view)
+- [x] B6. Station IV `text-block` ("The Scrubber") — unchanged, already generic
+- [x] B7. Station V `text-block` ("What Shipped") — preserved client quote +
+      0-tickets metric, tightened closing line ("runs the floor")
+- [x] B8. Specimen labels updated: `vineyard edge` → `lumber grade`,
+      `harvest season` → `installation day`, mesa label tweaked
+      `local strata` → `site strata`, `standing snag` → `rough stock`
+- [x] B9. `frieze.title` — `Mission Bell photography series` →
+      `Built work, a sampling`
+- [x] B10. Preserved: tags, projectUrl, signatureLandmark, thumbnail, gallery,
+      metric value/unit, Bell Tower sprite
+
+### C. Verification
+
+- [x] C1. `npm run lint` — clean
+- [x] C2. `npm run typecheck` — clean
+- [x] C3. `npm run build` — all 4 case studies statically generated
+- [x] C4. Skimmed `/work/mission-bell` copy end-to-end — no remaining wine
+      references (vineyard, winery, harvest, wine-making all purged)
+- [ ] C5. User visual check pending: each station now has its own
+      atmosphere watermark, text stays fully legible, Summit drift is subtle
+
+---
+
+## Review — Phase 3.7 implementation (2026-04-16)
+
+### What changed
+
+**Station atmosphere (`CaseStudyContent.tsx`)**
+- Added `STATION_ATMOSPHERE` lookup table mapping Roman numerals I/II/IV/V
+  to terrain + weather sprites from the existing specimen catalog
+- `StationBreakBlockRenderer` now renders the station-specific watermark at
+  7% opacity (mirroring the existing Station III landmark pattern), so every
+  station head feels like a different place in the climb
+- Station IV Summit additionally renders `cloud-wispy-stratus.webp` drifting
+  on a 60s horizontal loop, gated by `useReducedMotion()`
+- All watermarks: `pointer-events-none`, `aria-hidden`, `-z-10`, confined to
+  the station's `py-20 md:py-32` header padding band
+
+**Mission Bell copy (`projects.ts`)**
+- Every wine-themed reference replaced. The firm is now correctly positioned
+  as a commercial architectural millwork + casework shop based in San Jose /
+  Seattle, building interior woodwork for UCSF Weill Institute, Nvidia
+  Treehouse, Ameswell Hotel, Lucid Showroom, etc.
+- Opening quote reframed around "catalogs stapled to spec sheets" vs.
+  "every install as a commission"
+- Stack tags, URL, signature landmark (bell tower sprite), metric (0 dev
+  tickets), and client quote ("It finally feels like us") all preserved
+- Specimen Latin labels nudged toward material/craft vocabulary
+  (lumber grade, rough stock, installation day)
+
+### Guardrails
+- `npm run lint` — clean
+- `npm run typecheck` — clean
+- `npm run build` — all 9 static pages generated, all 4 case studies OK
+
+### Out-of-scope notes from the grill-me session
+- Video size optimization (17MB in `/public/assets/videos/`) deferred to a
+  dedicated ffmpeg pass
+- Canvas error boundary around `UnifiedScene`, preloader race, and the
+  `useTransform` side-effect in `VideoBlockRenderer` deferred to a stability
+  pass
+- Alpine→Summit homepage seam + Case Study canvas fade flicker deferred
+- Spacing token unification across hero/forest/camp/alpine deferred
+- Ink-wash station-to-station transitions + border-masks on media frames
+  deferred (would further use the catalog but not the flagged "flat" complaint)
+
+---
 
 ## Assets
 
@@ -75,3 +581,68 @@ All 24 case study illustration assets processed and ready:
 - Per-project themed (8): NB hop vine + cabin, CK crystals + fern, MB mesa + tower, CC cliff + lighthouse
 - Transition textures (2): ink wash horizontal + vertical
 - Border masks (2): organic edge + torn edge
+
+---
+
+## Phase 7: Launch Day (CURRENT — 2026-04-18)
+
+Target: ship samherwig.dev to production via Netlify today, AWWWARDS-submittable polish. `/grill-me` session locked scope below. todo.md stale-check: Phase 3.5 + 3.6 code already complete, just unchecked — confirmed by greps on CaseStudyContent (TrailSpine, StationBreak, Masthead, Specimen, Frieze, Metric all wired) and HeroLandscape (mobile hook + touch listeners + texture swap present).
+
+### Locked decisions (via /grill-me)
+
+1. **Launch scope** = C: finish in-flight phases + everything else today
+2. **Spotlights:** KEEP New Belgium (5-brand slider) + CraftedKit (agent pipeline SVG). DROP Mission Bell + Consume-and-Create spotlight slots entirely
+3. **NB concept:** click-tab slider (no auto-advance), 5 brands (Fat Tire, Voodoo Ranger, Lightstrike, Kirin, NB flagship), paper-frame slide + Fig. caption
+4. **CK concept:** horizontal-ribbon infographic SVG, 5 agent nodes (Todd/Jackson/Chad/Kyle/Brad) + 4 HITL gates inline, counts strip (5 agents / 22 commands / 8 hook matchers / 2 pipelines), scroll-reveal stagger
+5. **Chapter wipes (4.14):** ink-wash overlay on station crossings via Framer Motion (not per-project hue — monochrome'd in 2.5)
+6. **Canvas teardown (6.20):** pause via `frameloop="demand"` + `visibility:hidden` on route change (not full unmount)
+7. **Progressive enhance (6.21):** WebGL capability-detect fallback, static biome image for no-WebGL devices
+8. **Favicon:** use `~/Downloads/favicon.zip` (7 files incl. svg, ico, 96px, apple-touch, 192/512, site.webmanifest)
+9. **OG image:** Next.js dynamic `opengraph-image.tsx` at 1200×630, full-bleed woodcut biome + Instrument Serif title
+10. **Social video:** 30s silent 1080p 16:9 MP4, screen-cap of scroll-through (user records post-deploy)
+11. **Netlify:** `netlify.toml` at repo root, `base = "web"`, `@netlify/plugin-nextjs`, Node 20
+12. **AWWWARDS:** submit after launch + polish, not today
+
+### A. Code execution (Claude — in parallel where safe)
+
+- [ ] A1. Install favicon — unzip to `web/public/`, delete old `src/app/favicon.ico`, update `layout.tsx` metadata
+- [ ] A2. Create `netlify.toml` at repo root with Next.js plugin + Node 20
+- [ ] A3. Strip `spotlight-block` entries from MB + CC in `projects.ts`
+- [ ] A4. Build NB 5-brand slider component (click-tab, crossfade, Fig. caption, paper frame, renders off 5 expected paths)
+- [ ] A5. Design + build CK agent pipeline SVG component (horizontal ribbon, 5 nodes + 4 gates, counts strip, scroll-reveal)
+- [ ] A6. Wire NB + CK spotlight components into `SpotlightBlockRenderer` switch on `spotlightId`
+- [ ] A7. Build Phase 4.14 ink-wash station-crossing wipe — scroll-triggered overlay, Framer Motion, reduced-motion gated
+- [ ] A8. Build Phase 6.20 canvas pause-on-route-change — `frameloop` + `visibility` swap
+- [ ] A9. Build Phase 6.21 WebGL fallback — capability detect + static biome image for no-WebGL devices
+- [ ] A10. Create `opengraph-image.tsx` for dynamic OG image generation
+- [ ] A11. `npm run guardrails` clean
+
+### B. User blockers (Sam — do in parallel with A)
+
+- [ ] B1. Screenshot 5 NB brand modules on newbelgium.com → save as `web/public/work/nb-spotlight-{fat-tire,voodoo-ranger,lightstrike,kirin,nbb}.webp` (cwebp-convert)
+- [ ] B2. Create Netlify site, connect repo, point `samherwig.dev` DNS (CNAME / A record)
+- [ ] B3. Screen-capture 30s launch video against deployed preview (scroll homepage → click case study → scroll one station → back)
+
+### C. QA + Ship
+
+- [ ] C1. Deploy preview to Netlify, visual QA on desktop + real phone
+- [ ] C2. Verify: no console errors, favicon loads, OG image preview correct (via Twitter card validator), all 4 case studies render cleanly, CK + NB spotlights populated
+- [ ] C3. Merge `staging` → `main`, trigger production deploy
+- [ ] C4. Verify live samherwig.dev loads, DNS propagated, HTTPS cert active
+- [ ] C5. Post launch video to Twitter + LinkedIn
+
+### D. Post-launch (this week, AWWWARDS-readiness)
+
+- [ ] D1. AWWWARDS submission form — needs site URL, tech stack list, 3 screenshots, launch video, $80 fee
+- [ ] D2. Delete merged `mission/*` branches per global branch hygiene rule
+
+### E. Homepage polish (2026-04-19)
+
+- [x] E1. Redesign `ElevationBar` as horizontal elevation profile — bottom edge, literal altitudes per zone (8,400→14,430 ft), ink-wash past fill + ghost future outline, signpost sprite + dotted guide + live altitude readout, station markers clickable. Grilled: bottom/horizontal, literal shape, ink-wash mask on leading edge via userSpace gradient, markers on curve with labels below baseline.
+- [x] E2. Shrink ElevationBar by 50% — cap max-width at 440px, bump SVG label font-size to 16 to stay legible at reduced scale.
+- [x] E3. Mobile case-study overlap fixes (audited 4 pages at 420×900):
+  - `BackToTrail` wrapped in backdrop-blur pill (`bg-background/80 border-foreground/10 rounded-full backdrop-blur-md`) so it stops eating body text.
+  - Media + video captions get `px-6 md:px-0` so fullBleed captions stay within mobile gutters.
+  - Frieze title container gets `ml-6 mr-6 md:ml-20 md:mr-20` and `text-2xl md:text-3xl` so it doesn't clip at mobile.
+  - `StationBreak` decorative Roman numeral dropped to `text-[6rem] text-foreground/[0.05]` at mobile (was 10rem/0.08) so it stops competing with the station label; inner div ml trimmed to `ml-2 md:ml-20`.
+  - CK pipeline: moved "Interactive Specimen — The Pipeline" header *inside* the sticky `PipelineFrame` container so it can't collide with the first agent pill during sticky-engagement timing.

@@ -7,76 +7,70 @@ const WoodcutShaderMaterial = shaderMaterial(
   {
     uTexture: null,
     uTime: 0,
-    uColorBase: new THREE.Color('#18181b'), // Charcoal Ink
-    uColorPaper: new THREE.Color('#f5f5f4'), // Warm Stone Paper
-    uColorWater: new THREE.Color('#d1e8e2'), // Pale Map Blue
-    uColorSun: new THREE.Color('#fcd34d'), // Faded Sunset Orange
-    uColorAlt: new THREE.Color('#10b981'), // Neon Emerald
+    uColorBase: new THREE.Color('#18181b'), // Foreground token — ink
+    uColorPaper: new THREE.Color('#f9fafb'), // Background token — paper
+    uColorWater: new THREE.Color('#d1e8e2'), // Pale map blue — watercolor bleed
+    uColorSun: new THREE.Color('#fcd34d'), // Faded sunset orange — cursor hotspot
     uOpacity: 1.0,
-    uPaperOpacity: 1.0, // 1.0 = opaque paper (homepage), 0.0 = transparent paper (hero)
+    uPaperOpacity: 1.0, // 1.0 = opaque paper (hero), 0.0 = transparent paper (sprites)
     uWind: 0.0, // Global synchronized continuous wind
-    uMouse: new THREE.Vector2(0, 0), // Track normalized mouse coordinates
+    uMouse: new THREE.Vector2(0, 0), // Normalized cursor (-1..1)
   },
   // Vertex Shader
   `
     varying vec2 vUv;
     varying float vDisplacement;
-    varying vec2 vWorldPos; // Pass world position x/y to fragment for gradient maths
+    varying vec2 vWorldPos;
     uniform sampler2D uTexture;
     uniform float uTime;
-    uniform vec2 uMouse;
     uniform float uWind;
+    uniform vec2 uMouse;
 
     float getLuminance(vec3 color) {
-  return dot(color, vec3(0.299, 0.587, 0.114));
-}
+      return dot(color, vec3(0.299, 0.587, 0.114));
+    }
 
-void main() {
-  vUv = uv;
+    void main() {
+      vUv = uv;
       vec3 pos = position;
 
-      // Sample texture in vertex shader for DISPLACEMENT
+      /* ── VERTEX EFFECTS DISABLED — uncomment block to re-enable ─────────
+         Kept verbatim so A/B toggling is a single uncomment. When re-enabling,
+         also set pos.z += displacement, pos.x += wind, pos.y += wind * 0.2,
+         pos.x += pushDir.x * mousePush, pos.z -= mousePush * 0.5 below.
+
+      // Luminance-based Z pop — ink surges forward, paper stays flat
       vec4 texData = texture2D(uTexture, vUv);
       float lum = getLuminance(texData.rgb);
+      float displacement = (1.0 - lum) * 0.5;
 
-      // Black ink pushes slightly forward for pop-up effect, paper stays flat
-      float displacement = (1.0 - lum) * 0.5; 
-      
-      // Global Wind Physics: Synchronized across all meshes
-      // More intense swaying at the top of the sprite (uv.y == 1 is the top)
-      float swayBlend = vUv.y; 
+      // Time-driven wind sway — top rows sway more via vUv.y weight
+      float swayBlend = vUv.y;
       float wind = sin(pos.x * 0.2 + uWind * 1.5) * 0.2 * swayBlend;
-      
-      // Mouse interaction: Pushes the vertices away from the cursor
-      // Mouse is roughly -40 to 40 in world coordinates based on a max FOV calculation
+
+      // Mouse repulsion: pushes vertices away from the cursor
       vec2 worldMouse = uMouse * 50.0;
-      float distToMouse = distance(pos.xy, worldMouse); 
-      
-      // Create a smooth blast radius of ~15 units pushing away 3 units max
-      float mousePush = smoothstep(20.0, 0.0, distToMouse) * 3.0 * swayBlend; 
+      float distToMouse = distance(pos.xy, worldMouse);
+      float mousePush = smoothstep(20.0, 0.0, distToMouse) * 3.0 * swayBlend;
       vec2 pushDir = normalize(pos.xy - worldMouse);
-      
-      // Apply Z displacement 
+
       pos.z += displacement;
-      
-      // Apply Global Wind Sway
       pos.x += wind;
       pos.y += wind * 0.2;
-      
-      // Apply Mouse Repulsion (Push X and lean Z away)
       pos.x += pushDir.x * mousePush;
       pos.z -= mousePush * 0.5;
+      ── END DISABLED BLOCK ───────────────────────────────────────────── */
 
-  vDisplacement = displacement; // Pass to fragment for color shading
-  
-  // Pass XY to fragment so the watercolor gradient aligns cross-screen
-  vWorldPos = pos.xy;
-  
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-}
-`,
+      // Passthrough for fragment varyings (watercolor still reads vWorldPos)
+      vDisplacement = 0.0;
+      vWorldPos = pos.xy;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+  `,
   // Fragment Shader
   `
+    precision highp float;
     varying vec2 vUv;
     varying vec2 vWorldPos;
     varying float vDisplacement;
@@ -86,62 +80,51 @@ void main() {
     uniform vec3 uColorPaper;
     uniform vec3 uColorWater;
     uniform vec3 uColorSun;
-    uniform vec3 uColorAlt;
     uniform float uOpacity;
     uniform float uPaperOpacity;
     uniform vec2 uMouse;
 
     float getLuminance(vec3 color) {
-        return dot(color, vec3(0.299, 0.587, 0.114));
+      return dot(color, vec3(0.299, 0.587, 0.114));
     }
 
-void main() {
-      // Sample Base Texture
+    void main() {
       vec4 texColorG = texture2D(uTexture, vUv);
-      
       float lum = getLuminance(texColorG.rgb);
-      
-      // Isolate Ink (Black) vs Paper (White)
-      float inkIntensity = 1.0 - smoothstep(0.4, 0.6, lum); 
-      float paperIntensity = smoothstep(0.4, 0.6, lum);
-      
-      // Sky Mask: Fade out the 'paper' color at the top of the image so layers can heavily overlap without box-bounds
-      // If vUv.y approaches 1.0 (top), and it's paper, alpha goes to 0
-      float skyGradient = smoothstep(0.6, 1.0, vUv.y); 
-      float paperAlpha = 1.0 - (skyGradient * paperIntensity); 
 
-      // --- Watercolor Injection ---
-      // 1. Calculate how far this specific pixel is from the mouse cursor in World Space
-      // (uMouse is ~ -1 to 1. vWorldPos depends on geometry scale, roughly -10 to 10)
+      // Isolate Ink (Black) vs Paper (White)
+      float inkIntensity = 1.0 - smoothstep(0.4, 0.6, lum);
+      float paperIntensity = smoothstep(0.4, 0.6, lum);
+
+      // Sky Mask: fade paper color at top of plane for overlap-friendly layers
+      float skyGradient = smoothstep(0.6, 1.0, vUv.y);
+      float paperAlpha = 1.0 - (skyGradient * paperIntensity);
+
+      // Watercolor Injection — cursor-following radial washes
       float distToMouse = distance(vWorldPos * 0.1, uMouse);
-      
-      // 2. Create two soft radial gradients around the mouse
-      float waterRadius = smoothstep(1.5, 0.0, distToMouse); // Wide, soft Blue
-      float sunRadius = smoothstep(0.5, 0.0, distToMouse);   // Tight, bright Orange core
-      
-      // 3. Add organic flow to the watercolor using Time and UV distortion
+      float waterRadius = smoothstep(1.5, 0.0, distToMouse); // wide soft blue
+      float sunRadius = smoothstep(0.5, 0.0, distToMouse); // tight bright orange core
+
+      // Organic flow distortion via time
       float flow = sin(vUv.x * 10.0 + uTime) * cos(vUv.y * 10.0 - uTime) * 0.1;
       waterRadius += flow * waterRadius;
-      
-      // 4. Mix the watercolor into the base paper tint
-      vec3 injectedPaperColor = mix(uColorPaper, uColorWater, waterRadius * 0.6); // 60% max blue
-      injectedPaperColor = mix(injectedPaperColor, uColorSun, sunRadius * 0.8);   // 80% max orange at core
-      
-      // Combine Ink and injected Paper colors
+
+      // Mix the watercolor into the base paper tint
+      vec3 injectedPaperColor = mix(uColorPaper, uColorWater, waterRadius * 0.6);
+      injectedPaperColor = mix(injectedPaperColor, uColorSun, sunRadius * 0.8);
+
+      // Combine ink and injected paper
       vec3 finalColor = mix(injectedPaperColor, uColorBase, inkIntensity);
 
-      // Overall alpha for the fragment
-      // We keep the ink perfectly opaque, and fade the paper out into the sky, but bound everything by the PNG's innate transparency
       float baseAlpha = texColorG.a;
-      // uPaperOpacity controls paper visibility: 1.0 = fully opaque paper, 0.0 = only ink visible
       float adjustedPaperAlpha = paperAlpha * uPaperOpacity;
       float alphaOut = max(inkIntensity, adjustedPaperAlpha) * uOpacity * baseAlpha;
 
       if (alphaOut < 0.05) discard;
 
       gl_FragColor = vec4(finalColor, alphaOut);
-}
-`,
+    }
+  `,
 );
 
 extend({ WoodcutShaderMaterial });

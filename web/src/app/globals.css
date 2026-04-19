@@ -4,8 +4,10 @@
   --font-space-mono: var(--font-space-mono), 'Courier New', Courier, monospace;
   --font-chivo: var(--font-chivo), ui-sans-serif, system-ui, sans-serif;
 
+  --color-background: #f9fafb;
   --color-background-light: #f9fafb;
   --color-background-dark: #09090b; /* zinc-950 */
+  --color-foreground: #18181b;
   --color-foreground-light: #18181b; /* zinc-900 */
   --color-foreground-dark: #fafafa; /* zinc-50 */
 
@@ -51,6 +53,27 @@
   /* Taste-Skill liquid glass refraction */
   .glassmorphism {
     @apply backdrop-blur-md bg-white/5 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)];
+  }
+
+  /* Field Journal — editorial typography utilities */
+
+  /* Five-line drop cap on the first letter of a paragraph */
+  .drop-cap-5::first-letter {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-weight: 700;
+    font-size: 5.2em;
+    line-height: 0.9;
+    float: left;
+    margin: 0.08em 0.12em 0 -0.02em;
+    color: var(--color-foreground);
+  }
+
+  /* Italic right-aligned figure caption */
+  .fig-caption {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-style: italic;
+    text-align: right;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
   }
 }
 

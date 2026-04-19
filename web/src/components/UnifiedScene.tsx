@@ -6,6 +6,8 @@ import { useTexture, useVideoTexture, Points, PointMaterial } from '@react-three
 import { useRef, useEffect, Suspense, useMemo, useState } from 'react';
 import React from 'react';
 import { MotionValue } from 'framer-motion';
+import useWebGLSupport from '@/lib/useWebGLSupport';
+import { useAppStore } from '@/store/useAppStore';
 import {
   Group,
   Mesh,
@@ -181,6 +183,8 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
 // =============================================================================
 
 function UnifiedPostProcessing({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+  // Throttled setState: only fires ~10-15 times during a scroll through camp,
+  // not every frame. Acceptable per r3f perf guidance.
   const [bloomIntensity, setBloomIntensity] = useState(0);
   const lerpedP = useRef(0);
   const lerpedBloom = useRef(0);
@@ -221,7 +225,8 @@ function ParallaxLayer({
   const tex = useTexture(textureUrl) as Texture;
   const { viewport, camera } = useThree();
 
-  const cv = viewport.getCurrentViewport(camera, new Vector3(0, 0, z));
+  const zVec = useMemo(() => new Vector3(0, 0, z), [z]);
+  const cv = viewport.getCurrentViewport(camera, zVec);
   const image = tex.image as { width?: number; height?: number } | undefined;
   const imageAspect = image?.width && image?.height ? image.width / image.height : 16 / 10;
   const viewportAspect = cv.width / cv.height;
@@ -233,7 +238,12 @@ function ParallaxLayer({
   const materialRef = useRef<any>(null);
   const meshRef = useRef<Mesh>(null);
   const lerpedP = useRef(0);
+  // Desktop cursor: drives both mesh rotation tilt AND shader watercolor
   const mousePos = useRef(new Vector2(0, 0));
+  // Mobile touch: drives shader watercolor only (rotation tilt stays flat)
+  const touchMouse = useRef(new Vector2(10, 10));
+  const touchTarget = useRef(new Vector2(10, 10));
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -241,16 +251,56 @@ function ParallaxLayer({
     };
   }, [tex]);
 
+  // SSR-safe mobile detection, matches Tailwind md: breakpoint
   useEffect(() => {
-    const onMouse = (e: MouseEvent) => {
-      mousePos.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
-    };
-    window.addEventListener('mousemove', onMouse, { passive: true });
-    return () => {
-      window.removeEventListener('mousemove', onMouse);
-    };
+    const mql = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
   }, []);
+
+  // Desktop: ambient mousemove drives cursor. Mobile: press-to-activate touch.
+  useEffect(() => {
+    if (!isMobile) {
+      const onMouse = (e: MouseEvent) => {
+        mousePos.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      };
+      window.addEventListener('mousemove', onMouse, { passive: true });
+      return () => window.removeEventListener('mousemove', onMouse);
+    }
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      const nx = (t.clientX / window.innerWidth) * 2 - 1;
+      const ny = -(t.clientY / window.innerHeight) * 2 + 1;
+      // Snap both current + target so watercolor appears instantly at finger
+      touchMouse.current.set(nx, ny);
+      touchTarget.current.set(nx, ny);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      const nx = (t.clientX / window.innerWidth) * 2 - 1;
+      const ny = -(t.clientY / window.innerHeight) * 2 + 1;
+      touchTarget.current.set(nx, ny);
+    };
+    const onTouchEnd = () => {
+      // Lerp toward off-screen so watercolor fades in place
+      touchTarget.current.set(10, 10);
+    };
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [isMobile]);
 
   useFrame((state, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
@@ -259,13 +309,19 @@ function ParallaxLayer({
 
     if (materialRef.current) {
       materialRef.current.uTime = state.clock.elapsedTime;
-      materialRef.current.uMouse.lerp(mousePos.current, 0.1);
+      if (isMobile) {
+        touchMouse.current.lerp(touchTarget.current, 0.1);
+        materialRef.current.uMouse.copy(touchMouse.current);
+      } else {
+        materialRef.current.uMouse.lerp(mousePos.current, 0.1);
+      }
     }
     if (meshRef.current) {
       const targetY = baseY + heroProgress * (10 * speed);
       meshRef.current.position.y = MathUtils.damp(meshRef.current.position.y, targetY, 5, delta);
-      meshRef.current.rotation.x = MathUtils.lerp(meshRef.current.rotation.x, mousePos.current.y * 0.025, 0.05);
-      meshRef.current.rotation.y = MathUtils.lerp(meshRef.current.rotation.y, mousePos.current.x * 0.03, 0.05);
+      // Parallax tilt uses desktop cursor only — mousePos stays at (0,0) on mobile
+      meshRef.current.rotation.x = MathUtils.damp(meshRef.current.rotation.x, mousePos.current.y * 0.025, 4, delta);
+      meshRef.current.rotation.y = MathUtils.damp(meshRef.current.rotation.y, mousePos.current.x * 0.03, 4, delta);
     }
   });
 
@@ -429,7 +485,7 @@ function VideoCampLedge({
   scrollProgress: MotionValue<number>;
 }) {
   const camp = MODULE_TIMELINE.camp;
-  const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
+  const tex = useVideoTexture(videoUrl, { start: true, muted: true, crossOrigin: 'Anonymous' });
   const meshRef = useRef<Mesh>(null);
   const lerpedP = useRef(0);
   const dynScale = useVideoCoverScale(position);
@@ -814,8 +870,9 @@ function useVideoCoverScale(
   overscan = 1.3,
 ): [number, number, number] {
   const { viewport, camera } = useThree();
+  const posVec = useMemo(() => new Vector3(...position), [position]);
   const [scale, setScale] = useState<[number, number, number]>(() => {
-    const cv = viewport.getCurrentViewport(camera, new Vector3(...position));
+    const cv = viewport.getCurrentViewport(camera, posVec);
     const sa = cv.width / cv.height;
     const w = sa > videoAspect ? cv.width : cv.height * videoAspect;
     const h = sa > videoAspect ? cv.width / videoAspect : cv.height;
@@ -827,7 +884,7 @@ function useVideoCoverScale(
     const recalc = () => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
-        const cv = viewport.getCurrentViewport(camera, new Vector3(...position));
+        const cv = viewport.getCurrentViewport(camera, posVec);
         const sa = cv.width / cv.height;
         const w = sa > videoAspect ? cv.width : cv.height * videoAspect;
         const h = sa > videoAspect ? cv.width / videoAspect : cv.height;
@@ -839,7 +896,7 @@ function useVideoCoverScale(
       clearTimeout(timeout);
       window.removeEventListener('resize', recalc);
     };
-  }, [viewport, camera, position, videoAspect, overscan]);
+  }, [viewport, camera, posVec, videoAspect, overscan]);
 
   return scale;
 }
@@ -931,6 +988,7 @@ function ForegroundLedge({
   const meshRef = useRef<Mesh>(null);
   const summit = MODULE_TIMELINE.summit;
   const lerpedP = useRef(0);
+  const fgDepthVec = useMemo(() => new Vector3(0, 0, 8), []);
   const { viewport, camera } = useThree();
 
   useEffect(() => {
@@ -957,7 +1015,7 @@ function ForegroundLedge({
       (mat as any).__selfManagedOpacity = true;
       mat.opacity = opacity;
       // Pin to bottom of viewport based on current camera position
-      const cv = viewport.getCurrentViewport(camera, new Vector3(0, 0, 8));
+      const cv = viewport.getCurrentViewport(camera, fgDepthVec);
       meshRef.current.position.y = camera.position.y - cv.height / 2 + scale[1] / 2;
     }
   });
@@ -1106,9 +1164,15 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
 const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
 export default function UnifiedScene({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+  const webglSupported = useWebGLSupport();
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
+  // Tab visibility — pause rendering when the tab is hidden (Phase 6.20 GPU pause)
+  const [isHidden, setIsHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  // Pause render loop while the user is navigating away (brush wash overlay covers us)
+  const transitionState = useAppStore((s) => s.transitionState);
+  const isPaused = isHidden || transitionState === 'entering';
   const scrollVelocity = useRef(0);
   const lastProgress = useRef(0);
 
@@ -1120,6 +1184,12 @@ export default function UnifiedScene({ scrollProgress }: { scrollProgress: Motio
   }, []);
 
   useEffect(() => {
+    const onVisibility = () => setIsHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = scrollProgress.on('change', (v) => {
       scrollVelocity.current = Math.abs(v - lastProgress.current) * 60;
       lastProgress.current = v;
@@ -1127,7 +1197,9 @@ export default function UnifiedScene({ scrollProgress }: { scrollProgress: Motio
     return unsubscribe;
   }, [scrollProgress]);
 
-  if (prefersReducedMotion) {
+  // Static fallback for reduced-motion OR no-WebGL (Phase 6.21).
+  // Treat unresolved (null) as supported to avoid a flash during first paint.
+  if (prefersReducedMotion || webglSupported === false) {
     return (
       <div className="fixed inset-0 z-0">
         <img src="/bg_layer.webp" alt="Mountain landscape" className="w-full h-full object-cover opacity-30" />
@@ -1136,7 +1208,11 @@ export default function UnifiedScene({ scrollProgress }: { scrollProgress: Motio
   }
 
   return (
-    <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={isMobile ? [1, 1] : [1, 1.5]}>
+    <Canvas
+      camera={{ position: [0, 0, 20], fov: 50 }}
+      dpr={isMobile ? [1, 1] : [1, 1.5]}
+      frameloop={isPaused ? 'demand' : 'always'}
+    >
       <Suspense fallback={null}>
         <ambientLight intensity={0.6} />
         <UnifiedCamera scrollProgress={scrollProgress} />

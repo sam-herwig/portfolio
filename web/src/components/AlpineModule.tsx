@@ -4,7 +4,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import { Suspense, useRef, useMemo, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
-import { Vector2, Texture, Mesh, Group, RepeatWrapping, MirroredRepeatWrapping, MathUtils } from 'three';
+import { Texture, Mesh, Group, RepeatWrapping, MirroredRepeatWrapping, MathUtils } from 'three';
 import PostProcessingStack from './PostProcessingStack';
 
 type Vec2 = [number, number];
@@ -12,7 +12,6 @@ type Vec3 = [number, number, number];
 type WoodcutMaterialRef = {
   uTime: number;
   uWind: number;
-  uMouse: Vector2;
 };
 
 type LedgeProps = {
@@ -100,8 +99,6 @@ function AnimatedSprite({
     if (materialRef.current) {
       materialRef.current.uTime = state.clock.elapsedTime;
       materialRef.current.uWind = state.clock.elapsedTime * 1.5;
-      // Bird sprite ignores intense mouse repulsion, but material needs the uniform to not crash
-      materialRef.current.uMouse.lerp(state.pointer, 0.1);
     }
   });
 

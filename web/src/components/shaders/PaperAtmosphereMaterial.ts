@@ -6,10 +6,8 @@ import { extend } from '@react-three/fiber';
 const PaperAtmosphereMaterial = shaderMaterial(
   {
     uTime: 0,
-    uVelocity: 0, // Scroll velocity (0 = still, 1 = fast)
-    uAccentColor: new THREE.Color('#f59e0b'),
-    uPaperColor: new THREE.Color('#f5f5f4'),
-    uInkColor: new THREE.Color('#18181b'),
+    uPaperColor: new THREE.Color('#f9fafb'), // Background token — paper
+    uInkColor: new THREE.Color('#18181b'), // Foreground token — ink
     uResolution: new THREE.Vector2(1, 1),
   },
   // Vertex Shader
@@ -22,10 +20,9 @@ const PaperAtmosphereMaterial = shaderMaterial(
   `,
   // Fragment Shader
   `
+    precision highp float;
     varying vec2 vUv;
     uniform float uTime;
-    uniform float uVelocity;
-    uniform vec3 uAccentColor;
     uniform vec3 uPaperColor;
     uniform vec3 uInkColor;
     uniform vec2 uResolution;
@@ -44,7 +41,7 @@ const PaperAtmosphereMaterial = shaderMaterial(
       );
       vec2 i = floor(v + dot(v, C.yy));
       vec2 x0 = v - i + dot(i, C.xx);
-      vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+      vec2 i1 = vec2(step(x0.y, x0.x), step(x0.x, x0.y));
       vec4 x12 = x0.xyxy + C.xxzz;
       x12.xy -= i1;
       i = mod289(i);
@@ -78,63 +75,26 @@ const PaperAtmosphereMaterial = shaderMaterial(
 
     void main() {
       vec2 uv = vUv;
-      float aspect = uResolution.x / uResolution.y;
+      float aspect = uResolution.x / max(uResolution.y, 1.0);
       vec2 st = vec2(uv.x * aspect, uv.y);
 
       float slowTime = uTime * 0.05;
-      float vel = clamp(uVelocity, 0.0, 1.0);
 
-      // --- Paper fiber texture ---
-      // Base fiber pattern: high-frequency noise for fine grain
-      float fiber1 = fbm(st * 12.0 + slowTime * 0.3);
-      float fiber2 = snoise(st * 25.0 + vec2(slowTime * 0.1, 0.0));
-
-      // Directional stretch on fast scroll (fibers align vertically)
-      vec2 stretchUV = vec2(st.x, st.y * (1.0 + vel * 0.4));
-      float fiberStretched = snoise(stretchUV * 18.0 + vec2(0.0, slowTime));
-      float fiber = mix(fiber1, fiberStretched, vel * 0.6);
-
-      // Combine fibers into subtle paper texture
-      float paperGrain = 0.03 + fiber * 0.02 + fiber2 * 0.008;
-
-      // --- Wind ripple on fast scroll ---
-      float ripple = snoise(vec2(st.x * 3.0 + uTime * 0.8, st.y * 8.0)) * vel * 0.015;
+      // --- Paper fiber texture (time-driven only, no velocity coupling) ---
+      float fiber = fbm(st * 12.0 + slowTime * 0.3);
+      float paperGrain = 0.03 + fiber * 0.02;
 
       // --- Base paper color with grain ---
       vec3 color = uPaperColor;
-      // Darken slightly with grain (simulates fiber shadows)
       color -= paperGrain;
-      // Add ripple as brightness variation
-      color += ripple;
-
-      // --- Accent color watercolor seep from edges ---
-      // Distance from edges (0 at edge, 1 at center)
-      float edgeL = smoothstep(0.0, 0.25, uv.x);
-      float edgeR = smoothstep(1.0, 0.75, uv.x);
-      float edgeT = smoothstep(1.0, 0.8, uv.y);
-      float edgeB = smoothstep(0.0, 0.15, uv.y);
-      float edgeMask = 1.0 - (edgeL * edgeR * edgeT * edgeB);
-
-      // Organic bleeding shape via noise
-      float bleedNoise = fbm(st * 4.0 + vec2(uTime * 0.2, slowTime));
-      float bleedShape = edgeMask * smoothstep(-0.2, 0.5, bleedNoise);
-
-      // Velocity controls how much accent bleeds in
-      float bleedStrength = vel * 0.2 * bleedShape;
-
-      // Mix accent watercolor into paper
-      vec3 watercolorTint = mix(uAccentColor, uAccentColor * 0.7, bleedNoise);
-      color = mix(color, watercolorTint, bleedStrength);
+      color = max(color, vec3(0.0));
 
       // --- Very subtle ink speckle (aged paper spots) ---
-      float speckle = snoise(st * 50.0 + slowTime * 0.5);
+      float speckle = fract(sin(dot(st * 50.0 + slowTime * 0.5, vec2(12.9898, 78.233))) * 43758.5453);
       float speckMask = smoothstep(0.7, 0.75, speckle) * 0.04;
       color = mix(color, uInkColor, speckMask);
 
-      // --- Final output ---
-      // Slight warmth shift
-      color.r += 0.005;
-      color.g += 0.002;
+      color = clamp(color, 0.0, 1.0);
 
       gl_FragColor = vec4(color, 1.0);
     }

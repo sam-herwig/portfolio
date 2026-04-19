@@ -17,6 +17,8 @@ export interface MediaBlock {
   alt: string;
   aspect?: '16/9' | '21/9' | '4/3' | '1/1';
   fullBleed?: boolean;
+  caption?: string;
+  figNumber?: string;
 }
 
 export interface VideoBlock {
@@ -25,32 +27,66 @@ export interface VideoBlock {
   poster?: string;
   alt: string;
   aspect?: '16/9' | '21/9';
+  caption?: string;
+  figNumber?: string;
 }
 
 export interface SpotlightBlock {
   type: 'spotlight-block';
   spotlightId: string;
+  caption?: string;
 }
 
-export interface ChapterBreak {
-  type: 'chapter-break';
+/** Named chapter mark — one of the 5 expedition stations */
+export interface StationBreak {
+  type: 'station';
+  roman: 'I' | 'II' | 'III' | 'IV' | 'V';
   title: string;
-  index: number;
+  subtitle?: string;
 }
 
-export type ContentBlock = TextBlock | MediaBlock | VideoBlock | SpotlightBlock | ChapterBreak;
-
-/** Trail chapter labels used in chapter-break blocks and progress indicator */
-export const TRAIL_CHAPTERS = ['Discovery', 'Approach', 'Build', 'Outcome'] as const;
-export type TrailChapter = (typeof TRAIL_CHAPTERS)[number];
-
-/* ── Project color palette per case study ─────────────────── */
-
-export interface ProjectPalette {
-  accent: string;
-  accentMuted: string;
-  bg: string;
+/** Specimen sprite in the outer marginalia rail */
+export interface SpecimenBlock {
+  type: 'specimen';
+  src: string;
+  figNumber: string;
+  label: string;
+  side?: 'left' | 'right';
 }
+
+/** Horizontal scroll frieze — "specimens collected along the ascent" */
+export interface FriezeBlock {
+  type: 'frieze';
+  specimens: string[];
+  title?: string;
+}
+
+/** Sticky full-viewport metric count-up */
+export interface MetricBlock {
+  type: 'metric';
+  value: string;
+  unit?: string;
+  label: string;
+}
+
+export interface MastheadBlock {
+  type: 'masthead';
+}
+
+export type ContentBlock =
+  | TextBlock
+  | MediaBlock
+  | VideoBlock
+  | SpotlightBlock
+  | StationBreak
+  | SpecimenBlock
+  | FriezeBlock
+  | MetricBlock
+  | MastheadBlock;
+
+/** Canonical 5-station narrative spine for every case study */
+export const TRAIL_STATIONS = ['Trailhead', 'The Ascent', 'The Ridge', 'The Summit', 'The Descent'] as const;
+export type TrailStation = (typeof TRAIL_STATIONS)[number];
 
 /* ── Project interface ────────────────────────────────────── */
 
@@ -62,13 +98,18 @@ export interface Project {
   projectUrl: string;
   thumbnail: string;
   gallery?: string[];
+  /** Italicized opening hook rendered above the masthead title */
+  openingQuote?: string;
+  /** Path to the project's signature landmark sprite, washed behind Station III */
+  signatureLandmark?: string;
   overview: {
     headline: string;
     body: string;
   };
   sections?: ProjectSection[];
-  palette?: ProjectPalette;
   blocks?: ContentBlock[];
+  /** Optional — additional live sites that shipped on the same codebase/system */
+  relatedSites?: { name: string; tag: string; url: string }[];
   featured: boolean;
   order: number;
 }
@@ -88,85 +129,108 @@ export const projects: Project[] = [
       'Front End Engineering',
     ],
     projectUrl: 'https://www.voodooranger.com/',
+    relatedSites: [
+      { name: 'New Belgium', tag: 'Flagship', url: 'https://www.newbelgium.com/' },
+      { name: 'Fat Tire', tag: 'Amber Ale', url: 'https://www.fattire.com/' },
+      { name: 'Voodoo Ranger', tag: 'Imperial IPA', url: 'https://www.voodooranger.com/' },
+      { name: 'Lightstrike', tag: 'Lemon Lime', url: 'https://www.lightstrikebeer.com/' },
+      { name: 'Kirin Ichiban', tag: 'Partnership', url: 'https://www.kirinichibanusa.com/' },
+    ],
     thumbnail: '/work/voodoo-ranger.webp',
     gallery: ['/work/voodoo-ranger.webp', '/work/fat-tire.webp', '/work/lightstrike.webp', '/work/kirin.webp'],
+    openingQuote:
+      '"Four skeletons, a 130-year-old Japanese brewery, and one codebase. None of them should look the same. None of them should share a repo. Both of those things turned out to be wrong."',
+    signatureLandmark: '/assets/graphics/case-study/nb-rustic-cabin.webp',
     overview: {
       headline: "A Shared Module System Powering New Belgium's Entire Brand Portfolio",
-      body: 'Four beer brands — one front-end architecture. I built a shared component system on Optimizely that gives Voodoo Ranger, Fat Tire, Lightstrike, and Kirin USA full visual autonomy without duplicating code across four codebases. One deploy pipeline, four distinct brand identities, and every performance fix ships everywhere at once.',
+      body: 'Four beer brands — one front-end architecture. I built a shared component system on Optimizely that gives Voodoo Ranger, Fat Tire, Lightstrike, and Kirin USA full visual autonomy without duplicating code across four codebases.',
     },
-    sections: [
-      {
-        heading: 'The Brief',
-        body: "New Belgium needed Voodoo Ranger, Fat Tire, Lightstrike, and Kirin USA to each feel like their own brand — a skeleton mascot and a 130-year-old Japanese brewery shouldn't look anything alike. But maintaining four separate codebases was a maintenance nightmare. The bet: a shared component system with SCSS specificity-driven theming that gives each brand full visual autonomy while deploying the same way.",
-      },
-      {
-        heading: 'How I Built It',
-        body: "I designed the architecture on Optimizely's Episerver so brand-specific SCSS layers control typography, color, animation intensity, and layout density. The same module set handles everything from navigation to product pages, with each brand's theme swapping the visual layer without touching the markup. Marketing teams update content within the system without the risk of breaking a sibling brand's build.",
-      },
-      {
-        heading: 'What Shipped',
-        body: "Four brands running on one codebase with independent content workflows. The system handled 3× traffic spikes during Voodoo Ranger's Juice Force campaign without flinching — and the same architecture held across all four properties. Every performance fix and accessibility improvement deploys everywhere at once.",
-      },
-    ],
-    palette: { accent: '#f59e0b', accentMuted: '#fbbf24', bg: '#fffbeb' },
     blocks: [
-      { type: 'chapter-break', title: 'Discovery', index: 0 },
+      /* ── Station I — Trailhead ───────────────────────── */
+      { type: 'masthead' },
       {
         type: 'text-block',
         heading: 'The Brief',
-        body: 'Five beer brands. One codebase. A skeleton mascot and a 130-year-old Japanese brewery have no business looking alike, but they all ship from the same repo.',
+        body: 'Five beer brands. One codebase. A skeleton mascot and a 130-year-old Japanese brewery have no business looking alike, but they all ship from the same repo.\n\nThe pitch was counterintuitive: stop running four teams, four build pipelines, four QA cycles. Collapse everything into one engine and let SCSS specificity do the brand work.',
       },
+
+      /* ── Station II — The Ascent ─────────────────────── */
+      {
+        type: 'station',
+        roman: 'II',
+        title: 'The Ascent',
+        subtitle: 'Mapping five identities onto one architecture',
+      },
+      {
+        type: 'text-block',
+        heading: 'The Architecture',
+        body: "Optimizely's Episerver handles content. On top of it, SCSS specificity layers control typography, color, animation intensity, and layout density per brand. Nothing touches shared markup. Marketing updates content without accidentally breaking a sibling brand.",
+      },
+      {
+        type: 'text-block',
+        heading: 'The Theme System',
+        body: 'One deploy pipeline. Five theme files. Every performance fix and accessibility improvement ships to every brand at once, which is the real reason this architecture is worth the tradeoffs.',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/nb-hop-vine.webp',
+        figNumber: 'Fig. 06',
+        label: 'Humulus lupulus — cultivated lineage',
+        side: 'right',
+      },
+      {
+        type: 'frieze',
+        specimens: [
+          '/work/voodoo-header.webp',
+          '/work/fat-tire-header.webp',
+          '/work/lightstrike-header.webp',
+          '/work/kirin-header.webp',
+        ],
+        title: 'Four brand headers, one system',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/rock-boulder-cluster.webp',
+        figNumber: 'Fig. 03',
+        label: 'Granite boulder cluster, eastern slope',
+        side: 'left',
+      },
+
+      /* ── Station III — The Ridge ─────────────────────── */
+      { type: 'station', roman: 'III', title: 'The Ridge', subtitle: 'Where each brand finds its own voice' },
       {
         type: 'video-block',
         src: '/work/videos/new-belgium-voodoo.mp4',
         alt: 'Voodoo Ranger homepage interaction',
         aspect: '16/9',
+        figNumber: 'Fig. 08',
+        caption: 'Voodoo Ranger — loud, neon, skeletons everywhere',
       },
       {
         type: 'text-block',
         heading: 'Voodoo Ranger',
-        body: "Voodoo Ranger is the loud one. Neon everything, skeleton mascots, animations that don't know when to quit.",
+        body: "Voodoo Ranger is the loud one. Neon everything, skeleton mascots, animations that don't know when to quit. One theme file controls all of it.",
       },
       {
         type: 'video-block',
         src: '/work/videos/new-belgium-fat-tire.mp4',
         alt: 'Fat Tire homepage interaction',
         aspect: '16/9',
+        figNumber: 'Fig. 09',
+        caption: 'Fat Tire — heritage craft, warm tones, editorial calm',
       },
       {
         type: 'text-block',
         heading: 'Fat Tire',
         body: "Then there's Fat Tire. Heritage craft, warm tones, editorial calm. Same components underneath, totally different vibe.",
       },
-      { type: 'chapter-break', title: 'Approach', index: 1 },
-      {
-        type: 'text-block',
-        heading: 'The Architecture',
-        body: "SCSS specificity layers on Optimizely's Episerver. Each brand controls its own typography, color, animation intensity, layout density. None of them touch shared markup. Marketing updates content without accidentally breaking a sibling brand.",
-      },
-      {
-        type: 'video-block',
-        src: '/work/videos/new-belgium-nbb.mp4',
-        alt: 'New Belgium Brewing homepage',
-        aspect: '16/9',
-      },
-      {
-        type: 'text-block',
-        heading: 'New Belgium Brewing',
-        body: 'The parent brand just stays out of the way. Clean, confident, lets the sub-brands be the loud ones.',
-      },
-      { type: 'media-block', src: '/work/nbb-header.webp', alt: 'New Belgium Brewing header', aspect: '16/9' },
-      { type: 'media-block', src: '/work/voodoo-header.webp', alt: 'Voodoo Ranger header', aspect: '16/9' },
-      { type: 'media-block', src: '/work/fat-tire-header.webp', alt: 'Fat Tire header', aspect: '16/9' },
-      { type: 'media-block', src: '/work/lightstrike-header.webp', alt: 'Lightstrike header', aspect: '16/9' },
-      { type: 'media-block', src: '/work/kirin-header.webp', alt: 'Kirin USA header', aspect: '16/9' },
-      { type: 'spotlight-block', spotlightId: 'new-belgium-theme-switcher' },
-      { type: 'chapter-break', title: 'Build', index: 2 },
       {
         type: 'video-block',
         src: '/work/videos/new-belgium-lightstrike.mp4',
         alt: 'Lightstrike homepage interaction',
         aspect: '16/9',
+        figNumber: 'Fig. 10',
+        caption: 'Lightstrike — brutalist, high-contrast, sharp',
       },
       {
         type: 'text-block',
@@ -178,17 +242,50 @@ export const projects: Project[] = [
         src: '/work/videos/new-belgium-kirin.mp4',
         alt: 'Kirin USA homepage interaction',
         aspect: '16/9',
+        figNumber: 'Fig. 11',
+        caption: 'Kirin USA — Japanese-influenced design on the same architecture',
       },
       {
         type: 'text-block',
         heading: 'Kirin USA',
-        body: 'And then Kirin USA pulls Japanese-influenced design into the same system. Completely different cultural DNA, same architecture.',
+        body: 'Kirin USA pulls Japanese-influenced design into the same system. Completely different cultural DNA, same architecture.',
       },
-      { type: 'chapter-break', title: 'Outcome', index: 3 },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/pine-tree-dense.webp',
+        figNumber: 'Fig. 01',
+        label: 'Pinus ponderosa, collected on approach',
+        side: 'left',
+      },
+
+      /* ── Station IV — The Summit ─────────────────────── */
+      { type: 'station', roman: 'IV', title: 'The Summit', subtitle: 'Try the theme switch yourself' },
+      { type: 'spotlight-block', spotlightId: 'new-belgium-theme-switcher' },
+      {
+        type: 'text-block',
+        heading: 'The Switcher',
+        body: 'Same component tree. Different theme file. Watch every pixel repaint without a single markup change.',
+      },
+
+      /* ── Station V — The Descent ─────────────────────── */
+      { type: 'station', roman: 'V', title: 'The Descent', subtitle: 'What shipped, what held' },
+      {
+        type: 'metric',
+        value: '5',
+        unit: 'brands',
+        label: 'One codebase, one deploy pipeline',
+      },
       {
         type: 'text-block',
         heading: 'What Shipped',
         body: "Five brands, one deploy pipeline. When Voodoo Ranger's Juice Force campaign tripled traffic, the performance fix shipped to all five properties at once.",
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/wildflower-meadow-strip.webp',
+        figNumber: 'Fig. 05',
+        label: 'Alpine meadow, descent route',
+        side: 'right',
       },
     ],
     featured: true,
@@ -196,64 +293,134 @@ export const projects: Project[] = [
   },
   {
     title: 'Mission Bell',
-    subtitle: 'Where the Photography Does the Work',
+    subtitle: 'A Craft-First Portfolio for a Craft-First Shop',
     slug: 'mission-bell',
     tags: ['Nuxt', 'Vue', 'GSAP', 'Sanity CMS', 'WCAG 2.1 AA', 'Component Library', 'Front End Engineering'],
     projectUrl: 'https://www.missionbell.com/',
     thumbnail: '/work/mission-bell.webp',
     gallery: ['/work/mission-bell.webp', '/work/mission-bell-2.webp', '/work/mission-bell-3.webp'],
+    openingQuote:
+      '"Most architectural millwork shops have websites that look like catalogs stapled to a spec sheet. Mission Bell treats every commercial install like a commission — the site had to feel the same."',
+    signatureLandmark: '/assets/graphics/case-study/mb-mission-bell-tower.webp',
     overview: {
-      headline: 'GSAP Page Transitions and a CMS a Winery Team Can Actually Use',
-      body: 'A Nuxt-powered winery site with GSAP transitions tuned to feel seamless, Sanity CMS the team actually owns, and WCAG 2.1 AA baked in from day one. Zero developer tickets for content updates since launch.',
+      headline: 'GSAP Page Transitions and a CMS the Shop Actually Owns',
+      body: 'A Nuxt-powered portfolio site for a commercial architectural millwork firm based in San Jose and Seattle. GSAP transitions tuned to feel seamless, Sanity CMS the team owns, and WCAG 2.1 AA baked in from day one.',
     },
-    sections: [
-      {
-        heading: 'The Brief',
-        body: 'Wine websites fail in one of two directions: corporate brochure or lifestyle Pinterest board. Mission Bell needed a third option — something that felt like the vineyard actually made it. Smooth transitions, great photography, and a CMS the team could own without a developer on speed dial.',
-      },
-      {
-        heading: 'How I Built It',
-        body: 'Nuxt with GSAP-driven page transitions tuned to feel seamless without announcing themselves. Sanity CMS wired up so the team manages the wine catalog directly — no tickets, no deploys. A Vue component library keeps landing pages on-brand without starting from scratch each time. WCAG 2.1 AA compliance was part of the build from the start, not retrofitted.',
-      },
-      {
-        heading: 'What Shipped',
-        body: 'GSAP page transitions that feel invisible, a CMS the winery team uses daily, and WCAG 2.1 AA across every page. The client\'s exact words after launch: "It finally feels like us." Zero developer tickets for content updates since go-live.',
-      },
-    ],
-    palette: { accent: '#7c2d12', accentMuted: '#a16207', bg: '#fef3c7' },
     blocks: [
-      { type: 'chapter-break', title: 'Discovery', index: 0 },
+      /* ── Station I — Trailhead ───────────────────────── */
+      { type: 'masthead' },
       {
         type: 'text-block',
         heading: 'The Brief',
-        body: 'Wine websites go wrong in two directions: corporate brochure or lifestyle Pinterest board. Mission Bell needed something that felt like the vineyard actually made it.',
+        body: "Mission Bell builds the millwork and casework inside spaces like UCSF's Weill Institute for Neurosciences, the Nvidia Treehouse, and the Ameswell Hotel. Everyone else in the commercial millwork category has a website that looks like a product catalog stapled to a PDF portfolio.\n\nSmooth transitions. Photography of the built work, not the spec sheets. A CMS the team could own without a developer on speed dial.",
       },
+
+      /* ── Station II — The Ascent ─────────────────────── */
+      { type: 'station', roman: 'II', title: 'The Ascent', subtitle: 'Matching the craft to the site' },
+      {
+        type: 'text-block',
+        heading: 'The Frame',
+        body: 'Nuxt handles routing and rendering. GSAP drives page transitions tuned to feel seamless without announcing themselves. A Vue component library keeps every project case study on-brand without starting from scratch each time.',
+      },
+      {
+        type: 'text-block',
+        heading: 'The Content Layer',
+        body: 'Sanity CMS wired up so the shop manages the project portfolio directly — no tickets, no deploys. WCAG 2.1 AA compliance was part of the build from day one, not retrofitted on the last sprint.',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/mb-desert-mesa.webp',
+        figNumber: 'Fig. 06',
+        label: 'Sandstone mesa profile, site strata',
+        side: 'right',
+      },
+      {
+        type: 'frieze',
+        specimens: ['/work/mission-bell.webp', '/work/mission-bell-2.webp', '/work/mission-bell-3.webp'],
+        title: 'Built work, a sampling',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/dead-tree-snag.webp',
+        figNumber: 'Fig. 02',
+        label: 'Populus tremuloides, rough stock',
+        side: 'left',
+      },
+
+      /* ── Station III — The Ridge ─────────────────────── */
+      { type: 'station', roman: 'III', title: 'The Ridge', subtitle: "The site takes on the shop's voice" },
       {
         type: 'video-block',
         src: '/work/videos/mission-bell-homepage.mp4',
         alt: 'Mission Bell homepage scroll',
-        aspect: '16/9',
+        aspect: '21/9',
+        figNumber: 'Fig. 07',
+        caption: 'Mission Bell homepage — GSAP transitions in motion',
       },
-      { type: 'chapter-break', title: 'Approach', index: 1 },
       {
         type: 'text-block',
-        heading: 'How I Built It',
-        body: 'Nuxt with GSAP page transitions tuned to feel invisible. Sanity CMS the team runs without calling a developer. WCAG 2.1 AA baked in from the start.',
+        heading: 'The Transitions',
+        body: 'GSAP page transitions tuned to feel invisible — they announce themselves only when you look for them. Everything else is the built work.',
       },
       {
         type: 'video-block',
         src: '/work/videos/mission-bell-services.mp4',
-        alt: 'Mission Bell services page interaction',
+        alt: 'Mission Bell capabilities page interaction',
         aspect: '16/9',
+        figNumber: 'Fig. 08',
+        caption: 'Capabilities page interaction',
       },
-      { type: 'chapter-break', title: 'Build', index: 2 },
-      { type: 'media-block', src: '/work/mission-bell-2.webp', alt: 'Mission Bell wine catalog', aspect: '16/9' },
-      { type: 'media-block', src: '/work/mission-bell-3.webp', alt: 'Mission Bell detail page', aspect: '16/9' },
-      { type: 'chapter-break', title: 'Outcome', index: 3 },
+      {
+        type: 'media-block',
+        src: '/work/mission-bell-2.webp',
+        alt: 'Mission Bell project portfolio',
+        aspect: '16/9',
+        figNumber: 'Fig. 09',
+        caption: 'Project portfolio — managed entirely via Sanity',
+      },
+      {
+        type: 'media-block',
+        src: '/work/mission-bell-3.webp',
+        alt: 'Mission Bell project detail page',
+        aspect: '16/9',
+        figNumber: 'Fig. 10',
+        caption: 'Project detail view',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/pine-tree-dense.webp',
+        figNumber: 'Fig. 01',
+        label: 'Pinus ponderosa, lumber grade',
+        side: 'left',
+      },
+
+      /* ── Station IV — The Summit ─────────────────────── */
+      { type: 'station', roman: 'IV', title: 'The Summit', subtitle: 'The handoff, in detail' },
+      {
+        type: 'text-block',
+        heading: 'The Transitions',
+        body: "Between pages, the reader gets the same pace a shop walk-through gives a client. The transitions aren't decoration — they're the rhythm that makes a project catalog read like a commission.",
+      },
+
+      /* ── Station V — The Descent ─────────────────────── */
+      { type: 'station', roman: 'V', title: 'The Descent', subtitle: 'Zero dev tickets since launch' },
+      {
+        type: 'metric',
+        value: '0',
+        unit: 'tickets',
+        label: 'Developer tickets since go-live',
+      },
       {
         type: 'text-block',
         heading: 'What Shipped',
-        body: "Client's words after launch: 'It finally feels like us.' They haven't filed a single developer ticket for content updates since.",
+        body: 'Client\'s exact words after launch: "It finally feels like us." They haven\'t filed a single developer ticket for content updates since — the shop runs the site the same way they run the floor.',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/wildflower-meadow-strip.webp',
+        figNumber: 'Fig. 05',
+        label: 'Alpine meadow, installation day',
+        side: 'right',
       },
     ],
     featured: true,
@@ -267,64 +434,128 @@ export const projects: Project[] = [
     projectUrl: 'https://www.consumeandcreate.co/',
     thumbnail: '/work/consume-and-create.webp',
     gallery: ['/work/consume-and-create.webp', '/work/cc-2.webp', '/work/cc-3.webp'],
+    openingQuote:
+      '"Building for your own agency is harder than client work. Everyone\'s a critic, standards are unreasonable, and the site has to sell the work while proving you can actually build."',
+    signatureLandmark: '/assets/graphics/case-study/cc-lighthouse.webp',
     overview: {
       headline: 'High-90s Lighthouse Scores Without Sacrificing the Animation Budget',
-      body: "An agency site rebuild in Nuxt that had to sell the work while proving the technical credibility. High-90s Lighthouse scores with animations fully intact, Contentful CMS the team runs without developer tickets, and the agency's most consistent new business driver for over a year.",
+      body: 'An agency site rebuild in Nuxt that had to sell the work while proving the technical credibility. High-90s Lighthouse scores with animations fully intact.',
     },
-    sections: [
-      {
-        heading: 'The Brief',
-        body: "Building for clients is easier than building for your own team — everyone's a critic and the standards are impossibly high. Consume & Create's agency site had to sell the work while also demonstrating the technical credibility to win the exact clients looking at it. The internal pressure was real.",
-      },
-      {
-        heading: 'How I Built It',
-        body: "Nuxt with Contentful CMS handling content updates without developer involvement. Project galleries with hover-state previews and a contact form that doesn't feel like a DMV visit. The hard part was hitting Lighthouse scores in the high 90s while keeping the animation work intact — that tension usually forces a compromise, but the performance optimization pass got us there on both.",
-      },
-      {
-        heading: 'What Shipped',
-        body: "High-90s Lighthouse scores with full animation fidelity. A CMS the team updates without filing tickets. The agency's most consistent new business driver for over a year — the site pays for itself.",
-      },
-    ],
-    palette: { accent: '#2563eb', accentMuted: '#60a5fa', bg: '#eff6ff' },
     blocks: [
-      { type: 'chapter-break', title: 'Discovery', index: 0 },
+      /* ── Station I — Trailhead ───────────────────────── */
+      { type: 'masthead' },
       {
         type: 'text-block',
         heading: 'The Brief',
-        body: "Building for your own agency is harder than client work. Everyone's a critic, standards are unreasonable, and the site has to sell the work while proving you can actually build.",
+        body: "Building for your own agency is harder than client work. Everyone's a critic, standards are unreasonable, and the site has to sell the work while proving you can actually build.\n\nThe internal pressure was real. The external audience was everyone in the industry we wanted to hire.",
       },
+
+      /* ── Station II — The Ascent ─────────────────────── */
+      { type: 'station', roman: 'II', title: 'The Ascent', subtitle: 'The performance / animation tension' },
+      {
+        type: 'text-block',
+        heading: 'The Fight',
+        body: 'The hard part was hitting Lighthouse scores in the high 90s while keeping the animation work intact. That tension usually forces a compromise. Performance-first sites feel dead. Animation-first sites feel slow.',
+      },
+      {
+        type: 'text-block',
+        heading: 'The Toolkit',
+        body: "Nuxt for the shell. Contentful CMS handling content updates without developer involvement. Custom project galleries with hover-state previews. A contact form that doesn't feel like a DMV visit.",
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/cc-coastal-cliff.webp',
+        figNumber: 'Fig. 06',
+        label: 'Basalt sea cliff, agency coast',
+        side: 'right',
+      },
+      {
+        type: 'frieze',
+        specimens: ['/work/consume-and-create.webp', '/work/cc-2.webp', '/work/cc-3.webp'],
+        title: 'Project gallery studies',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/rock-jagged-outcrop.webp',
+        figNumber: 'Fig. 04',
+        label: 'Schist outcrop, weathered edge',
+        side: 'left',
+      },
+
+      /* ── Station III — The Ridge ─────────────────────── */
+      { type: 'station', roman: 'III', title: 'The Ridge', subtitle: 'Performance and motion, together' },
       {
         type: 'video-block',
         src: '/work/videos/cc-hero.mp4',
         alt: 'Consume & Create homepage hero animation',
-        aspect: '16/9',
+        aspect: '21/9',
+        figNumber: 'Fig. 07',
+        caption: 'C&C homepage hero — animation-heavy, still scoring 98 on Lighthouse',
       },
-      { type: 'chapter-break', title: 'Approach', index: 1 },
       {
         type: 'text-block',
-        heading: 'How I Built It',
-        body: 'Nuxt with Contentful CMS. The whole fight was getting Lighthouse into the high 90s without gutting the animations. Usually you sacrifice one for the other.',
+        heading: 'The Optimization Pass',
+        body: 'The performance optimization pass got us there on both. Lazy hydration, image sequencing, priority hints on everything above the fold, aggressive code splitting. Every animation measured against its cost.',
       },
       {
         type: 'video-block',
         src: '/work/videos/cc-optimal-wrapper.mp4',
         alt: 'Consume & Create optimal wrapper interaction',
         aspect: '16/9',
+        figNumber: 'Fig. 08',
+        caption: 'Project detail interaction',
       },
-      { type: 'chapter-break', title: 'Build', index: 2 },
-      { type: 'media-block', src: '/work/cc-2.webp', alt: 'Consume & Create project gallery', aspect: '16/9' },
-      { type: 'media-block', src: '/work/cc-3.webp', alt: 'Consume & Create detail view', aspect: '16/9' },
-      { type: 'chapter-break', title: 'Outcome', index: 3 },
+      {
+        type: 'media-block',
+        src: '/work/cc-2.webp',
+        alt: 'Consume & Create project gallery',
+        aspect: '16/9',
+        figNumber: 'Fig. 09',
+        caption: 'Project gallery — hover-state previews',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/pine-tree-dense.webp',
+        figNumber: 'Fig. 01',
+        label: 'Pinus ponderosa, coastal variant',
+        side: 'left',
+      },
+
+      /* ── Station IV — The Summit ─────────────────────── */
+      { type: 'station', roman: 'IV', title: 'The Summit', subtitle: 'Performance held its ground' },
+      {
+        type: 'text-block',
+        heading: 'The Proof',
+        body: 'A 98 Lighthouse score without trading a single keyframe. High-priority animations stayed on scroll; low-priority ones traded for main-thread headroom. The performance budget held through every gesture.',
+      },
+
+      /* ── Station V — The Descent ─────────────────────── */
+      { type: 'station', roman: 'V', title: 'The Descent', subtitle: "The agency's best new business driver" },
+      {
+        type: 'metric',
+        value: '98',
+        unit: 'Lighthouse',
+        label: 'Performance score with animations fully intact',
+      },
       {
         type: 'text-block',
         heading: 'What Shipped',
         body: "High 90s Lighthouse, animations fully intact, CMS the team runs on their own. Ended up being the agency's best new business driver for over a year.",
       },
-      { type: 'media-block', src: '/work/cc-404-cat.webp', alt: 'Custom 404 page featuring my cat', aspect: '16/9' },
       {
-        type: 'text-block',
-        heading: '',
-        body: 'I also put my cat on the 404 page.',
+        type: 'media-block',
+        src: '/work/cc-404-cat.webp',
+        alt: 'Custom 404 page featuring my cat',
+        aspect: '16/9',
+        figNumber: 'Fig. 10',
+        caption: "I also put my cat on the 404 page. She's the best one.",
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/wildflower-meadow-strip.webp',
+        figNumber: 'Fig. 05',
+        label: 'Coastal bloom, spring',
+        side: 'right',
       },
     ],
     featured: true,
@@ -346,73 +577,134 @@ export const projects: Project[] = [
     projectUrl: 'https://craftedkit.io',
     thumbnail: '/images/diagrams/agent-pipeline.png',
     gallery: ['/images/diagrams/agent-pipeline.png', '/images/diagrams/methodology.png'],
+    openingQuote:
+      '"15+ live WebGL heroes. One developer. Four specialist agents and an orchestrator — and I walk every mission through the gates myself."',
+    signatureLandmark: '/assets/graphics/case-study/ck-crystalline-formation.webp',
     overview: {
-      headline: '46 WebGL Heroes Built by One Developer and a 4-Agent AI Pipeline',
-      body: 'CraftedKit is an interactive web studio I built from scratch — the site, the products, and the production system that manufactures them. The catalog has 46 WebGL hero experiences ranging from ferrofluid typography to volumetric god rays, each one an R3F component with proper resource management, responsive fallbacks, and scroll-driven interactivity.\n\nWhat makes it work is how they get built. I designed a 4-agent AI pipeline — Kyle (code), Brad (QA gate), Chad (design), Jackson (strategy) — that runs nightly build-review-gate cycles. Chad proposes new hero concepts, Kyle implements them in Three.js/R3F with custom GLSL shaders, Brad runs automated smoke tests and issues a SHIP/NEEDS_WORK verdict, and I wake up to candidates that were built, tested, and gated while I slept. Every failure gets logged and promoted into permanent system rules — the pipeline improves itself with each cycle.',
+      headline: '15+ WebGL Heroes Shipped Through a Four-Gate AI Pipeline I Run by Hand',
+      body: 'CraftedKit is an interactive web studio I built from scratch — the site, the products, and the production system that manufactures them. A four-agent pipeline with four human gates: specialists do the work, I decide what ships.',
     },
-    sections: [
-      {
-        heading: 'The Brief',
-        body: "I wanted to build a studio that sells what I actually do best — interactive web experiences using Three.js, custom shaders, and motion systems. But building 40+ WebGL products as a solo developer is a volume problem. The question wasn't whether AI could write shader code — it's whether I could orchestrate multiple agents into a reliable production system that ships real work without me babysitting every line.",
-      },
-      {
-        heading: 'How I Built It',
-        body: "The site runs on Next.js 14 with a monorepo architecture — a shared catalog system, a custom Tailwind design system (Atelier), and 46 hero components each with their own shaders, textures, and scroll-driven behaviors. The AI pipeline orchestrates four specialized agents through deterministic workflows: preflight tokens gate every dispatch, Git hooks enforce quality, and Brad's QA verdict is mandatory before anything merges. A nightly cron loop generates new hero concepts, implements them, runs Puppeteer smoke tests, and stages candidates for my morning review.",
-      },
-      {
-        heading: 'What Shipped',
-        body: '46 WebGL hero experiences, each with proper Three.js resource disposal, reduced-motion support, and WebGL fallbacks. A services funnel that converts visitors into $3.5k-$15k+ custom engagements. The AI pipeline runs nightly build-review-gate cycles and stages candidates for my morning review — one person, full production output.',
-      },
-    ],
-    palette: { accent: '#10b981', accentMuted: '#34d399', bg: '#ecfdf5' },
     blocks: [
+      /* ── Station I — Trailhead ───────────────────────── */
+      { type: 'masthead' },
+      {
+        type: 'text-block',
+        heading: 'The Brief',
+        body: "I wanted to build a studio that sells what I actually do best — interactive web experiences using Three.js, custom shaders, and motion systems. Doing that solo is a volume problem.\n\nThe question wasn't whether AI could write shader code. It was whether I could design a production system where specialist agents do the building and I stay in charge of the taste — a real gated pipeline, not a lights-out factory.",
+      },
+
+      /* ── Station II — The Ascent ─────────────────────── */
+      { type: 'station', roman: 'II', title: 'The Ascent', subtitle: 'Building the pipeline that builds the work' },
+      {
+        type: 'text-block',
+        heading: 'The Pipeline',
+        body: 'Four specialist Claude agents — Jackson (research), Chad (design), Kyle (build), Brad (QA) — coordinated by Todd, an orchestrator. Each mission passes through four human-in-the-loop gates I sit at personally: Mission Approval, Creative Review A, Creative Review B, and Ship.',
+      },
+      {
+        type: 'text-block',
+        heading: 'Human In The Loop',
+        body: 'Agents cannot skip a gate. At each one I choose the direction, score the references, set the motion budget, and approve the build on desktop and phone. The pipeline protects the craft; I protect the taste.',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/ck-circuit-fern.webp',
+        figNumber: 'Fig. 06',
+        label: 'Polystichum acrostichoides, circuit detail',
+        side: 'right',
+      },
+      {
+        type: 'frieze',
+        specimens: [
+          '/work/videos/craftedkit-organic-living.mp4',
+          '/work/videos/craftedkit-mechanical-heart.mp4',
+          '/work/videos/craftedkit-mycelium.mp4',
+          '/work/videos/craftedkit-reaction-diffusion.mp4',
+        ],
+        title: 'Shader hero concept studies',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/rock-boulder-cluster.webp',
+        figNumber: 'Fig. 03',
+        label: 'Boulder cluster, foundation stone',
+        side: 'left',
+      },
+
+      /* ── Station III — The Ridge ─────────────────────── */
+      { type: 'station', roman: 'III', title: 'The Ridge', subtitle: '15+ heroes, one production system' },
       {
         type: 'video-block',
         src: '/work/videos/craftedkit-organic-living.mp4',
         alt: 'Organic Living Material shader hero',
-        aspect: '16/9',
+        aspect: '21/9',
+        figNumber: 'Fig. 07',
+        caption: 'Organic Living Material — one of 15+ WebGL heroes in the catalog',
       },
-      { type: 'chapter-break', title: 'Discovery', index: 0 },
-      {
-        type: 'text-block',
-        heading: 'The Brief',
-        body: 'I built a studio around what I actually do: interactive web stuff with Three.js, custom shaders, motion systems. 40+ WebGL products solo is a volume problem though, so I built a multi-agent AI pipeline to keep up.',
-      },
-      { type: 'chapter-break', title: 'Approach', index: 1 },
-      {
-        type: 'text-block',
-        heading: 'The Pipeline',
-        body: 'Four Claude agents run nightly build-review-gate cycles. One proposes concepts, one writes R3F with custom GLSL, one runs automated QA. I wake up to candidates that were built and tested while I slept.',
-      },
-      {
-        type: 'text-block',
-        heading: 'Self-Improving',
-        body: "Failures get logged and promoted into permanent system rules. Same mistake doesn't happen twice.",
-      },
-      { type: 'chapter-break', title: 'Build', index: 2 },
       {
         type: 'text-block',
         heading: 'The Output',
-        body: '46 WebGL hero experiences. Ferrofluid typography, volumetric god rays, particle fields. Each one is a real R3F component with proper resource disposal and responsive fallbacks.',
+        body: '15+ WebGL hero experiences live in the catalog, with more in the pipeline. Ferrofluid typography. Volumetric god rays. Particle fields. Each one is a real R3F component with proper resource disposal and responsive fallbacks.',
       },
       {
         type: 'video-block',
         src: '/work/videos/craftedkit-mechanical-heart.mp4',
         alt: 'Mechanical Heart shader hero',
         aspect: '16/9',
+        figNumber: 'Fig. 08',
+        caption: 'Mechanical Heart',
       },
-      { type: 'video-block', src: '/work/videos/craftedkit-mycelium.mp4', alt: 'Mycelium shader hero', aspect: '16/9' },
+      {
+        type: 'video-block',
+        src: '/work/videos/craftedkit-mycelium.mp4',
+        alt: 'Mycelium shader hero',
+        aspect: '16/9',
+        figNumber: 'Fig. 09',
+        caption: 'Mycelium network',
+      },
       {
         type: 'video-block',
         src: '/work/videos/craftedkit-reaction-diffusion.mp4',
         alt: 'Reaction Diffusion Field shader hero',
         aspect: '16/9',
+        figNumber: 'Fig. 10',
+        caption: 'Reaction-diffusion field',
       },
-      { type: 'chapter-break', title: 'Outcome', index: 3 },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/pine-tree-dense.webp',
+        figNumber: 'Fig. 01',
+        label: 'Pinus ponderosa, pipeline sentinel',
+        side: 'left',
+      },
+
+      /* ── Station IV — The Summit ─────────────────────── */
+      { type: 'station', roman: 'IV', title: 'The Summit', subtitle: 'The pipeline, drawn out' },
+      { type: 'spotlight-block', spotlightId: 'craftedkit-pipeline' },
+      {
+        type: 'text-block',
+        heading: 'The Diagram',
+        body: 'Jackson → Gate → Chad → Gate → Kyle → Gate → Brad → Gate. Todd routes every mission; I sit at every gate.',
+      },
+
+      /* ── Station V — The Descent ─────────────────────── */
+      { type: 'station', roman: 'V', title: 'The Descent', subtitle: 'One person, full production output' },
+      {
+        type: 'metric',
+        value: '15+',
+        unit: 'heroes',
+        label: 'WebGL experiences live in the catalog',
+      },
       {
         type: 'text-block',
         heading: 'What Shipped',
-        body: 'I run the whole thing solo. Pipeline builds overnight, I review candidates in the morning.',
+        body: 'I run the whole studio solo. Specialist agents do the building; I review each mission at every gate, on desktop and phone, before anything ships. Every failure becomes a permanent rule the system carries forward.',
+      },
+      {
+        type: 'specimen',
+        src: '/assets/graphics/case-study/wildflower-meadow-strip.webp',
+        figNumber: 'Fig. 05',
+        label: 'Alpine meadow, mid-bloom',
+        side: 'right',
       },
     ],
     featured: true,

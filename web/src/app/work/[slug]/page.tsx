@@ -33,7 +33,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
 
   return (
     <main className="min-h-screen text-foreground">
-      <CaseStudyScene slug={slug} accentColor={project.palette?.accent ?? '#f59e0b'} />
+      <CaseStudyScene slug={slug} />
       <div className="relative z-10">
         <BackToTrail />
         <CaseStudyContent project={project} prev={prev} next={next} />

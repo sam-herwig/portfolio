@@ -206,7 +206,7 @@ export default function CampModule({ scrollProgress }: { scrollProgress: MotionV
       <Canvas camera={{ position: [0, 0, 20], fov: 50 }} dpr={isMobileCamp ? [1, 1] : [1, 1.5]}>
         <Suspense fallback={null}>
           <NightCampScene scrollProgress={scrollProgress} />
-          <PostProcessingStack bloomIntensity={1.5} />
+          <PostProcessingStack />
         </Suspense>
       </Canvas>
     </motion.div>

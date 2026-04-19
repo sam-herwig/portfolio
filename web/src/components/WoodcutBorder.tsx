@@ -4,7 +4,7 @@ import { motion, useScroll, useTransform, type MotionValue } from 'framer-motion
 import { useRef } from 'react';
 
 interface WoodcutBorderProps {
-  /** Accent color for the ink tone — defaults to CSS var --cs-accent */
+  /** Accent color for the ink tone — defaults to currentColor (foreground token) */
   accent?: string;
   /** Which mask variant to use */
   variant?: 'organic' | 'torn';
@@ -36,7 +36,8 @@ export default function WoodcutBorder({ accent, variant = 'torn' }: WoodcutBorde
       ? '/assets/graphics/case-study/border-organic-edge.webp'
       : '/assets/graphics/case-study/border-torn-edge.webp';
 
-  const color = accent ?? 'var(--cs-accent, #1a1a1a)';
+  const color = accent ?? 'currentColor';
+  const maskSizeValue = useTransformToPercent(maskScale);
 
   return (
     <motion.div
@@ -51,8 +52,8 @@ export default function WoodcutBorder({ accent, variant = 'torn' }: WoodcutBorde
         maskRepeat: 'no-repeat' as string,
         WebkitMaskPosition: 'center',
         maskPosition: 'center' as string,
-        WebkitMaskSize: useTransformToPercent(maskScale),
-        maskSize: useTransformToPercent(maskScale) as MotionValue<string>,
+        WebkitMaskSize: maskSizeValue,
+        maskSize: maskSizeValue as MotionValue<string>,
       }}
     />
   );

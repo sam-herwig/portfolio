@@ -28,7 +28,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSavedScrollY: (y) => set({ savedScrollY: y }),
   transitionState: 'idle',
   transitionOrigin: { x: 0, y: 0 },
-  transitionColor: '#09090b',
+  transitionColor: '#18181b',
   transitionHref: '',
   startTransition: (origin, color, href) =>
     set({ transitionState: 'entering', transitionOrigin: origin, transitionColor: color, transitionHref: href }),

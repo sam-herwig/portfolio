@@ -20,26 +20,28 @@ export const metadata: Metadata = {
   title: 'Sam Herwig | Creative Engineer',
   description: 'I write code that you walk through. Three.js, shaders, and the browser as a canvas.',
   metadataBase: new URL('https://samherwig.dev'),
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
   openGraph: {
     title: 'Sam Herwig | Creative Engineer',
     description: 'I write code that you walk through. Three.js, shaders, and the browser as a canvas.',
     url: 'https://samherwig.dev',
     siteName: 'Sam Herwig',
-    images: [
-      {
-        url: '/og.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Sam Herwig — Creative Engineer portfolio',
-      },
-    ],
     type: 'website',
+    // Image auto-injected by src/app/opengraph-image.tsx
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Sam Herwig | Creative Engineer',
     description: 'I write code that you walk through. Three.js, shaders, and the browser as a canvas.',
-    images: ['/og.jpg'],
+    // Image auto-injected by src/app/opengraph-image.tsx
   },
 };
 

@@ -1,23 +1,20 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence, MotionValue } from 'framer-motion';
+import { motion, useScroll, useTransform, useMotionValue, useSpring, MotionValue } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAppStore } from '@/store/useAppStore';
-import type { ProjectPalette } from '@/data/projects';
 
 interface CaseStudyCardProps {
   title: string;
   subtitle: string;
   slug: string;
   thumbnail?: string;
-  tags?: string[];
   side: 'left' | 'right';
   linkable?: boolean;
   scrollProgress?: MotionValue<number>;
   range?: readonly [number, number, number, number];
-  palette?: ProjectPalette;
 }
 
 function hash(str: string): number {
@@ -31,28 +28,30 @@ export default function CaseStudyCard({
   subtitle,
   slug,
   thumbnail,
-  tags,
   side,
   linkable = true,
   scrollProgress,
   range,
-  palette,
 }: CaseStudyCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isTouch] = useState(() => typeof window !== 'undefined' && 'ontouchstart' in window);
+
+  const rotateXMV = useMotionValue(0);
+  const rotateYMV = useMotionValue(0);
+  const rotateX = useSpring(rotateXMV, { stiffness: 200, damping: 20, mass: 0.6 });
+  const rotateY = useSpring(rotateYMV, { stiffness: 200, damping: 20, mass: 0.6 });
   const setSavedScrollY = useAppStore((s) => s.setSavedScrollY);
   const startTransition = useAppStore((s) => s.startTransition);
   const handleLinkClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       setSavedScrollY(window.scrollY);
-      const accentColor = palette?.accent ?? '#09090b';
-      startTransition({ x: e.clientX, y: e.clientY }, accentColor, `/work/${slug}`);
+      // Always use foreground token — strict monochrome, no per-project accent
+      startTransition({ x: e.clientX, y: e.clientY }, '#18181b', `/work/${slug}`);
     },
-    [setSavedScrollY, startTransition, slug, palette],
+    [setSavedScrollY, startTransition, slug],
   );
 
   // Use global timeline range when provided, fall back to local scroll tracking
@@ -81,9 +80,15 @@ export default function CaseStudyCard({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left - rect.width / 2) / rect.width;
-    const y = (e.clientY - rect.top - rect.height / 2) / rect.height;
-    setMousePos({ x, y });
+    const nx = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
+    const ny = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
+    rotateYMV.set(nx * 4);
+    rotateXMV.set(-ny * 4);
+  };
+
+  const resetTilt = () => {
+    rotateXMV.set(0);
+    rotateYMV.set(0);
   };
 
   const placeholderStyle = {
@@ -96,8 +101,6 @@ export default function CaseStudyCard({
   const cardInner = (
     <motion.div
       ref={cardRef}
-      whileHover={isTouch ? undefined : { y: -8 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       onMouseMove={isTouch ? undefined : handleMouseMove}
       onMouseEnter={isTouch ? undefined : () => setIsHovered(true)}
       onMouseLeave={
@@ -105,41 +108,19 @@ export default function CaseStudyCard({
           ? undefined
           : () => {
               setIsHovered(false);
-              setMousePos({ x: 0, y: 0 });
+              resetTilt();
             }
       }
       style={{
-        boxShadow:
-          isHovered && !isTouch
-            ? `${mousePos.x * -20}px ${mousePos.y * -20}px 40px -10px rgba(0,0,0,0.5)`
-            : '0 20px 40px -10px rgba(0,0,0,0.3)',
-        transition: 'box-shadow 0.3s ease-out, transform 0.3s',
+        rotateX: isTouch ? 0 : rotateX,
+        rotateY: isTouch ? 0 : rotateY,
+        transformPerspective: 1200,
+        boxShadow: isHovered && !isTouch ? '0 28px 60px -12px rgba(0,0,0,0.45)' : '0 20px 40px -10px rgba(0,0,0,0.3)',
+        transition: 'box-shadow 0.3s ease-out',
       }}
-      className="relative p-6 md:p-12 bg-background/93 backdrop-blur-xl rounded-3xl border border-foreground/10 shadow-2xl group cursor-pointer hover:bg-foreground/5 transition-colors duration-500 overflow-hidden"
+      className="relative p-6 md:p-12 bg-background backdrop-blur-[48px] rounded-3xl border border-foreground/10 shadow-2xl group cursor-pointer overflow-hidden will-change-transform"
     >
       <div className="relative z-10 w-full h-full flex flex-col">
-        {/* Gradient border trace on hover */}
-        <AnimatePresence>
-          {isHovered && !isTouch && (
-            <motion.div
-              className="absolute inset-0 rounded-3xl pointer-events-none animate-[border-rotate_3s_linear_infinite]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                background:
-                  'conic-gradient(from var(--angle, 0deg), transparent 60%, rgba(255,255,255,0.15) 80%, transparent 100%)',
-                mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                maskComposite: 'exclude',
-                WebkitMaskComposite: 'xor',
-                padding: '1px',
-                borderRadius: 'inherit',
-              }}
-            />
-          )}
-        </AnimatePresence>
-
         {/* Thumbnail */}
         <div className="aspect-[4/3] w-full bg-foreground/10 rounded-xl mb-6 overflow-hidden relative">
           {thumbnail ? (
@@ -150,9 +131,8 @@ export default function CaseStudyCard({
               className="object-cover"
               loading="lazy"
               style={{
-                objectPosition: isHovered && !isTouch ? `${50 + mousePos.x * 20}% ${50 + mousePos.y * 20}%` : '50% 50%',
-                transition: 'object-position 0.5s ease-out, transform 0.7s ease-out',
-                transform: isHovered && !isTouch ? 'scale(1.08)' : 'scale(1)',
+                transition: 'transform 0.5s ease-out',
+                transform: isHovered && !isTouch ? 'scale(1.04)' : 'scale(1)',
               }}
             />
           ) : (
@@ -163,45 +143,26 @@ export default function CaseStudyCard({
           )}
         </div>
 
-        <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground font-instrument mt-2">{title}</h3>
-        <p className="text-foreground/80 font-medium mt-2 font-inter">{subtitle}</p>
-
-        {/* Tags */}
-        {tags && tags.length > 0 && (
-          <div
-            className={`flex flex-wrap gap-2 mt-4 justify-center relative z-10 font-inter font-bold ${
-              side === 'right' ? 'md:justify-end' : 'md:justify-start'
-            }`}
+        <div
+          className={`flex items-baseline justify-between gap-4 mt-2 ${side === 'right' ? 'md:flex-row-reverse' : ''}`}
+        >
+          <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground font-instrument">{title}</h3>
+          <motion.span
+            aria-hidden
+            initial={false}
+            animate={{
+              x: isHovered && !isTouch ? 0 : side === 'left' ? -6 : 6,
+              opacity: isHovered && !isTouch ? 1 : 0.35,
+            }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="shrink-0 font-mono text-sm uppercase tracking-[0.25em] text-foreground/70"
           >
-            {isTouch ? (
-              // Always visible on touch devices
-              tags.slice(0, 4).map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] uppercase tracking-widest text-stone-200 drop-shadow-md font-bold"
-                >
-                  {tag}
-                </span>
-              ))
-            ) : (
-              <AnimatePresence>
-                {isHovered &&
-                  tags.slice(0, 4).map((tag, i) => (
-                    <motion.span
-                      key={tag}
-                      initial={{ opacity: 0, x: side === 'left' ? -10 : 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ delay: i * 0.05, duration: 0.2 }}
-                      className="text-[10px] uppercase tracking-widest text-stone-200 drop-shadow-md font-bold"
-                    >
-                      {tag}
-                    </motion.span>
-                  ))}
-              </AnimatePresence>
-            )}
-          </div>
-        )}
+            {side === 'left' ? '→' : '←'}
+          </motion.span>
+        </div>
+        <p className={`text-foreground/80 font-medium mt-2 font-inter ${side === 'right' ? 'text-right' : ''}`}>
+          {subtitle}
+        </p>
       </div>
     </motion.div>
   );

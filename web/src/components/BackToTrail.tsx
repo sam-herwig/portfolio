@@ -21,12 +21,12 @@ export default function BackToTrail() {
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
-      className="fixed top-6 left-6 z-50"
+      className="fixed top-4 left-4 z-50 md:top-6 md:left-6"
     >
       <Link
         href="/"
         onClick={handleClick}
-        className="group inline-flex items-center gap-2 text-sm font-mono uppercase tracking-widest text-foreground/50 hover:text-foreground transition-colors"
+        className="group inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-background/80 px-4 py-2 text-xs font-mono uppercase tracking-widest text-foreground/60 shadow-[0_6px_20px_-8px_rgba(0,0,0,0.25)] backdrop-blur-md transition-colors hover:text-foreground md:px-5 md:py-2.5 md:text-sm"
       >
         <span className="inline-block transition-transform duration-300 group-hover:-translate-x-1">←</span>
         Back to Trail
