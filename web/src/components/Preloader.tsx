@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DefaultLoadingManager } from 'three';
 import { useAppStore } from '@/store/useAppStore';
 
 const milestones = [
@@ -25,33 +24,41 @@ export default function Preloader() {
     }
   }, []);
 
-  // Wire DefaultLoadingManager for real asset progress
+  // Wire DefaultLoadingManager for real asset progress.
+  // Lazy-import three so it stays in the UnifiedScene chunk instead of the main bundle.
   useEffect(() => {
-    const manager = DefaultLoadingManager;
+    let cancelled = false;
 
-    manager.onStart = () => {
-      // total tracked via onProgress
-    };
+    import('three').then(({ DefaultLoadingManager: manager }) => {
+      if (cancelled) return;
 
-    manager.onProgress = (_url: string, itemsLoaded: number, itemsTotal: number) => {
-      if (itemsTotal > 0) {
-        setLoadProgress(itemsLoaded / itemsTotal);
-      }
-    };
+      manager.onStart = () => {
+        // total tracked via onProgress
+      };
 
-    manager.onLoad = () => {
-      setLoadProgress(1);
-      setTimeout(() => {
-        useAppStore.getState().setHasLoaded(true);
-      }, 800);
-    };
+      manager.onProgress = (_url: string, itemsLoaded: number, itemsTotal: number) => {
+        if (itemsTotal > 0) {
+          setLoadProgress(itemsLoaded / itemsTotal);
+        }
+      };
+
+      manager.onLoad = () => {
+        setLoadProgress(1);
+        setTimeout(() => {
+          useAppStore.getState().setHasLoaded(true);
+        }, 800);
+      };
+    });
 
     // Safety timeout: if loading takes >15s, force complete
     const timeout = setTimeout(() => {
       useAppStore.getState().setHasLoaded(true);
     }, 15000);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
   }, []);
 
   return (

@@ -646,3 +646,242 @@ Target: ship samherwig.dev to production via Netlify today, AWWWARDS-submittable
   - Frieze title container gets `ml-6 mr-6 md:ml-20 md:mr-20` and `text-2xl md:text-3xl` so it doesn't clip at mobile.
   - `StationBreak` decorative Roman numeral dropped to `text-[6rem] text-foreground/[0.05]` at mobile (was 10rem/0.08) so it stops competing with the station label; inner div ml trimmed to `ml-2 md:ml-20`.
   - CK pipeline: moved "Interactive Specimen — The Pipeline" header *inside* the sticky `PipelineFrame` container so it can't collide with the first agent pill during sticky-engagement timing.
+
+---
+
+## Phase 8: Awwwards / award-site readiness (2026-04-19)
+
+Research punch list synthesized from four parallel agents (Awwwards process,
+other award sites, technical readiness, winning portfolio patterns).
+
+### Audit — already in place
+- ✅ Favicon suite (svg, ico, 96, apple-touch, 192/512, manifest)
+- ✅ Dynamic OG image via `app/opengraph-image.tsx` at 1200×630
+- ✅ Title, description, OG, Twitter meta in `layout.tsx`
+- ✅ `metadataBase` set to https://samherwig.dev
+- ✅ Theme color + manifest with theme/background_color
+- ✅ Skip-to-content link → `#main-content` target exists in `HomeClient.tsx:225`
+- ✅ `netlify.toml` security headers: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+- ✅ Static `robots.txt` + `sitemap.xml` listing all 5 routes
+- ✅ Reduced-motion handling already wired in InkWashTransition + station atmosphere
+- ✅ WebGL fallback via `useWebGLSupport.ts`
+- ✅ Custom 404? → check (Next default acceptable but on-brand is better)
+
+### A. Technical readiness (low-risk, additive — execute now)
+
+- [ ] A1. Add JSON-LD `Person` schema in `layout.tsx` `<head>` (name, jobTitle, url, sameAs links, image)
+- [ ] A2. Add `viewport-fit=cover` to viewport meta for iOS safe-area-insets
+- [ ] A3. Dual `themeColor` (light/dark via media query) — currently only `#f5f5f4`
+- [ ] A4. Explicit `og:image` width/height (1200×630) + `twitter:image` URL fallback
+- [ ] A5. Add `Strict-Transport-Security` HSTS header to `netlify.toml` (max-age=63072000; includeSubDomains; preload)
+- [ ] A6. Add baseline CSP in netlify.toml (report-only first if risky)
+- [ ] A7. Run `npm run guardrails` after each batch
+
+### B. Strategic content / craft (needs user direction)
+
+- [ ] B1. Custom on-brand `app/not-found.tsx` 404 page
+- [ ] B2. One case study taken to "deep" tier (current depth varies — pick CK or NB to anchor)
+- [ ] B3. Sound toggle? Ambient wind layer with default-off persistent toggle. Half of recent SOTD winners ship audio.
+- [ ] B4. Trail metaphor in cursor idle state (compass / trail marker echo)
+- [ ] B5. Clarity audit on metaphor → does a first-time visitor catch "Trailhead/Ascent/Ridge/Summit/Descent" without prompting?
+- [ ] B6. Personal vs studio framing — confirm portfolio leads "Sam, creative engineer"; CraftedKit demoted to one-line credential
+
+### C. Submission queue (after launch + polish week)
+
+**Free tier (Week 1, low effort):**
+- [ ] C1. SiteInspire — siteinspire.com/contact
+- [ ] C2. The Brand Identity — the-brandidentity.com/submit
+- [ ] C3. Httpster — httpster.net (footer link)
+- [ ] C4. Land-book — land-book.com/submit
+- [ ] C5. Best Website Gallery — bestwebsite.gallery/submit
+- [ ] C6. Lapa Ninja — lapa.ninja/submit (optional)
+
+**Paid tier (Week 2, high-fit):**
+- [ ] C7. **FWA of the Day** (~$80) — thefwa.com/submit. Highest-fit award for WebGL/R3F portfolios; best technical-excellence audience.
+- [ ] C8. **CSSDA WOTD** (~$95) — cssdesignawards.com/submit-your-site
+- [ ] C9. **Awwwards SOTD** ($65 standard or $165 Pro). Submit Tue–Thu mid-month. Buy Pro for 30% off + Pro vote weight + auto Dev Award routing.
+  - Hard requirements: 1600×1200 px main thumbnail; live URL; tags; credits; project description.
+  - SOTD eligible 3 months post-approval — submit when fully polished, not at first deploy.
+  - Mobile Excellence: separate panel, target Lighthouse Mobile ≥ 75 across all 4 axes.
+- [ ] C10. One Page Love free tier — onepagelove.com/submit
+- [ ] C11. Communication Arts Interactive (~$55) if annual deadline aligns
+
+**Skip / defer:** Webby ($325–$700+, agency-skewed), D&AD (£250+, campaign-skewed), TDC (type-only), Mindsparkle, Muzli.
+
+### D. Pre-submission verification (right before pressing submit)
+
+- [ ] D1. PageSpeed Insights mobile + desktop — Performance ≥ 90 mobile, ≥ 95 desktop; LCP < 2.5s; CLS < 0.1; INP < 200ms
+- [ ] D2. Lighthouse Accessibility ≥ 95
+- [ ] D3. Test on real iOS Safari + Android Chrome (BrowserStack acceptable)
+- [ ] D4. Zero `console.error` / `console.warn` on load any route
+- [ ] D5. axe DevTools scan: zero violations
+- [ ] D6. Validate OG image at opengraph.xyz, LinkedIn Post Inspector, X Card Validator
+- [ ] D7. securityheaders.com → target A grade
+- [ ] D8. ssllabs.com SSL test → A or A+
+- [ ] D9. Search Console rich results test on the homepage
+- [ ] D10. Click every link end-to-end; no 404s, no `href="#"`, no broken video sources
+- [ ] D11. Test forced dark mode (macOS + iOS) — confirm dual theme-color works
+- [ ] D12. Spelling/typo pass — Grammarly + manual read of every case study
+
+### Strategic notes
+
+- **Awwwards scoring weights:** Design 40 / Usability 30 / Creativity 20 / Content 10. Min jury 18 voters, 3 furthest from average dropped. Honorable Mention ≥ 6.5; SOTD effectively ≥ 8.0.
+- **Developer Award:** auto-routed from SOTD; score > 7 wins. Rewards clean semantic markup, accessibility, novel implementation.
+- **What recurs in 2024–25 winners:** custom cursor, scroll-driven WebGL hero, GSAP/Lenis smooth-scroll, view transitions, large display type, one signature technical moment. Sound in ~50%. Dark mode near-universal.
+- **What docks scores:** mobile as afterthought (#1), Safari rendering bugs, no clear contact CTA, thin case studies, dated typography, missing reduced-motion.
+- **Trends to ride:** view transitions API, ink/paper/print-craft aesthetics (we're here), monochrome with one accent, GPGPU particle hero, editorial typography.
+- **Trends fatigued:** glassmorphism, aurora gradient mesh, generic Lenis with no other interaction, oversized Söhne/Inter as the entire design, AI hero imagery, bento grids.
+
+---
+
+# Phase 7: Whimsy System — Compass Rework + Easter Egg Hunt
+
+Kill the passive idle compass; rebuild it as an egg-spotter cursor. Seed 6 in-world
+easter eggs across the homepage + case study pages, plus 1 hidden page and 1
+fourth-wall final reward. Everything triggers by clicking the highlighted surface
+(uniform input, varied content). Compass points at the nearest egg in viewport
+and pulses; finding an egg checks it off the notebook.
+
+## Grilled decisions (locked)
+
+- **Compass role:** Spotter, not key. Points + pulses when egg is within ~300px in viewport; click the *surface* (not the compass) to fire.
+- **Trigger uniformity:** All eggs fire via click. Content varies, input doesn't. (Exception: the Notebook's `]` keyboard reopen — only *after* first unlock.)
+- **Tone:** In-world trail metaphor for 7 of 8 eggs. One fourth-wall final reward (Ranger's Notebook) breaks the wall deliberately as the last unlock.
+- **Payoff envelope:** 6 micros (4–6s flourishes), 1 hidden page (`/cairn`), 1 fourth-wall page (`/notebook`).
+- **Contrast:** Real luminance detection under cursor → flip compass black/white. No mix-blend-difference.
+- **Mobile/touch:** No cursor, so zone-entry glow briefly highlights tappable egg surfaces when a new zone becomes active. Same content, different affordance.
+- **State:** localStorage tracks found eggs. `?reset` clears. Notebook shows collected checkmarks + case study stamps.
+- **Build order:** Compass system first (infrastructure) → zone-entry touch glow → 4 homepage micros in parallel → 2 case study micros → `/cairn` hidden page → `/notebook` fourth-wall.
+
+## The 8 eggs
+
+| # | Name                 | Location              | Trigger surface                           | Payoff (2–4s)                                                                                  |
+|---|----------------------|-----------------------|-------------------------------------------|------------------------------------------------------------------------------------------------|
+| 1 | Trailhead Stamp      | Hero                  | Hero headline's first letter (monogrammed)| SVG ink-stamp thuds in behind letter + soft wood-block thunk on `hero-breeze` bus              |
+| 2 | Owl Blink            | Forest                | Hidden SVG owl in a Forest card corner    | Eyelids blink, head tilts 15°, barely-audible hoot on `forest-canopy` channel                   |
+| 3 | Ember Pop            | Camp                  | Fire hotspot on Camp video poster         | 6–8 CSS/SVG embers rise with flicker keyframes; `camp-fire` ducks for crackle sample            |
+| 4 | Pennant Snap         | Summit                | Summit flag/pennant SVG                   | Flag snaps taut in GSAP stagger-ripple, `alpine-wind` boosts briefly, settles slower loop       |
+| 5 | Trail Station Stamp  | Every case study page | Ranger-station stamp SVG in page margin   | Unique stamp design per project thuds in — collected in Notebook like passport stamps           |
+| 6 | Margin Note          | Case study pages      | Hand-drawn marginalia note with arrow     | Uncrumples from folded paper → reveals 1-line behind-the-scenes aside; re-crumples in 5s        |
+| 7 | `/cairn` hidden page | Alpine + route        | Cairn decoration in Alpine (3 clicks)     | Navigate to `/cairn`: paper trail register, localStorage visitor stamps, "leave a mark" button  |
+| 8 | Ranger's Notebook    | `/notebook` route     | Auto-unlocks after 1–7; `]` key reopens   | Field journal overlay: hunt checkboxes, SVG-drawn thank-you, ASCII topo map, dev credits        |
+
+## A. Compass rework (infrastructure)
+
+- [x] A1. `src/lib/eggs/eggRegistry.ts` — typed registry of egg targets (id, zone, surface selector or scene coord, bounds getter, label)
+- [x] A2. `src/lib/eggs/useFoundEggs.ts` — Zustand store + localStorage persistence; `markFound(id)`, `reset()`, `foundCount`
+- [x] A3. `src/components/CustomCursor.tsx` — remove idle-state compass; replace with spotter logic (nearest-egg distance calc in rAF loop, bearing to target, opacity by range)
+- [x] A4. Contrast detection — sample background luminance under cursor (canvas readback or computed body bg per zone) → flip needle fill black/white
+- [x] A5. Pulse animation — gentle 2s scale breathing when target is in range, stop when no target or target is found
+- [x] A6. Check-mark state — when hovering a found egg's surface, replace bearing with a subtle ✓ icon
+- [x] A7. Respect `prefers-reduced-motion` (no pulse, just bearing)
+- [x] A8. Dev query param `?reset` clears found-eggs store on mount
+
+## B. Touch/mobile affordance
+
+- [x] B1. `src/components/eggs/ZoneEntryGlow.tsx` — on zone become active, briefly glow tappable egg surfaces in that zone (~1.2s, fades)
+- [x] B2. Detect touch via `(hover: none)` media query; only mount on touch devices
+- [x] B3. Once a zone's eggs are all found, no glow on re-entry
+
+## C. Homepage micros (4 eggs, parallel)
+
+- [x] C1. **Trailhead Stamp (Hero)** — monogrammed first letter in Hero headline, click → inline SVG ink-stamp dissolves in behind letter, audio stinger on hero-breeze bus, marks egg 1
+- [x] C2. **Owl Blink (Forest)** — hidden SVG owl placed in a Forest card corner, click → eyelid-blink animation + head tilt 15°, hoot audio on forest-canopy, marks egg 2
+- [x] C3. **Ember Pop (Camp)** — interactive hotspot over Camp video's fire region, click → CSS/SVG ember particles rise, camp-fire ducks briefly for crackle, marks egg 3
+- [x] C4. **Pennant Snap (Summit)** — clickable pennant SVG in SummitModule, click → GSAP stagger-ripple snap, alpine-wind audio boost, marks egg 4
+
+## D. Case study page micros (2 eggs)
+
+- [x] D1. **Trail Station Stamp** — component mounted on every case study page, unique stamp design per project slug (NB, CK, MB, CC), click → ink-stamp impression animation, marks egg 5 + adds project-specific stamp to notebook
+- [x] D2. **Margin Note** — one per case study page, hand-drawn marginalia SVG with arrow pointing at a media block, click → uncrumples to reveal 1-line aside from Sam, re-crumples in 5s, marks egg 6
+
+## E. Hidden page (`/cairn`)
+
+- [x] E1. Cairn decoration sprite in Alpine scene (subtle, low-opacity SVG overlay); 3-click counter lives in its own state
+- [x] E2. On 3rd click: InkWash transition → navigate to `/cairn`
+- [x] E3. `src/app/cairn/page.tsx` — field-journal layout, WoodcutMaterial paper background, visitor register (localStorage), "leave a mark" ink-stamp monogram button
+- [x] E4. Back-link styled as trail marker returning to `/`
+- [x] E5. Visit marks egg 7
+
+## F. Fourth-wall final (`/notebook`)
+
+- [x] F1. `src/app/notebook/page.tsx` — field-journal overlay layout, paper texture, stitched binding SVG
+- [x] F2. Hunt checklist section — hand-ticked checkboxes for eggs 1–7, ink-drawn as they complete
+- [x] F3. Case study stamps panel — shows collected stamps from egg 5
+- [x] F4. Handwritten thank-you note from Sam (SVG path stroke-dash draw-on)
+- [x] F5. ASCII topographic map of the site (static `<pre>` block)
+- [x] F6. Dev credits footnote — the actual fourth-wall moment
+- [x] F7. Keyboard listener for `]` to reopen from any page (only active after all 7 found)
+- [x] F8. Visit marks egg 8 (self-referential — finishes the hunt)
+
+## G. QA + polish
+
+- [x] G2. All audio stingers respect AudioToggle mute state *(`boostSection` early-returns when disabled)*
+- [x] G3. Reduced-motion mode: eggs still fire, payoffs shortened/static *(compass + handwriting + all 6 egg payoffs now gated on `useReducedMotion`)*
+- [x] G5. Cold-cache pass: compass never flashes wrong color on first paint *(initial luminance sample defaults to light-bg → dark needle)*
+- [x] G6. Check all 4 case study pages have Trail Station Stamp + Margin Note placed without disrupting content flow *(fixed bottom-right collision: TrailStationStamp now `md:bottom-24` so TrailCounter "07 / 24" index stays visible)*
+- [x] G7. Dark-mode pass on `/cairn` and `/notebook` — **N/A**: `globals.css` has no `prefers-color-scheme` block and no `.dark` class; `--color-*-dark` tokens exist but are never applied. Site is permanently light. Only the browser chrome `theme-color` meta tag differs between schemes.
+- [~] G8. Lighthouse — not run (CLI not installed; needs user browser run). Build is clean: 11 static routes, largest chunk 530 KB (three.js, pre-eggs), egg components add negligible JS (inline SVG + small framer-motion payloads reusing existing zustand store).
+- [ ] G1. 60fps budget across all eggs *(still needs real playthrough — spotter samples luminance every 6 frames, but per-frame `document.elementFromPoint` + `getBoundingClientRect` × 8 eggs is the risk)*
+- [ ] G4. Mobile pass: ZoneEntryGlow timing, 44px tap targets *(still needs device QA — egg buttons are h-14/w-14 (56px) on case study, h-11/w-11 (44px) on HeroEgg so they meet WCAG min)*
+
+## Open risks
+
+- **Compass contrast detection cost** — if luminance sampling per-frame is expensive, fall back to per-zone theme token lookup.
+- **Case study egg placement** — each slug has different hero compositions; Margin Note anchor point may need to be per-project.
+- **Notebook progress display** — keeping it honest when eggs are found out of order requires the registry to enforce id stability.
+- **Alpine cairn discoverability** — 3-click hidden trigger may be too obscure; if playtest shows nobody finds it, lower to 1 click.
+
+## Review — Phase 7 build (2026-04-20)
+
+**What shipped:**
+
+- `src/lib/eggs/eggRegistry.ts` + `useFoundEggs.ts` — 8-egg registry + persisted Zustand store (localStorage `found-eggs:v1`)
+- `src/components/CustomCursor.tsx` — rebuilt as spotter: nearest-egg bearing within 300px, 2s pulse, real-luminance contrast flip, ✓ on found-hover, `?reset` clears store
+- `src/lib/audio/audioManager.ts` — added `boostSection()` for egg stingers (brief gain bump on the ambient track)
+- `src/components/eggs/*` — 8 components:
+  - `HeroEgg` (monogrammed corner button in hero panel → fullscreen stamp reveal)
+  - `ForestEgg` (owl SVG, fixed bottom-right, eyes blink 2x + "hoo." whisper)
+  - `CampEgg` (small flame, fixed bottom-center, 7-ember burst on click)
+  - `SummitEgg` (pennant SVG, fixed top-left, 5-segment stagger-snap)
+  - `AlpineCairnEgg` (3-click stacked-stones, top stone falls + ink-wash nav to `/cairn`)
+  - `TrailStationStamp` (per-slug WebP, fixed corner on case study pages, stamp-thud overlay)
+  - `MarginNote` (folded-paper icon on case studies, unfolds to behind-the-scenes aside for 5s)
+  - `ZoneEntryGlow` (touch-only amber pulse around unfound eggs when zone becomes active)
+  - `NotebookReopener` (global `]` keyboard listener — only active after 7 eggs found)
+- `src/app/cairn/page.tsx` — field journal with shared visitor register (localStorage, 40 entries, 3-letter initials)
+- `src/app/notebook/page.tsx` — hunt checklist, station stamp gallery, stroke-animated thank-you, ASCII map, dev credits
+- `web/public/` — all 15 final assets in place (7 SVG + 8 WebP)
+
+**Wiring:**
+
+- Homepage — Hero/Forest/Camp/Summit/Alpine eggs + ZoneEntryGlow mounted in `HomeClient.tsx`, scroll-gated via `MODULE_TIMELINE`
+- Case studies — TrailStationStamp + MarginNote mounted in `CaseStudyContent.tsx`
+- Layout — NotebookReopener mounted globally in `layout.tsx`
+
+**What's honestly green:**
+
+- `npm run guardrails` passes (format, lint, typecheck, asset check, build)
+- All 5 routes return 200 w/ no error markers in rendered HTML (homepage, /cairn, /notebook, /work/new-belgium, /work/craftedkit)
+- Static generation for /cairn and /notebook succeeds
+
+**What I haven't verified (user QA):**
+
+- 60fps playthrough (the spotter luminance sample every 6 frames is conservative but untested)
+- Reduced-motion — compass pulse + handwriting draw respect the token; per-egg payoff animations don't yet
+- Mobile/touch — ZoneEntryGlow logic is built but hasn't touched a real device
+- Visual polish on `/cairn` + `/notebook` in dark mode
+- The chemex stamp (CC) rope detail may read oddly at 64px thumbnail size in the notebook
+
+**Known rough edges to look at:**
+
+- All 4 module eggs use `fixed` positioning with scroll-gated opacity. They don't collide visually (only one zone active at a time) but on device rotation or resize they may briefly overlap the AudioToggle or ScrollHint.
+- `AlpineCairnEgg` uses `useAppStore.startTransition` + `setTimeout(500ms) → router.push('/cairn')`. If the ink-wash duration drifts, the page-change could outrun the visual transition.
+- The `MarginNote` unfolded-paper WebP is 655 KB. If it feels heavy on first reveal, re-encode at q=80 and/or cap width to 1200px.
+
+**Autonomous polish pass (post-handoff):**
+
+- `margin-note-unfolded.webp`: 655 KB → 74 KB (1200px @ q=78). Visually identical at display size.
+- `trail-station-cc.webp`: 481 KB → 91 KB (1200px @ q=85). Chemex detail retained.
+- Reduced-motion gating added to HeroEgg / ForestEgg / CampEgg / SummitEgg / TrailStationStamp payoffs — each now short-circuits to a brief opacity-only reveal when `useReducedMotion` returns true. AlpineCairnEgg intentionally keeps its 3-click → stone-fall since that IS the UX.
+- `setTimeout` cleanup refs added to HeroEgg, ForestEgg, TrailStationStamp to avoid state updates on unmount.

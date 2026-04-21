@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Instrument_Serif } from 'next/font/google';
 import './globals.css';
 import InkWashTransition from '@/components/InkWashTransition';
+import AudioToggle from '@/components/AudioToggle';
+import CustomCursor from '@/components/CustomCursor';
+import NotebookReopener from '@/components/eggs/NotebookReopener';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -35,18 +38,51 @@ export const metadata: Metadata = {
     url: 'https://samherwig.dev',
     siteName: 'Sam Herwig',
     type: 'website',
-    // Image auto-injected by src/app/opengraph-image.tsx
+    locale: 'en_US',
+    // Image auto-injected by src/app/opengraph-image.tsx (1200×630)
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Sam Herwig | Creative Engineer',
     description: 'I write code that you walk through. Three.js, shaders, and the browser as a canvas.',
-    // Image auto-injected by src/app/opengraph-image.tsx
+    creator: '@samherwig',
+    // Image auto-injected by src/app/opengraph-image.tsx (1200×630)
   },
+  authors: [{ name: 'Sam Herwig', url: 'https://samherwig.dev' }],
+  creator: 'Sam Herwig',
+  category: 'portfolio',
 };
 
 export const viewport: Viewport = {
-  themeColor: '#f5f5f4',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f9fafb' },
+    { media: '(prefers-color-scheme: dark)', color: '#18181b' },
+  ],
+};
+
+const personJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Sam Herwig',
+  url: 'https://samherwig.dev',
+  jobTitle: 'Creative Engineer',
+  description: 'Creative engineer building scroll-driven WebGL experiences in Three.js and shaders.',
+  image: 'https://samherwig.dev/opengraph-image',
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Denver',
+    addressRegion: 'CO',
+    addressCountry: 'US',
+  },
+  knowsAbout: ['Three.js', 'WebGL', 'GLSL', 'React', 'Next.js', 'Creative coding', 'Shader development'],
+  worksFor: {
+    '@type': 'Organization',
+    name: 'CraftedKit',
+    url: 'https://craftedkit.io',
+  },
 };
 
 export default function RootLayout({
@@ -56,6 +92,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
+      </head>
       <body
         className={`${inter.variable} ${instrumentSerif.variable} antialiased transition-colors duration-1000 bg-background text-foreground font-inter`}
       >
@@ -67,6 +106,9 @@ export default function RootLayout({
         </a>
         {children}
         <InkWashTransition />
+        <AudioToggle />
+        <CustomCursor />
+        <NotebookReopener />
       </body>
     </html>
   );

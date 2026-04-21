@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 64" id="embers-a" role="img" aria-label="Camp embers set, classical variant">
+  <title>Camp Embers — Variant A (Classical, 8 teardrop shapes)</title>
+  <g fill="currentColor" color="#18181b">
+    
+    <g id="ember-01">
+      <path d="M 16 50 C 10 46, 10 36, 14 28 C 16 22, 14 16, 16 12 C 18 16, 20 22, 22 28 C 26 36, 22 46, 16 50 Z"></path>
+      <circle cx="16" cy="36" r="1.4" fill="#f4efe4"></circle>
+    </g>
+    <g id="ember-02">
+      <path d="M 48 52 C 40 50, 40 42, 44 36 C 46 30, 48 28, 48 22 C 50 28, 52 32, 54 36 C 56 42, 54 50, 48 52 Z"></path>
+      <circle cx="48" cy="42" r="1.2" fill="#f4efe4"></circle>
+      <circle cx="48" cy="47" r="0.8" fill="#f4efe4"></circle>
+    </g>
+    <g id="ember-03">
+      <path d="M 80 52 C 74 48, 74 40, 78 34 C 82 28, 78 20, 82 14 C 84 18, 88 24, 86 32 C 88 40, 86 50, 80 52 Z"></path>
+      <ellipse cx="82" cy="38" rx="1" ry="2" fill="#f4efe4"></ellipse>
+    </g>
+    <g id="ember-04">
+      <path d="M 112 52 C 108 48, 106 40, 110 34 C 112 30, 110 24, 112 18 C 114 22, 116 26, 116 30 C 118 26, 118 22, 120 18 C 122 26, 120 32, 120 38 C 120 46, 116 52, 112 52 Z"></path>
+    </g>
+    <g id="ember-05">
+      <path d="M 144 54 C 136 50, 134 40, 140 32 C 144 26, 142 18, 146 14 C 150 20, 152 28, 152 36 C 152 46, 150 54, 144 54 Z"></path>
+      <path d="M 144 40 L 146 44 L 142 44 Z" fill="#f4efe4"></path>
+    </g>
+    <g id="ember-06">
+      <path d="M 176 52 C 172 48, 172 40, 174 32 C 176 24, 174 16, 176 8 C 178 16, 180 24, 180 32 C 180 40, 180 48, 176 52 Z"></path>
+    </g>
+    <g id="ember-07">
+      <path d="M 206 52 C 200 48, 200 40, 206 34 C 212 28, 208 20, 214 16 C 214 22, 216 28, 214 34 C 214 42, 212 52, 206 52 Z"></path>
+      <circle cx="208" cy="40" r="1" fill="#f4efe4"></circle>
+    </g>
+    <g id="ember-08">
+      <path d="M 240 52 C 234 50, 232 44, 236 40&#xA;               C 234 36, 236 30, 240 28&#xA;               C 244 30, 246 36, 244 40&#xA;               C 248 44, 246 50, 240 52 Z"></path>
+      <path d="M 240 20 C 238 24, 240 28, 244 28" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+    </g>
+  </g>
+</svg>

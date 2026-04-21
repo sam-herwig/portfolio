@@ -13,6 +13,13 @@ import { useAppStore } from '@/store/useAppStore';
 import { Project } from '@/data/projects';
 import { MODULE_TIMELINE, moduleRange, sceneChildRanges } from '@/lib/moduleTimeline';
 import { isTimelineDebugEnabled, tickTimelineDebug, dumpTimeline, destroyTimelineDebug } from '@/lib/timelineDebug';
+import { useAudioMix } from '@/lib/audio/useAudioMix';
+import HeroEgg from '@/components/eggs/HeroEgg';
+import ForestEgg from '@/components/eggs/ForestEgg';
+import CampEgg from '@/components/eggs/CampEgg';
+import SummitEgg from '@/components/eggs/SummitEgg';
+import AlpineCairnEgg from '@/components/eggs/AlpineCairnEgg';
+import ZoneEntryGlow from '@/components/eggs/ZoneEntryGlow';
 
 // Single unified Canvas — avoids 5x WebGL context overhead
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
@@ -114,6 +121,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   // Global Scroll Tracker — single source for the unified module timeline [0.0 – 1.0]
   const { scrollYProgress } = useScroll();
 
+  // Section-tied ambient audio mix — gated by the global toggle (default off)
+  useAudioMix(scrollYProgress);
+
   // Use raw scroll progress for all content transforms.
   // (useSpring was removed — its overdamped lag caused cards to be invisible
   // during real-time scrolling because CSS sticky exits before the spring settles.)
@@ -191,7 +201,8 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
       style={{ backgroundColor, color }}
       className="relative min-h-screen w-full overflow-x-clip transition-colors duration-100"
     >
-      {/* Custom cursor removed — native cursor is cleaner */}
+      {/* Zone-entry glow pings tappable eggs when entering a new section (touch only) */}
+      <ZoneEntryGlow scrollProgress={scrollYProgress} />
 
       {/* Preloader — overlays everything until assets are loaded */}
       <Preloader />
@@ -233,6 +244,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           <div className="sticky top-0 flex min-h-screen items-center px-4 pb-24 pt-28 md:px-8 lg:px-12">
             <motion.div style={{ opacity: heroOpacity, y: heroY }} className="w-full">
               <GlassPanel className="mx-auto max-w-3xl p-7 md:mx-0 md:ml-[8vw] md:p-10 lg:p-12">
+                <HeroEgg />
                 <Image
                   src="/logo-mark.svg"
                   alt=""
@@ -298,6 +310,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
                   scrollProgress={scrollYProgress}
                 />
               ))}
+              <ForestEgg scrollProgress={scrollYProgress} />
             </div>
           </div>
         </section>
@@ -312,6 +325,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
         >
           <h2 className="sr-only">Technical Skills</h2>
           <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-12">
+            <CampEgg scrollProgress={scrollYProgress} />
             <motion.div
               data-camp-content
               style={{ opacity: campContentOpacity }}
@@ -337,6 +351,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
         >
           <h2 className="sr-only">Selected Work</h2>
           <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-12 lg:px-16">
+            <AlpineCairnEgg scrollProgress={scrollYProgress} />
             <div className="relative mx-auto w-full max-w-7xl min-h-[70vh]">
               {caseStudies.map((cs, i) => (
                 <CaseStudyCard
@@ -364,6 +379,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           className="relative min-h-[230vh] md:min-h-[300vh] w-full"
         >
           <div className="sticky top-0 flex min-h-screen flex-col items-center justify-center px-4 text-center z-20 pointer-events-auto">
+            <SummitEgg scrollProgress={scrollYProgress} />
             <motion.div
               style={{
                 opacity: summitOpacity,

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 140" id="marker-b" role="img" aria-label="Back-to-trail wooden sign marker, minimalist variant">
+  <title>Back-to-Trail Marker — Variant B (Minimalist)</title>
+  
+  <g fill="currentColor" color="#18181b">
+
+    
+    <path d="M 40 128 L 240 128" stroke="currentColor" stroke-width="1.6" fill="none"></path>
+    <path d="M 118 128 L 114 134 M 162 128 L 166 134" stroke="currentColor" stroke-width="1.2" fill="none"></path>
+
+    
+    <path d="M 132 98 L 148 98 L 148 128 L 132 128 Z"></path>
+
+    
+    <path d="M 130 94 L 134 94 L 134 102 L 130 102 Z" fill="none" stroke="currentColor" stroke-width="1.4"></path>
+    <path d="M 146 94 L 150 94 L 150 102 L 146 102 Z" fill="none" stroke="currentColor" stroke-width="1.4"></path>
+
+    
+    <path d="M 30 20 L 250 20 L 250 98 L 30 98 Z" fill="none" stroke="currentColor" stroke-width="2.4"></path>
+
+    
+    <path d="M 42 32 L 238 32 L 238 86 L 42 86 Z" fill="none" stroke="currentColor" stroke-width="1"></path>
+
+    
+    <g>
+      
+      <path d="M 56 59 L 78 43 L 78 75 Z"></path>
+      
+      <path d="M 74 53 L 170 53 L 170 65 L 74 65 Z"></path>
+    </g>
+
+    
+    <g transform="translate(198 42)">
+      <path d="M 0 0 L 28 0 L 28 10 L 0 10 Z" fill="none" stroke="currentColor" stroke-width="1.4"></path>
+      <path d="M 0 16 L 28 16 L 28 26 L 0 26 Z"></path>
+    </g>
+
+    
+    <circle cx="132" cy="98" r="1.4"></circle>
+    <circle cx="148" cy="98" r="1.4"></circle>
+
+    
+    <circle cx="36" cy="26" r="1"></circle>
+    <circle cx="244" cy="26" r="1"></circle>
+    <circle cx="36" cy="92" r="1"></circle>
+    <circle cx="244" cy="92" r="1"></circle>
+  </g>
+</svg>

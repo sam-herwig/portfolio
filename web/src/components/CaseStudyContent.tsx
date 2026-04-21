@@ -10,6 +10,8 @@ import TrailSpine from '@/components/TrailSpine';
 import TrailCounter from '@/components/TrailCounter';
 import NewBelgiumSpotlight from '@/components/spotlights/NewBelgiumSpotlight';
 import CraftedKitPipelineSpotlight from '@/components/spotlights/CraftedKitPipelineSpotlight';
+import TrailStationStamp from '@/components/eggs/TrailStationStamp';
+import MarginNote from '@/components/eggs/MarginNote';
 import { INK_WASH_HORIZONTAL_SRC } from '@/lib/specimenCatalog';
 
 interface AdjacentStudy {
@@ -637,6 +639,10 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
 
   return (
     <article ref={articleRef} className="w-full">
+      {/* Trail eggs — floating margin UI, persistent per case study */}
+      <TrailStationStamp slug={project.slug} />
+      <MarginNote slug={project.slug} />
+
       {/* Hero spacer — CaseStudyScene owns the actual hero moment */}
       <div className="h-screen" aria-hidden="true" />
 

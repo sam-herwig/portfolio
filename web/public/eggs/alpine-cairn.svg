@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 120" id="cairn-a" role="img" aria-label="Alpine cairn, classical variant">
+  <title>Alpine Cairn — Variant A (Classical, 5 stones)</title>
+  <defs>
+    <mask id="cairn-a-carve" maskUnits="userSpaceOnUse" x="0" y="0" width="80" height="120">
+      <rect width="80" height="120" fill="#fff"></rect>
+      
+      <g fill="#000">
+        <circle cx="22" cy="108" r="0.8"></circle><circle cx="30" cy="110" r="0.7"></circle>
+        <circle cx="44" cy="106" r="0.9"></circle><circle cx="56" cy="112" r="0.8"></circle>
+        <circle cx="36" cy="110" r="0.6"></circle>
+        <circle cx="24" cy="92" r="0.7"></circle><circle cx="34" cy="94" r="0.8"></circle>
+        <circle cx="48" cy="90" r="0.6"></circle><circle cx="56" cy="96" r="0.7"></circle>
+        <circle cx="28" cy="76" r="0.6"></circle><circle cx="42" cy="74" r="0.8"></circle>
+        <circle cx="52" cy="76" r="0.7"></circle>
+        <circle cx="32" cy="60" r="0.7"></circle><circle cx="44" cy="62" r="0.6"></circle>
+        <circle cx="38" cy="46" r="0.6"></circle>
+      </g>
+      
+      <path d="M 28 106 Q 34 104, 42 107" fill="none" stroke="#000" stroke-width="0.7"></path>
+      <path d="M 30 92 Q 40 90, 50 93" fill="none" stroke="#000" stroke-width="0.6"></path>
+    </mask>
+  </defs>
+  <g fill="currentColor" color="#18181b" mask="url(#cairn-a-carve)">
+    
+    <g id="stone-1">
+      <path d="M 14 118&#xA;               C 10 114, 14 102, 22 100&#xA;               C 36 96, 56 98, 66 104&#xA;               C 72 108, 70 118, 66 118 Z" stroke="currentColor" stroke-width="1.2"></path>
+    </g>
+    
+    <g id="stone-2">
+      <path d="M 18 100&#xA;               C 16 94, 24 86, 36 84&#xA;               C 50 82, 62 88, 62 94&#xA;               C 62 100, 50 102, 36 102&#xA;               C 28 102, 20 102, 18 100 Z" stroke="currentColor" stroke-width="1.2"></path>
+    </g>
+    
+    <g id="stone-3">
+      <path d="M 24 82&#xA;               C 22 76, 30 68, 42 68&#xA;               C 54 68, 58 76, 56 82&#xA;               C 54 86, 44 86, 38 86&#xA;               C 30 86, 26 84, 24 82 Z" stroke="currentColor" stroke-width="1.1"></path>
+    </g>
+    
+    <g id="stone-4">
+      <path d="M 28 68&#xA;               C 26 62, 34 56, 42 56&#xA;               C 48 56, 52 62, 50 66&#xA;               C 48 70, 40 70, 36 70&#xA;               C 32 70, 28 70, 28 68 Z" stroke="currentColor" stroke-width="1.0"></path>
+    </g>
+    
+    <g id="stone-5">
+      <path d="M 34 54&#xA;               C 32 50, 36 46, 40 46&#xA;               C 44 46, 46 50, 44 54&#xA;               C 42 56, 38 56, 34 54 Z" stroke="currentColor" stroke-width="1.0"></path>
+    </g>
+  </g>
+</svg>
