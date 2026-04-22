@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { EGG_RANGE_PX, EGG_REGISTRY, type EggId } from '@/lib/eggs/eggRegistry';
+import { EGG_RANGE_PX, EGG_REGISTRY } from '@/lib/eggs/eggRegistry';
 import { useFoundEggs } from '@/lib/eggs/useFoundEggs';
 
 const COMPASS_SIZE = 40;
@@ -21,22 +22,6 @@ function Needle() {
       <path d="M50 14 L58 52 L50 46 L42 52 Z" fill="currentColor" stroke="none" />
       <path d="M50 86 L58 52 L50 58 L42 52 Z" fill="currentColor" stroke="none" opacity="0.3" />
       <circle cx="50" cy="50" r="2.5" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function Checkmark() {
-  return (
-    <svg
-      width={COMPASS_SIZE}
-      height={COMPASS_SIZE}
-      viewBox="0 0 100 100"
-      fill="none"
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <circle cx="50" cy="50" r="38" strokeWidth="2" />
-      <path d="M32 52 L46 66 L70 38" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -64,14 +49,16 @@ function luminanceUnderPoint(x: number, y: number): number {
 }
 
 export default function CustomCursor() {
+  const pathname = usePathname();
+  const offTrail = pathname === '/shhhh';
+
   const [isTouchDevice] = useState(() => typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches);
   const [reducedMotion] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
 
-  const [visible, setVisible] = useState(false);
-  const [hoveredFound, setHoveredFound] = useState(false);
-  const [needleLight, setNeedleLight] = useState(false); // true when bg is dark, so needle goes light
+  const [pointing, setPointing] = useState(false);
+  const [needleLight, setNeedleLight] = useState(false);
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const pos = useRef({ x: 0, y: 0 });
@@ -92,24 +79,34 @@ export default function CustomCursor() {
     }
   }, []);
 
-  // Pulse loop — gentle 2s breathing when spotter is visible, flat otherwise.
+  // Hide native cursor while compass is mounted; restore on unmount or off-trail.
   useEffect(() => {
-    if (isTouchDevice || reducedMotion) return;
+    if (isTouchDevice || offTrail) return;
+    const prev = document.body.style.cursor;
+    document.body.style.cursor = 'none';
+    return () => {
+      document.body.style.cursor = prev;
+    };
+  }, [isTouchDevice, offTrail]);
+
+  // Pulse loop — gentle 2s breathing only when actively pointing at an egg.
+  useEffect(() => {
+    if (isTouchDevice || reducedMotion || offTrail) return;
     let rafId: number;
     const start = performance.now();
     const tick = (now: number) => {
       const t = ((now - start) / 2000) % 1;
-      const breathe = visible && !hoveredFound ? 1 + 0.08 * Math.sin(t * Math.PI * 2) : 1;
+      const breathe = pointing ? 1 + 0.08 * Math.sin(t * Math.PI * 2) : 1;
       pulse.set(breathe);
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [visible, hoveredFound, isTouchDevice, reducedMotion, pulse]);
+  }, [pointing, isTouchDevice, reducedMotion, pulse, offTrail]);
 
   // Main spotter loop — runs per frame, finds nearest unfound egg in range.
   useEffect(() => {
-    if (isTouchDevice) return;
+    if (isTouchDevice || offTrail) return;
 
     const onMove = (e: MouseEvent) => {
       target.current = { x: e.clientX, y: e.clientY };
@@ -130,20 +127,12 @@ export default function CustomCursor() {
       const vh = window.innerHeight;
       const foundIds = useFoundEggs.getState().foundIds;
 
-      // 1. Check if hovering a found egg surface — show ✓.
-      const elAtPoint = document.elementFromPoint(target.current.x, target.current.y);
-      const hoveredEggEl = elAtPoint?.closest('[data-egg]');
-      const hoveredId = hoveredEggEl?.getAttribute('data-egg') as EggId | undefined;
-      const isHoveringFound = !!hoveredId && foundIds.includes(hoveredId);
-      setHoveredFound(isHoveringFound);
-
-      // 2. Find nearest unfound egg in viewport.
+      // Find nearest unfound egg in viewport.
       let nearest: { dist: number; cx: number; cy: number } | null = null;
       for (const egg of EGG_REGISTRY) {
         if (foundIds.includes(egg.id)) continue;
         const el = document.querySelector(egg.selector);
         if (!el) continue;
-        // Skip faded-out eggs (e.g. inactive zone modules).
         const opacity = parseFloat(window.getComputedStyle(el as HTMLElement).opacity || '1');
         if (opacity < 0.3) continue;
         const rect = (el as HTMLElement).getBoundingClientRect();
@@ -156,17 +145,15 @@ export default function CustomCursor() {
         if (!nearest || dist < nearest.dist) nearest = { dist, cx, cy };
       }
 
-      if (isHoveringFound) {
-        setVisible(true);
-      } else if (nearest && nearest.dist < EGG_RANGE_PX) {
+      if (nearest && nearest.dist < EGG_RANGE_PX) {
         const angle = (Math.atan2(nearest.cy - target.current.y, nearest.cx - target.current.x) * 180) / Math.PI + 90;
         rotateTarget.set(angle);
-        setVisible(true);
+        setPointing(true);
       } else {
-        setVisible(false);
+        setPointing(false);
       }
 
-      // 3. Sample luminance every ~6 frames (~10Hz at 60fps) to flip needle contrast.
+      // Sample luminance every ~6 frames (~10Hz at 60fps) to flip needle contrast.
       if (lumSampleTick++ % 6 === 0) {
         const lum = luminanceUnderPoint(target.current.x, target.current.y);
         setNeedleLight(lum < 0.5);
@@ -180,9 +167,9 @@ export default function CustomCursor() {
       window.removeEventListener('mousemove', onMove);
       cancelAnimationFrame(rafId);
     };
-  }, [isTouchDevice, rotateTarget]);
+  }, [isTouchDevice, rotateTarget, offTrail]);
 
-  if (isTouchDevice) return null;
+  if (isTouchDevice || offTrail) return null;
 
   return (
     <div
@@ -190,12 +177,8 @@ export default function CustomCursor() {
       className="fixed top-0 left-0 z-[100] pointer-events-none"
       style={{ width: COMPASS_SIZE, height: COMPASS_SIZE, color: needleLight ? '#f9fafb' : '#18181b' }}
     >
-      <motion.div
-        style={{ rotate: hoveredFound ? 0 : rotate, scale, width: COMPASS_SIZE, height: COMPASS_SIZE }}
-        animate={{ opacity: visible ? 0.85 : 0 }}
-        transition={{ opacity: { duration: 0.25, ease: 'easeOut' } }}
-      >
-        {hoveredFound ? <Checkmark /> : <Needle />}
+      <motion.div style={{ rotate, scale, width: COMPASS_SIZE, height: COMPASS_SIZE, opacity: 0.85 }}>
+        <Needle />
       </motion.div>
     </div>
   );

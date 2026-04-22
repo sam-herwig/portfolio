@@ -885,3 +885,167 @@ and pulses; finding an egg checks it off the notebook.
 - `trail-station-cc.webp`: 481 KB → 91 KB (1200px @ q=85). Chemex detail retained.
 - Reduced-motion gating added to HeroEgg / ForestEgg / CampEgg / SummitEgg / TrailStationStamp payoffs — each now short-circuits to a brief opacity-only reveal when `useReducedMotion` returns true. AlpineCairnEgg intentionally keeps its 3-click → stone-fall since that IS the UX.
 - `setTimeout` cleanup refs added to HeroEgg, ForestEgg, TrailStationStamp to avoid state updates on unmount.
+
+---
+
+# SOTD Readiness Punch List — 2026-04-20
+
+Audit of `web/` against Awwwards Site of the Day rubric (Design 40, Usability 30, Creativity 20, Content 10). Concept is strong; these are the execution gaps jurors will catch. Ordered by priority.
+
+## P0 — Blockers (must fix before submission)
+
+- [ ] **Keyboard navigation for case study cards.** `CaseStudyCard.tsx` L183 — cards have click handlers + aria-label but no Tab focus target with visible focus ring + Enter/Space activation. Wrap in `<a>`/`<Link>` or add `role="button" tabIndex={0}` with `onKeyDown` for Enter/Space. Jurors Tab through every interactive element.
+- [ ] **Reduced-motion gating on scroll-driven animations.** `HomeClient.tsx` imports `useReducedMotion` (L2) but doesn't use it to short-circuit the per-module opacity/position transforms. When reduced-motion is on, collapse zones to a static stacked layout (or instant cuts instead of crossfades). Same pass in `UnifiedScene.tsx` — freeze or disable the 3D scrub.
+- [ ] **Phase 4 visual sign-off on all 4 case studies.** Open each (`/work/new-belgium`, `/work/craftedkit`, + 2 others) in dev, walk Trailhead → Descent on desktop + mobile viewport, screenshot each station. This is already tracked higher in todo.md — surface it here because SOTD judges case studies end-to-end.
+
+## P1 — Polish (strongly recommended)
+
+- [ ] **Semantic landmarks in `layout.tsx`.** Only `<main>` is wrapped in case study page. Add `<header>`, `<nav>`, `<footer>` around the appropriate regions so screen readers + axe-core both pass. No visual change required.
+- [ ] **Per-case-study dynamic OG image generator.** `work/[slug]/page.tsx` L22 currently points OG at the static `project.thumbnail`. Add `opengraph-image.tsx` inside `work/[slug]/` so each share card renders with project title, client, and thumbnail over the woodcut-branded template (mirror root `opengraph-image.tsx`). This is how portfolios get shared on Twitter/LinkedIn on launch day.
+- [ ] **Mobile 3D scene parity.** `UnifiedScene.tsx` L1213 caps dpr but keeps full geometry on phones. Add a `isMobile` branch that swaps heavy scene groups (forest particles, alpine clouds) for lighter variants or skips non-hero groups entirely. Target: 60fps on iPhone 13 / mid-range Android.
+- [ ] **Focus-visible ring system in `globals.css`.** Only one `:focus-visible` rule (L115). Add a global ring style that applies to all interactive elements (`a, button, [role="button"]`) with a color that works on both light + dark backgrounds.
+- [ ] **Video `preload="metadata"` + bitrate audit.** Case study `video-block`s should use `preload="metadata"` (not `auto`) so the page doesn't pull megabytes up front. Check each MP4 is under 5s and ~2–3 Mbps per the Video Asset Rules memory.
+
+## P2 — Nice-to-have (tiebreakers)
+
+- [ ] **Project metadata layer.** `src/data/projects.ts` — add `client`, `year`, `role`, `deliverables[]` fields to the `Project` interface and surface them on case study mastheads (a small metadata strip under the title). Jurors score content depth; "New Belgium · 2024 · Lead · Web, Brand" reads as real work.
+- [ ] **Decorative SVGs marked `aria-hidden`.** WoodcutBorder, paper atmosphere layers, compass marks, etc. — anything purely ornamental should have `aria-hidden="true"` so screen readers don't announce them.
+- [ ] **Cursor micro-feedback on clickable cards.** `CustomCursor.tsx` luminance-adapts but doesn't scale/pop on hover over interactive targets. Add a zone/hover state that grows the needle ~1.4x over `role="button"` / `<a>` elements.
+- [ ] **Canonical tags + per-route metadata titles.** Not a blocker; helps crawlers and looks professional to jurors inspecting `<head>`.
+- [ ] **Lighthouse + WebPageTest pass.** Run Lighthouse on `/` and `/work/new-belgium` on mobile + desktop, capture scores, target ≥90 across the board. Fix the lowest scoring category.
+
+## Submission-day checklist
+
+- [ ] Screenshot and 30s screen recording for the Awwwards entry form
+- [ ] Short description (~500 chars) emphasizing the craft — woodcut shader, unified scroll timeline, trail metaphor, Easter egg hunt
+- [ ] Credits (Sam Herwig — design, dev, 3D)
+- [ ] Launch URL stable on `main` (no staging-branch leaks)
+- [ ] `npm run guardrails` green
+- [ ] No `console.log` or `// TODO` markers in shipped code
+
+---
+
+# Phase 7.1: Easter Egg Rework — One Egg, `/shhhh`, Water Shader Flex (2026-04-21)
+
+Sam: not happy with current 8-egg system. SVGs read flat, payoff envelope is weak,
+collection mechanic is a checklist not a delight. Cut to one substantial egg,
+rebuild compass behavior, build a custom water-shader hidden page as the single
+payoff. `/grill-me` session resolved the design tree below.
+
+## Locked decisions (via /grill-me)
+
+1. **Cut 8 → 1 egg.** Kill collection mechanic entirely.
+2. **Drop `/cairn`.** Visitor register was a localStorage lie (per-browser only) that breaks the metaphor on inspection.
+3. **Drop `/notebook`.** Built to celebrate finishing a hunt; without the hunt, it's an empty room.
+4. **New egg = hidden page at `/shhhh`** — overhanging tree above a stream, "off-trail" mood.
+5. **Hero shader = water.** Ambient flow + mouse-poke ripples + caustics + edge foam. Canonical "this dev knows GLSL" flex.
+6. **Drop the smoke entry.** Reuse existing `InkWashTransition` instead — keeps navigation language unified.
+7. **Trigger location = Forest zone.** A single off-trail marker sprite. Forest reads more "off the beaten path" than Camp's "convenient detour."
+8. **Compass = always visible.** Permanent personality artifact. Spins + pulses near the one unfound egg. Disappears on `/shhhh` (off-trail = no compass), native cursor returns.
+9. **Audio = new `grove` ambient bus.** Stream burble + faint wind + occasional bird. Respects existing `AudioToggle`.
+10. **Assets = ~10–15 new commissioned sprites.** Same illustrator, same WebP pipeline, scope comparable to one biome.
+
+## A. Rip — delete the 8-egg system
+
+- [x] A1. Delete `web/src/components/eggs/HeroEgg.tsx`
+- [x] A2. Delete `web/src/components/eggs/ForestEgg.tsx`
+- [x] A3. Delete `web/src/components/eggs/CampEgg.tsx`
+- [x] A4. Delete `web/src/components/eggs/SummitEgg.tsx`
+- [x] A5. Delete `web/src/components/eggs/AlpineCairnEgg.tsx`
+- [x] A6. Delete `web/src/components/eggs/TrailStationStamp.tsx`
+- [x] A7. Delete `web/src/components/eggs/MarginNote.tsx`
+- [x] A8. Delete `web/src/components/eggs/ZoneEntryGlow.tsx`
+- [x] A9. Delete `web/src/components/eggs/NotebookReopener.tsx`
+- [x] A10. Delete `web/src/app/cairn/` folder
+- [x] A11. Delete `web/src/app/notebook/` folder
+- [x] A12. `HomeClient.tsx` — remove all egg + ZoneEntryGlow mounts
+- [x] A13. `CaseStudyContent.tsx` — remove TrailStationStamp + MarginNote mounts
+- [x] A14. `layout.tsx` — remove NotebookReopener mount
+- [ ] A15. `web/public/` — remove unused egg WebPs/SVGs once nothing references them (post-rip grep pass)
+
+## B. Compass rework — always visible
+
+- [x] B1. `CustomCursor.tsx` — drop `visible` state gating; compass always renders at fixed opacity
+- [x] B2. Hide native cursor via `document.body.style.cursor = 'none'` while compass mounted; restore on unmount/off-trail
+- [x] B3. Spin behavior unchanged: rotate toward the one unfound egg when in `EGG_RANGE_PX`
+- [x] B4. Pulse behavior unchanged (now gated on `pointing` state)
+- [x] B5. `usePathname()` check — hide CustomCursor entirely on `/shhhh`, restore native cursor
+- [x] B6. Existing luminance contrast flip stays
+- [x] B7. Reduced-motion: no pulse, just bearing (existing behavior)
+
+## C. Egg registry — collapse to one
+
+- [x] C1. `eggRegistry.ts` — replace 8-egg array with single `grove` entry
+- [x] C2. `useFoundEggs.ts` — kept store shape unchanged; works as-is for one id
+- [x] C3. `?reset` query param still works
+
+## D. Forest trigger sprite
+
+- [ ] D1. Commission "off-trail marker" sprite — small mossy stone with discreet arrow OR pressed footprint. Match biome WebP style. **(USER-BLOCKED)**
+- [ ] D2. Save to `web/public/assets/graphics/eggs/grove-marker.webp` **(USER-BLOCKED on D1)**
+- [x] D3. New `web/src/components/eggs/GroveMarker.tsx` — placeholder SVG silhouette in place; scroll-gated opacity via Forest module timeline; `data-egg="grove"` attribute; auto-fades when found
+- [x] D4. Click → `startTransition` → `setTimeout(500ms)` → `router.push('/shhhh')`
+- [x] D5. Mount in `HomeClient.tsx` (above Preloader)
+
+## E. `/shhhh` page — composition
+
+- [x] E1. New `web/src/app/shhhh/page.tsx` — full-bleed scene, dynamic-imported R3F Canvas
+- [ ] E2. Background plane: distant ridge silhouette WebP at low opacity **(USER-BLOCKED on H4)**
+- [ ] E3. Mid-ground: stream-bed rocks + bank/grass tufts **(USER-BLOCKED on H2/H5)**
+- [ ] E4. Foreground: overhanging tree + foreground brush/ferns **(USER-BLOCKED on H1/H3)**
+- [x] E5. Water plane: ortho-projected fullscreen plane with `WaterShaderMaterial`
+- [x] E6. Lighting: flat illumination — paper-toned background `#f9fafb`
+- [x] E7. Back-to-trail link top-left, InkWash → `router.push('/')`
+- [x] E8. Cursor strip on `/shhhh` handled by `CustomCursor` `usePathname()` check (B5)
+
+## F. Water shader — the flex
+
+- [x] F1. `web/src/components/shaders/WaterMaterial.ts` — drei `shaderMaterial` + R3F `extend`
+- [x] F2. Vertex: pass UVs + plane-local pos (`vUv`, `vPlanePos`)
+- [x] F3. Fragment uniforms: `uTime`, `uMouse`, `uRipples` (vec4[8]), `uFlowDir`, `uColorPaper`, `uColorInk`, `uEdgeMask`, `uHasEdgeMask`, `uOpacity`
+- [x] F4. Fragment composition (back → front): caustics (sin/cos cells with flow drift) + surface fBm flow + mouse hover warp + ripple ring accumulator (decay-on-age) + foam (gated on uHasEdgeMask, awaits asset) + monochrome paper/ink composite
+- [x] F5. JS-side ripple manager (`GroveScene.tsx`) — pointerdown pushes ripple into ring buffer (max 8), expired (>2s) dropped each frame
+- [x] F6. Continuous pointermove updates `uMouse` for subtle real-time warp
+- [~] F7. Wrote shader without `/shader-dev` consult — works clean on first compile, but visual polish pass (caustics density, ripple decay curve, foam math) deferred to user playtest
+
+## G. Audio bus
+
+- [ ] G1. `audioManager.ts` — register new `grove` bus
+- [ ] G2. Source: stream burble loop (CC0 from freesound.org or commission, ~30–60s seamless)
+- [ ] G3. Optional layer: faint wind through leaves loop
+- [ ] G4. Optional layer: occasional bird chirp, one-shot every 20–40s with random offset
+- [ ] G5. `/shhhh` mount → fade-in over 1s
+- [ ] G6. `/shhhh` unmount → fade-out over 1s
+- [ ] G7. Respects existing `AudioToggle` mute state
+
+## H. Asset commission (~10–15 sprites)
+
+- [ ] H1. Overhanging tree (gnarled silhouette, frame-defining) — 1
+- [ ] H2. Stream-bed rocks (varying sizes) — 4–6
+- [ ] H3. Foreground brush / ferns — 2–3
+- [ ] H4. Distant ridge silhouette — 1
+- [ ] H5. Bank / grass tufts — 2–3
+- [ ] H6. Off-trail Forest marker (the trigger from D1) — 1
+- [ ] H7. Optional fallback static composition WebP for no-WebGL devices — 1
+
+## I. Verification
+
+- [ ] I1. `npm run guardrails` clean (format, lint, typecheck, asset check, build)
+- [ ] I2. Visual: compass always visible on homepage + case studies, spins toward Forest marker
+- [ ] I3. Visual: click marker → InkWash → `/shhhh` loads cleanly
+- [ ] I4. Visual: water shader renders smoothly, mouse-poke creates rings, ambient flow runs, caustics + foam read
+- [ ] I5. Visual: back-to-trail returns smoothly to homepage
+- [ ] I6. Visual: compass disappears on `/shhhh`, native cursor returns
+- [ ] I7. Audio: stream bus fades in/out, AudioToggle mutes
+- [ ] I8. Reduced-motion: water still ambient-flows but mouse ripples disabled (or minimized)
+- [ ] I9. WebGL fallback: `/shhhh` shows static fallback composition WebP if no WebGL
+- [ ] I10. Mobile: touch-tap creates ripples (tap = single ripple), no compass on touch devices anyway
+
+## Open risks
+
+- **Custom water shader is the long-pole.** Caustics + flow + ripples + foam is non-trivial. Prototype the shader against placeholder rocks before committing to commission scope.
+- **Asset commission turnaround.** ~10–15 sprites; if illustrator is slow this gates launch. Use placeholder geometry (flat shaded planes) during shader dev so the two tracks run parallel.
+- **Compass-always-visible may feel busy.** Current cursor only appears near eggs. Permanent could become visual noise on long scrolls. Worth A/B testing opacity (0.85 → 0.5) once live.
+- **`/shhhh` discoverability.** Single Forest sprite + compass spin is the only way in. If playtest shows nobody finds it, increase sprite size or add a second hint (e.g., zone-entry shimmer on Forest enter).
+- **Water performance on mobile.** Custom shader on a fullscreen plane on mid-tier Android could chug. Plan for a mobile-tier shader variant (skip caustics, reduce ripple count) gated behind viewport width or DPR check.
+

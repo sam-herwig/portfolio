@@ -25,6 +25,8 @@ import {
   MathUtils,
 } from 'three';
 import PostProcessingStack from './PostProcessingStack';
+import QualityMonitor from './QualityMonitor';
+import { useQualityStore, qualityPresets } from '@/lib/quality';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
 import { MODULE_TIMELINE, sceneVisible, sceneOpacity, sceneChildRanges } from '@/lib/moduleTimeline';
@@ -103,11 +105,11 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
     const campZ = MathUtils.lerp(30, -10, campP);
     const campRX = 0;
 
-    // Alpine zone: z=15 fixed, y 0->120, climb sway, rotX=0.15
+    // Alpine zone: z=15 fixed, y -60->120 (start below lowest cliff so cliffs rise from below), climb sway, rotX=0.15
     const alpineSpan = alpine.ownEnd - alpine.ownStart;
     const alpineP = Math.min(1, Math.max(0, (p - alpine.ownStart) / alpineSpan));
     const alpineX = Math.sin(alpineP * Math.PI * 6) * 1.5;
-    const alpineY = MathUtils.lerp(0, 120, alpineP);
+    const alpineY = MathUtils.lerp(-60, 120, alpineP);
     const alpineZ = 15;
     const alpineRX = 0.15;
 
@@ -215,12 +217,14 @@ function ParallaxLayer({
   baseY = 0,
   speed = 1,
   scrollProgress,
+  isActive,
 }: {
   textureUrl: string;
   z: number;
   baseY?: number;
   speed?: number;
   scrollProgress: MotionValue<number>;
+  isActive?: React.MutableRefObject<boolean>;
 }) {
   const tex = useTexture(textureUrl) as Texture;
   const { viewport, camera } = useThree();
@@ -303,6 +307,7 @@ function ParallaxLayer({
   }, [isMobile]);
 
   useFrame((state, delta) => {
+    if (isActive && !isActive.current) return;
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
     const heroEnd = MODULE_TIMELINE.hero.exitEnd;
     const heroProgress = Math.min(1, Math.max(0, lerpedP.current / heroEnd));
@@ -336,11 +341,13 @@ function ParallaxLayer({
 function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
   const groupRef = useRef<Group>(null);
   const lerpedP = useRef(0);
+  const isActive = useRef(true);
 
   useFrame((_, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
     if (groupRef.current) {
       const opacity = sceneOpacity('hero', lerpedP.current);
+      isActive.current = opacity > 0;
       groupRef.current.visible = opacity > 0;
       if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
     }
@@ -348,7 +355,14 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
 
   return (
     <group ref={groupRef} position={[0, -1, -6]}>
-      <ParallaxLayer textureUrl="/bg_layer.webp" z={-25} baseY={2} speed={0.35} scrollProgress={scrollProgress} />
+      <ParallaxLayer
+        textureUrl="/bg_layer.webp"
+        z={-25}
+        baseY={2}
+        speed={0.35}
+        scrollProgress={scrollProgress}
+        isActive={isActive}
+      />
     </group>
   );
 }
@@ -393,10 +407,18 @@ function ForestSceneGroup({
 // CAMP SCENE GROUP
 // =============================================================================
 
-function Starfield({ scrollVelocity }: { scrollVelocity: React.MutableRefObject<number> }) {
+function Starfield({
+  scrollVelocity,
+  isActive,
+}: {
+  scrollVelocity: React.MutableRefObject<number>;
+  isActive?: React.MutableRefObject<boolean>;
+}) {
   const ref = useRef<any>(null);
+  const tier = useQualityStore((s) => s.tier);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const count = isMobile ? 800 : 2000;
+  const baseCount = isMobile ? 800 : 2000;
+  const count = Math.max(200, Math.round(baseCount * qualityPresets[tier].particleMultiplier));
 
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -409,6 +431,7 @@ function Starfield({ scrollVelocity }: { scrollVelocity: React.MutableRefObject<
   }, [count]);
 
   useFrame((state, delta) => {
+    if (isActive && !isActive.current) return;
     if (ref.current) {
       const vel = Math.min(scrollVelocity.current * 50, 3);
       ref.current.rotation.y = state.clock.elapsedTime * (0.01 + vel * 0.05);
@@ -425,7 +448,13 @@ function Starfield({ scrollVelocity }: { scrollVelocity: React.MutableRefObject<
   );
 }
 
-function CampfireEmbers({ scrollVelocity }: { scrollVelocity: React.MutableRefObject<number> }) {
+function CampfireEmbers({
+  scrollVelocity,
+  isActive,
+}: {
+  scrollVelocity: React.MutableRefObject<number>;
+  isActive?: React.MutableRefObject<boolean>;
+}) {
   const count = 60;
   const meshRef = useRef<THREEPoints>(null);
 
@@ -444,6 +473,7 @@ function CampfireEmbers({ scrollVelocity }: { scrollVelocity: React.MutableRefOb
   }, []);
 
   useFrame((state, delta) => {
+    if (isActive && !isActive.current) return;
     if (!meshRef.current) return;
     const geo = meshRef.current.geometry;
     const posAttr = geo.attributes.position as BufferAttribute;
@@ -545,6 +575,7 @@ function CampSceneGroup({
   const groupRef = useRef<Group>(null);
   const lightRef = useRef<AmbientLight>(null);
   const lerpedP = useRef(0);
+  const isActive = useRef(false);
   const colorNight = useMemo(() => new Color('#020617'), []);
   const colorFire = useMemo(() => new Color('#ea580c'), []);
   const camp = MODULE_TIMELINE.camp;
@@ -553,6 +584,7 @@ function CampSceneGroup({
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
     const p = lerpedP.current;
     const opacity = sceneOpacity('camp', p);
+    isActive.current = opacity > 0;
     if (groupRef.current) {
       groupRef.current.visible = opacity > 0;
       if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
@@ -567,8 +599,8 @@ function CampSceneGroup({
   return (
     <group ref={groupRef}>
       <ambientLight ref={lightRef} intensity={0.2} color="#020617" />
-      <Starfield scrollVelocity={scrollVelocity} />
-      <CampfireEmbers scrollVelocity={scrollVelocity} />
+      <Starfield scrollVelocity={scrollVelocity} isActive={isActive} />
+      <CampfireEmbers scrollVelocity={scrollVelocity} isActive={isActive} />
       <VideoCampLedge videoUrl="/assets/videos/campfire.mp4" position={[0, 0, -250]} scrollProgress={scrollProgress} />
     </group>
   );
@@ -1214,6 +1246,7 @@ export default function UnifiedScene({ scrollProgress }: { scrollProgress: Motio
       frameloop={isPaused ? 'demand' : 'always'}
     >
       <Suspense fallback={null}>
+        <QualityMonitor />
         <ambientLight intensity={0.6} />
         <UnifiedCamera scrollProgress={scrollProgress} />
 

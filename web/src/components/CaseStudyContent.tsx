@@ -10,8 +10,6 @@ import TrailSpine from '@/components/TrailSpine';
 import TrailCounter from '@/components/TrailCounter';
 import NewBelgiumSpotlight from '@/components/spotlights/NewBelgiumSpotlight';
 import CraftedKitPipelineSpotlight from '@/components/spotlights/CraftedKitPipelineSpotlight';
-import TrailStationStamp from '@/components/eggs/TrailStationStamp';
-import MarginNote from '@/components/eggs/MarginNote';
 import { INK_WASH_HORIZONTAL_SRC } from '@/lib/specimenCatalog';
 
 interface AdjacentStudy {
@@ -54,7 +52,8 @@ function ScrollReveal({ children, className }: { children: React.ReactNode; clas
 /* ── Masthead ─────────────────────────────────────────────── */
 
 function MastheadBlockRenderer({ project }: { project: Project }) {
-  const { title, subtitle, tags, projectUrl, openingQuote } = project;
+  const { title, subtitle, tags, projectUrl, openingQuote, client, year, role, deliverables } = project;
+  const metaParts = [client, year, role, deliverables?.join(' · ')].filter(Boolean) as string[];
   return (
     <ScrollReveal>
       <div className="py-16 md:py-24">
@@ -72,6 +71,34 @@ function MastheadBlockRenderer({ project }: { project: Project }) {
         <p className="mt-6 max-w-2xl font-instrument text-2xl md:text-3xl italic text-foreground/60 leading-tight">
           {subtitle}
         </p>
+        {metaParts.length > 0 && (
+          <dl className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.25em] text-foreground/55">
+            {client && (
+              <div className="flex items-baseline gap-2">
+                <dt className="text-foreground/35">Client</dt>
+                <dd>{client}</dd>
+              </div>
+            )}
+            {year && (
+              <div className="flex items-baseline gap-2">
+                <dt className="text-foreground/35">Year</dt>
+                <dd>{year}</dd>
+              </div>
+            )}
+            {role && (
+              <div className="flex items-baseline gap-2">
+                <dt className="text-foreground/35">Role</dt>
+                <dd>{role}</dd>
+              </div>
+            )}
+            {deliverables && deliverables.length > 0 && (
+              <div className="flex items-baseline gap-2">
+                <dt className="text-foreground/35">Scope</dt>
+                <dd>{deliverables.join(' · ')}</dd>
+              </div>
+            )}
+          </dl>
+        )}
         {tags && tags.length > 0 && (
           <div className="mt-8 flex flex-wrap gap-2">
             {tags.map((tag) => (
@@ -370,6 +397,7 @@ function VideoBlockRenderer({
           muted
           loop
           playsInline
+          preload="metadata"
           aria-label={alt}
           className="absolute inset-0 h-full w-full object-cover"
         />
@@ -461,7 +489,15 @@ function FriezeTile({ src, index }: { src: string; index: number }) {
   return (
     <figure className="relative aspect-[4/3] w-[70vw] shrink-0 overflow-hidden border border-foreground/15 bg-foreground/[0.04] md:w-[42vw]">
       {isVideo ? (
-        <video src={src} muted loop autoPlay playsInline className="absolute inset-0 h-full w-full object-contain" />
+        <video
+          src={src}
+          muted
+          loop
+          autoPlay
+          playsInline
+          preload="metadata"
+          className="absolute inset-0 h-full w-full object-contain"
+        />
       ) : (
         <Image src={src} alt="" fill sizes="(min-width: 768px) 42vw, 70vw" className="object-contain" />
       )}
@@ -639,10 +675,6 @@ export default function CaseStudyContent({ project, prev, next }: CaseStudyProps
 
   return (
     <article ref={articleRef} className="w-full">
-      {/* Trail eggs — floating margin UI, persistent per case study */}
-      <TrailStationStamp slug={project.slug} />
-      <MarginNote slug={project.slug} />
-
       {/* Hero spacer — CaseStudyScene owns the actual hero moment */}
       <div className="h-screen" aria-hidden="true" />
 

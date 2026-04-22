@@ -110,6 +110,14 @@ export interface Project {
   blocks?: ContentBlock[];
   /** Optional — additional live sites that shipped on the same codebase/system */
   relatedSites?: { name: string; tag: string; url: string }[];
+  /** Client or studio the work was done for */
+  client?: string;
+  /** Year the work shipped (e.g., "2024") */
+  year?: string;
+  /** Role Sam played (e.g., "Lead Front-End", "Creative Engineer") */
+  role?: string;
+  /** Deliverables shipped (e.g., ["Web", "Brand", "Motion"]) */
+  deliverables?: string[];
   featured: boolean;
   order: number;
 }

@@ -1,10 +1,19 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
-import { motion, useScroll, useTransform, useMotionValue, useSpring, MotionValue } from 'framer-motion';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useMotionValue,
+  useSpring,
+  useReducedMotion,
+  MotionValue,
+} from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAppStore } from '@/store/useAppStore';
+import { useViewportHeight } from '@/lib/useViewportHeight';
 
 interface CaseStudyCardProps {
   title: string;
@@ -37,6 +46,9 @@ export default function CaseStudyCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isTouch] = useState(() => typeof window !== 'undefined' && 'ontouchstart' in window);
+  const reducedMotion = useReducedMotion() ?? false;
+  const suppressTilt = isTouch || reducedMotion;
+  const vh = useViewportHeight();
 
   const rotateXMV = useMotionValue(0);
   const rotateYMV = useMotionValue(0);
@@ -66,11 +78,12 @@ export default function CaseStudyCard({
 
   const opacity = useTransform(driver, progressRange, [0, 1, 1, 0]);
   const pointerEvents = useTransform(opacity, (v: number) => (v > 0.15 ? ('auto' as const) : ('none' as const)));
-  const y = useTransform(
-    driver,
-    [progressRange[0], progressRange[1], progressRange[3]],
-    isOverlay ? [60, 0, -40] : [100, 0, -100],
-  );
+  const yRange: [number, number, number] = reducedMotion
+    ? [0, 0, 0]
+    : isOverlay
+      ? [vh * 1.0, 0, -vh * 0.4]
+      : [100, 0, -100];
+  const y = useTransform(driver, [progressRange[0], progressRange[1], progressRange[3]], yRange);
 
   const alignmentClass =
     side === 'left'
@@ -101,10 +114,10 @@ export default function CaseStudyCard({
   const cardInner = (
     <motion.div
       ref={cardRef}
-      onMouseMove={isTouch ? undefined : handleMouseMove}
-      onMouseEnter={isTouch ? undefined : () => setIsHovered(true)}
+      onMouseMove={suppressTilt ? undefined : handleMouseMove}
+      onMouseEnter={suppressTilt ? undefined : () => setIsHovered(true)}
       onMouseLeave={
-        isTouch
+        suppressTilt
           ? undefined
           : () => {
               setIsHovered(false);
@@ -112,8 +125,8 @@ export default function CaseStudyCard({
             }
       }
       style={{
-        rotateX: isTouch ? 0 : rotateX,
-        rotateY: isTouch ? 0 : rotateY,
+        rotateX: suppressTilt ? 0 : rotateX,
+        rotateY: suppressTilt ? 0 : rotateY,
         transformPerspective: 1200,
         boxShadow: isHovered && !isTouch ? '0 28px 60px -12px rgba(0,0,0,0.45)' : '0 20px 40px -10px rgba(0,0,0,0.3)',
         transition: 'box-shadow 0.3s ease-out',
@@ -180,7 +193,12 @@ export default function CaseStudyCard({
     >
       {linkable ? (
         <motion.div style={{ pointerEvents: isOverlay ? pointerEvents : 'auto' }} className="w-full md:w-[60%] block">
-          <Link href={`/work/${slug}`} aria-label={`View ${title} case study`} onClick={handleLinkClick}>
+          <Link
+            href={`/work/${slug}`}
+            aria-label={`View ${title} case study`}
+            onClick={handleLinkClick}
+            className="block rounded-3xl outline-offset-[6px] focus-visible:outline-2 focus-visible:outline-foreground"
+          >
             {cardInner}
           </Link>
         </motion.div>

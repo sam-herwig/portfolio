@@ -14,12 +14,7 @@ import { Project } from '@/data/projects';
 import { MODULE_TIMELINE, moduleRange, sceneChildRanges } from '@/lib/moduleTimeline';
 import { isTimelineDebugEnabled, tickTimelineDebug, dumpTimeline, destroyTimelineDebug } from '@/lib/timelineDebug';
 import { useAudioMix } from '@/lib/audio/useAudioMix';
-import HeroEgg from '@/components/eggs/HeroEgg';
-import ForestEgg from '@/components/eggs/ForestEgg';
-import CampEgg from '@/components/eggs/CampEgg';
-import SummitEgg from '@/components/eggs/SummitEgg';
-import AlpineCairnEgg from '@/components/eggs/AlpineCairnEgg';
-import ZoneEntryGlow from '@/components/eggs/ZoneEntryGlow';
+import GroveMarker from '@/components/eggs/GroveMarker';
 
 // Single unified Canvas — avoids 5x WebGL context overhead
 const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: false });
@@ -31,6 +26,18 @@ const forestChildRanges = sceneChildRanges('forest', 4);
 const campWindow = MODULE_TIMELINE.camp;
 const alpineChildRanges = sceneChildRanges('alpine', 4);
 const summitWindow = MODULE_TIMELINE.summit;
+
+// First Alpine card gets a custom range: shifted later so the sticky container
+// is fully engaged before the y-translate animates. Squeezed to finish before
+// card 1 starts, so there's no double-visible overlap. Without this, card 0's
+// rise is "absorbed" by the still-scrolling sticky parent and reads as a pop-in.
+const alpineFirstCardRange = (() => {
+  const nextStart = alpineChildRanges[1]?.[0] ?? 0.65;
+  const start = 0.61; // progress at which Alpine sticky container is fully engaged
+  const span = nextStart - start;
+  const fadeLen = span * 0.2;
+  return [start, start + fadeLen, nextStart - fadeLen, nextStart] as const;
+})();
 
 const forestNarrative = [
   {
@@ -76,16 +83,22 @@ function StoryCard({
   side,
   range,
   scrollProgress,
+  reducedMotion,
 }: {
   title: string;
   body: string;
   side: 'left' | 'right';
   range: readonly [number, number, number, number];
   scrollProgress: MotionValue<number>;
+  reducedMotion: boolean;
 }) {
   const progressRange = [...range];
   const opacity = useTransform(scrollProgress, progressRange, [0, 1, 1, 0]);
-  const y = useTransform(scrollProgress, [progressRange[0], progressRange[1], progressRange[3]], [72, 0, -32]);
+  const y = useTransform(
+    scrollProgress,
+    [progressRange[0], progressRange[1], progressRange[3]],
+    reducedMotion ? [0, 0, 0] : [72, 0, -32],
+  );
 
   return (
     <motion.div
@@ -110,7 +123,7 @@ function StoryCard({
 
 export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) {
   const hasLoaded = useAppStore((s) => s.hasLoaded);
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useReducedMotion() ?? false;
 
   const refHero = useRef<HTMLDivElement>(null);
   const refForest = useRef<HTMLDivElement>(null);
@@ -179,7 +192,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   const scrollHintOpacity = useTransform(scrollYProgress, [0, heroRange[1]], [1, 0]);
   // Text fades out early (0.06→0.14) so the 3D backdrop has solo screen time
   const heroOpacity = useTransform(scrollYProgress, [0, 0.06, 0.14], [1, 1, 0]);
-  const heroY = useTransform(scrollYProgress, [0, 0.14], [0, -56]);
+  const heroY = useTransform(scrollYProgress, [0, 0.14], reducedMotion ? [0, 0] : [0, -56]);
 
   // ── Camp content opacity — starts at enterEnd (after scene fully visible) ──
   const campContentOpacity = useTransform(
@@ -194,15 +207,19 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   const summitRevealStart = summitWindow.ownStart + summitSpan * 0.7;
   const summitRevealEnd = summitWindow.ownStart + summitSpan * 0.85;
   const summitOpacity = useTransform(scrollYProgress, [summitRevealStart, summitRevealEnd, 1], [0, 1, 1]);
-  const summitY = useTransform(scrollYProgress, [summitRevealStart, summitRevealEnd, 1], [72, 0, 0]);
+  const summitY = useTransform(
+    scrollYProgress,
+    [summitRevealStart, summitRevealEnd, 1],
+    reducedMotion ? [0, 0, 0] : [72, 0, 0],
+  );
 
   return (
     <motion.main
       style={{ backgroundColor, color }}
       className="relative min-h-screen w-full overflow-x-clip transition-colors duration-100"
     >
-      {/* Zone-entry glow pings tappable eggs when entering a new section (touch only) */}
-      <ZoneEntryGlow scrollProgress={scrollYProgress} />
+      {/* Forest off-trail marker — hidden egg, click → /shhhh */}
+      <GroveMarker scrollProgress={scrollYProgress} />
 
       {/* Preloader — overlays everything until assets are loaded */}
       <Preloader />
@@ -244,7 +261,6 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           <div className="sticky top-0 flex min-h-screen items-center px-4 pb-24 pt-28 md:px-8 lg:px-12">
             <motion.div style={{ opacity: heroOpacity, y: heroY }} className="w-full">
               <GlassPanel className="mx-auto max-w-3xl p-7 md:mx-0 md:ml-[8vw] md:p-10 lg:p-12">
-                <HeroEgg />
                 <Image
                   src="/logo-mark.svg"
                   alt=""
@@ -308,9 +324,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
                   side={entry.side}
                   range={entry.range}
                   scrollProgress={scrollYProgress}
+                  reducedMotion={reducedMotion}
                 />
               ))}
-              <ForestEgg scrollProgress={scrollYProgress} />
             </div>
           </div>
         </section>
@@ -325,7 +341,6 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
         >
           <h2 className="sr-only">Technical Skills</h2>
           <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-12">
-            <CampEgg scrollProgress={scrollYProgress} />
             <motion.div
               data-camp-content
               style={{ opacity: campContentOpacity }}
@@ -351,7 +366,6 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
         >
           <h2 className="sr-only">Selected Work</h2>
           <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-12 lg:px-16">
-            <AlpineCairnEgg scrollProgress={scrollYProgress} />
             <div className="relative mx-auto w-full max-w-7xl min-h-[70vh]">
               {caseStudies.map((cs, i) => (
                 <CaseStudyCard
@@ -363,7 +377,11 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
                   side={i % 2 === 0 ? 'right' : 'left'}
                   linkable={true}
                   scrollProgress={scrollYProgress}
-                  range={alpineChildRanges[i] ?? alpineChildRanges[alpineChildRanges.length - 1]}
+                  range={
+                    i === 0
+                      ? alpineFirstCardRange
+                      : (alpineChildRanges[i] ?? alpineChildRanges[alpineChildRanges.length - 1])
+                  }
                 />
               ))}
             </div>
@@ -371,15 +389,13 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
         </section>
 
         {/* Checkpoint 4: The Summit - Finale & Footer */}
-        <section
+        <footer
           id="contact"
           ref={refSummit}
-          role="region"
           aria-label="Contact"
           className="relative min-h-[230vh] md:min-h-[300vh] w-full"
         >
           <div className="sticky top-0 flex min-h-screen flex-col items-center justify-center px-4 text-center z-20 pointer-events-auto">
-            <SummitEgg scrollProgress={scrollYProgress} />
             <motion.div
               style={{
                 opacity: summitOpacity,
@@ -424,7 +440,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
               </div>
             </motion.div>
           </div>
-        </section>
+        </footer>
       </div>
     </motion.main>
   );

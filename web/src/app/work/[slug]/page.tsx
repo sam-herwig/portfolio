@@ -16,10 +16,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `${project.title} — Sam Herwig`,
     description: project.overview.headline,
+    alternates: {
+      canonical: `/work/${slug}`,
+    },
     openGraph: {
       title: `${project.title} — Sam Herwig`,
       description: project.overview.headline,
-      images: project.thumbnail ? [{ url: project.thumbnail }] : [],
+      url: `/work/${slug}`,
+      type: 'article',
+      // Image auto-injected by src/app/work/[slug]/opengraph-image.tsx (1200×630)
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${project.title} — Sam Herwig`,
+      description: project.overview.headline,
+      creator: '@samherwig',
     },
   };
 }

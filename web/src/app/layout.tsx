@@ -4,7 +4,6 @@ import './globals.css';
 import InkWashTransition from '@/components/InkWashTransition';
 import AudioToggle from '@/components/AudioToggle';
 import CustomCursor from '@/components/CustomCursor';
-import NotebookReopener from '@/components/eggs/NotebookReopener';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -23,6 +22,9 @@ export const metadata: Metadata = {
   title: 'Sam Herwig | Creative Engineer',
   description: 'I write code that you walk through. Three.js, shaders, and the browser as a canvas.',
   metadataBase: new URL('https://samherwig.dev'),
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -108,7 +110,6 @@ export default function RootLayout({
         <InkWashTransition />
         <AudioToggle />
         <CustomCursor />
-        <NotebookReopener />
       </body>
     </html>
   );
