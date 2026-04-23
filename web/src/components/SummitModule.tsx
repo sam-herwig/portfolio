@@ -39,6 +39,8 @@ type OneShotAnimatedFoxProps = {
   scale: Vec2;
   rotation?: number;
   frames?: number;
+  cols?: number;
+  rows?: number;
   scrollStart: number;
   scrollEnd: number;
   cycles?: number;
@@ -198,6 +200,8 @@ function OneShotAnimatedFox({
   scale,
   rotation = 0,
   frames = 8,
+  cols = 8,
+  rows = 1,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -210,9 +214,9 @@ function OneShotAnimatedFox({
     const clone = tex.clone();
     clone.wrapS = RepeatWrapping;
     clone.wrapT = RepeatWrapping;
-    clone.repeat.set(1 / frames, 1);
+    clone.repeat.set(1 / cols, 1 / rows);
     return clone;
-  }, [tex, frames]);
+  }, [tex, cols, rows]);
 
   const lerpedProgress = useRef(0);
 
@@ -250,16 +254,19 @@ function OneShotAnimatedFox({
       // Frame Animation Logic
       if (walkProgress >= 1.0) {
         // Lock on the final cuddling pose
-        // eslint-disable-next-line react-hooks/immutability
-        clonedTex.offset.x = (frames - 1) / frames;
-        // Fade out slightly when curled up to blend with the scene
+        const lastFrame = frames - 1;
+        const col = lastFrame % cols;
+        const row = Math.floor(lastFrame / cols);
+        clonedTex.offset.set(col / cols, (rows - 1 - row) / rows);
       } else if (walkProgress > 0) {
         // Loop normally while walking
         const totalFrames = walkProgress * cycles * frames;
         const currentFrame = Math.floor(totalFrames) % frames;
-        clonedTex.offset.x = currentFrame / frames;
-      } else if (walkProgress === 0) {
-        clonedTex.offset.x = 0;
+        const col = currentFrame % cols;
+        const row = Math.floor(currentFrame / cols);
+        clonedTex.offset.set(col / cols, (rows - 1 - row) / rows);
+      } else {
+        clonedTex.offset.set(0, (rows - 1) / rows);
       }
     }
   });
@@ -333,7 +340,9 @@ function SummitScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
           startZ={-150} // Same flight path as ledge
           endZ={5} // Same stop point
           scale={[6, 6]} // Organic Fox scale, not too gigantic
-          frames={7}
+          frames={16}
+          cols={4}
+          rows={4}
           cycles={6}
           scrollStart={0.25} // Starts walking exactly as ledge arrives
           scrollEnd={0.5} // Finish walking totally before the panorama fades in at 0.50

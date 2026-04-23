@@ -33,6 +33,8 @@ function AnimatedSprite({
   scale,
   rotation = 0,
   frames = 8,
+  cols = 8,
+  rows = 1,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -46,6 +48,8 @@ function AnimatedSprite({
   scale: Vec2;
   rotation?: number;
   frames?: number;
+  cols?: number;
+  rows?: number;
   scrollStart: number;
   scrollEnd: number;
   cycles?: number;
@@ -61,9 +65,9 @@ function AnimatedSprite({
     const clone = tex.clone();
     clone.wrapS = RepeatWrapping;
     clone.wrapT = RepeatWrapping;
-    clone.repeat.set(1 / frames, 1);
+    clone.repeat.set(1 / cols, 1 / rows);
     return clone;
-  }, [tex, frames]);
+  }, [tex, cols, rows]);
 
   useEffect(() => {
     return () => {
@@ -92,9 +96,12 @@ function AnimatedSprite({
       }
 
       const currentFrame = Math.floor(playhead.current) % frames;
+      const col = currentFrame % cols;
+      const row = Math.floor(currentFrame / cols);
       // Imperative texture animation is intentional in the render loop.
       // eslint-disable-next-line react-hooks/immutability
-      clonedTex.offset.x = currentFrame / frames;
+      clonedTex.offset.x = col / cols;
+      clonedTex.offset.y = (rows - 1 - row) / rows;
     }
     if (materialRef.current) {
       materialRef.current.uTime = state.clock.elapsedTime;
@@ -250,7 +257,9 @@ function AlpineScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
           scrollEnd={0.875}
           scale={[15, 15]}
           scrollProgress={scrollProgress}
-          frames={8}
+          frames={12}
+          cols={6}
+          rows={2}
           cycles={10}
         />
       </group>

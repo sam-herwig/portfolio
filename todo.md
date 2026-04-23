@@ -1,3 +1,17 @@
+## Shhhh Asset Prompting Plan
+
+- [x] 1. Read the `shhhh` route, grove scene, and existing cairn/monogram assets to lock the visual constraints.
+- [x] 2. Confirm the intended role, composition, and output format for each of the four requested assets.
+- [x] 3. Draft production-ready generation prompts that match the updated Japanese woodblock direction for the easter-egg scene.
+- [x] 4. Add a review summary with the final prompt set, decisions, and any remaining open constraints.
+
+### Review
+
+- Locked a new shared style anchor for all visual parallax illustration prompts: Japanese woodblock print, Hokusai/Hiroshige influence, restrained dawn palette, paper grain, limited 5–7 tone palette, quiet pre-sunrise mood.
+- Kept the style anchor for scenic illustration assets only. Did not apply it to ambient audio or terrain utility maps because those assets need medium-specific prompts to stay usable.
+- Drafted one prompt for the foreground branch layer, one for a compact grove sigil that can live inside the existing monogram frame or stand alone, one audio-generation prompt for a short seamless ambience loop, and one grayscale height-map prompt intended for later normal-map derivation.
+- Remaining open decision: whether the sigil should be generated as a centered standalone emblem or specifically sized/composed to drop into `web/public/cairn/monogram-frame.webp`.
+
 # Case Study Page Redesign
 
 Craft-forward scrollytelling case studies with trail-themed framing and bespoke spotlight slots.
@@ -1048,4 +1062,3 @@ payoff. `/grill-me` session resolved the design tree below.
 - **Compass-always-visible may feel busy.** Current cursor only appears near eggs. Permanent could become visual noise on long scrolls. Worth A/B testing opacity (0.85 → 0.5) once live.
 - **`/shhhh` discoverability.** Single Forest sprite + compass spin is the only way in. If playtest shows nobody finds it, increase sprite size or add a second hint (e.g., zone-entry shimmer on Forest enter).
 - **Water performance on mobile.** Custom shader on a fullscreen plane on mid-tier Android could chug. Plan for a mobile-tier shader variant (skip caustics, reduce ripple count) gated behind viewport width or DPR check.
-
