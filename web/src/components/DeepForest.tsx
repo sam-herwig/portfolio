@@ -17,6 +17,8 @@ function AnimatedSprite({
   scale,
   rotation = 0,
   frames = 8,
+  cols = 8,
+  rows = 1,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -30,6 +32,8 @@ function AnimatedSprite({
   scale: [number, number];
   rotation?: number;
   frames?: number;
+  cols?: number;
+  rows?: number;
   scrollStart: number;
   scrollEnd: number;
   cycles?: number;
@@ -45,9 +49,9 @@ function AnimatedSprite({
     const clone = tex.clone();
     clone.wrapS = RepeatWrapping;
     clone.wrapT = RepeatWrapping;
-    clone.repeat.set(1 / frames, 1);
+    clone.repeat.set(1 / cols, 1 / rows);
     return clone;
-  }, [tex, frames]);
+  }, [tex, cols, rows]);
   useEffect(() => {
     return () => {
       tex.dispose();
@@ -68,7 +72,10 @@ function AnimatedSprite({
       if (clamped > 0 && clamped < 1) {
         playhead.current += delta * cycles;
         const currentFrame = Math.floor(playhead.current) % frames;
-        clonedTex.offset.x = currentFrame / frames;
+        const col = currentFrame % cols;
+        const row = Math.floor(currentFrame / cols);
+        clonedTex.offset.x = col / cols;
+        clonedTex.offset.y = (rows - 1 - row) / rows;
       }
     }
   });
@@ -323,7 +330,9 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
           MODULE_TIMELINE.forest.enterEnd + (MODULE_TIMELINE.forest.exitStart - MODULE_TIMELINE.forest.enterEnd) / 3
         }
         scale={[32, 32]}
-        frames={8}
+        frames={16}
+        cols={4}
+        rows={4}
         cycles={6}
         scrollProgress={scrollProgress}
       />

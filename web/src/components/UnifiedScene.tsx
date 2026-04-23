@@ -619,6 +619,8 @@ function AlpineAnimatedSprite({
   scale,
   rotation = 0,
   frames = 8,
+  cols = 8,
+  rows = 1,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -632,6 +634,8 @@ function AlpineAnimatedSprite({
   scale: [number, number];
   rotation?: number;
   frames?: number;
+  cols?: number;
+  rows?: number;
   scrollStart: number;
   scrollEnd: number;
   cycles?: number;
@@ -647,9 +651,9 @@ function AlpineAnimatedSprite({
     const c = tex.clone();
     c.wrapS = RepeatWrapping;
     c.wrapT = RepeatWrapping;
-    c.repeat.set(1 / frames, 1);
+    c.repeat.set(1 / cols, 1 / rows);
     return c;
-  }, [tex, frames]);
+  }, [tex, cols, rows]);
 
   useEffect(() => {
     return () => {
@@ -670,7 +674,11 @@ function AlpineAnimatedSprite({
       } else {
         playhead.current = 0;
       }
-      clonedTex.offset.x = (Math.floor(playhead.current) % frames) / frames;
+      const frame = Math.floor(playhead.current) % frames;
+      const col = frame % cols;
+      const row = Math.floor(frame / cols);
+      clonedTex.offset.x = col / cols;
+      clonedTex.offset.y = (rows - 1 - row) / rows;
     }
   });
 
@@ -829,7 +837,9 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
         scrollEnd={alpine.ownEnd}
         scale={[15, 15]}
         scrollProgress={scrollProgress}
-        frames={8}
+        frames={12}
+        cols={6}
+        rows={2}
         cycles={8}
       />
     </group>
@@ -1071,6 +1081,8 @@ function OneShotAnimatedFox({
   scale,
   rotation = 0,
   frames = 8,
+  cols = 8,
+  rows = 1,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -1084,9 +1096,9 @@ function OneShotAnimatedFox({
     const c = tex.clone();
     c.wrapS = RepeatWrapping;
     c.wrapT = RepeatWrapping;
-    c.repeat.set(1 / frames, 1);
+    c.repeat.set(1 / cols, 1 / rows);
     return c;
-  }, [tex, frames]);
+  }, [tex, cols, rows]);
 
   const lerpedP = useRef(0);
 
@@ -1113,12 +1125,21 @@ function OneShotAnimatedFox({
       meshRef.current.position.z = endZ;
 
       if (walkProgress >= 1.0) {
-        clonedTex.offset.x = (frames - 1) / frames;
+        const lastFrame = frames - 1;
+        const col = lastFrame % cols;
+        const row = Math.floor(lastFrame / cols);
+        clonedTex.offset.x = col / cols;
+        clonedTex.offset.y = (rows - 1 - row) / rows;
       } else if (walkProgress > 0) {
         const totalFrames = walkProgress * cycles * frames;
-        clonedTex.offset.x = (Math.floor(totalFrames) % frames) / frames;
+        const currentFrame = Math.floor(totalFrames) % frames;
+        const col = currentFrame % cols;
+        const row = Math.floor(currentFrame / cols);
+        clonedTex.offset.x = col / cols;
+        clonedTex.offset.y = (rows - 1 - row) / rows;
       } else {
         clonedTex.offset.x = 0;
+        clonedTex.offset.y = (rows - 1) / rows;
       }
 
       // Fade in 0.00→0.20, hold 0.20→0.55, fade out 0.55→0.70 (matches cliff)
@@ -1177,7 +1198,9 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
           startZ={9}
           endZ={9}
           scale={[3.5, 3.5]}
-          frames={7}
+          frames={16}
+          cols={4}
+          rows={4}
           cycles={6}
           scrollStart={0.1}
           scrollEnd={0.35}
