@@ -3,33 +3,6 @@ import { Color, Vector3 } from 'three';
 import { shaderMaterial } from '@react-three/drei';
 import { extend } from '@react-three/fiber';
 
-/**
- * WaterMaterial — /shhhh dawn lake, true 3D horizontal surface.
- *
- * Vertex:
- *   - Four summed directional sines for rest motion (total crest ~5 cm).
- *   - Radial ripple waves at world-XZ click points (amp 4 cm, speed 1.4 m/s,
- *     lifetime 3.5 s).
- *   - Analytic normals computed from the partial derivatives of the wave
- *     sum — cheaper and less "plastic" than a normal map.
- *
- * Fragment:
- *   - Bokashi by distance: near→far→horizon across viewDist 8–70 m. Sells
- *     recession across the lake surface.
- *   - Fresnel: pow(1 - N·V, 4) mixes water body with reflection; grazing
- *     angles at the horizon read as mirror, near-camera reads as pigment.
- *   - Stylized reflection: reflected view ray projected onto the mountain
- *     billboard plane; on-billboard UVs sample the painted mountain (desat
- *     30%, tint 25% toward far-water), off-billboard UVs fall back to
- *     horizon color. A vertical alpha ramp matches the billboard's own
- *     fade so reflections dissolve into fog where the mountain does.
- *   - Crest specular: Blinn-Phong against a fake low-sun direction, gated
- *     by the ripple crest mask so only raised wavefronts glint.
- *   - Paper grain in screen space for sumi-e tooth at any angle.
- *   - Manual exp² fog mix at the end so the water dissolves into the scene
- *     fog band without depending on ShaderMaterial fog chunks.
- */
-
 const MAX_RIPPLES = 8;
 const initialRipples = new Float32Array(MAX_RIPPLES * 4);
 
@@ -40,24 +13,25 @@ const WaterShaderMaterial = shaderMaterial(
     uMountainTex: null,
     uSunDir: new Vector3(-0.3, 0.4, -0.6).normalize(),
 
-    // Billboard geometry so the reflection can project onto it.
     uBillboardX: 0.0,
     uBillboardZ: -95.0,
     uBillboardY: 18.0,
     uBillboardW: 240.0,
     uBillboardH: 45.0,
 
-    // Cool dawn palette — no warm tones.
     uColorHorizon: new Color('#c7ccc9'),
     uColorWaterFar: new Color('#6b7a85'),
     uColorWaterNear: new Color('#b2b9b8'),
     uColorRippleTint: new Color('#8a9299'),
     uColorSpec: new Color('#e8ecef'),
 
+    // New Colors
+    uColorCaustics: new Color('#ffffff'),
+    uColorFoam: new Color('#f0f4f5'),
+
     uFogColor: new Color('#c7ccc9'),
     uFogDensity: 0.011,
 
-    // Tunable feel knobs (exposed via Leva).
     uFresnelExp: 4.0,
     uReflStrength: 0.9,
     uFresnelJitter: 0.08,
@@ -70,6 +44,11 @@ const WaterShaderMaterial = shaderMaterial(
     uCrestSpecStrength: 0.35,
     uCrestSpecExp: 80.0,
     uRippleTint: 0.12,
+
+    // New Controls
+    uCausticIntensity: 0.2,
+    uFoamThreshold: 0.02,
+    uWaveSteepness: 0.05,
   },
   /* ── Vertex ─────────────────────────────────────────────────────────── */
   `
@@ -77,39 +56,40 @@ const WaterShaderMaterial = shaderMaterial(
 
     uniform float uTime;
     uniform vec4 uRipples[MAX_RIPPLES];
+    uniform float uWaveSteepness;
 
     varying vec3 vWorldPos;
     varying vec3 vViewPos;
     varying vec3 vNormal;
     varying float vCrest;
 
-    /* Four directional sine waves — tiny amplitudes, gentle speeds.
-       Dawn/still: you have to look twice to see motion. */
-    float waveH(vec2 p, float t) {
-      float h = 0.0;
-      h += sin(dot(p, vec2(1.0, 0.3))  * (6.2831853 / 6.0)  + t * 0.40) * 0.018;
-      h += sin(dot(p, vec2(-0.7, 0.5)) * (6.2831853 / 11.0) + t * 0.30) * 0.022;
-      h += sin(dot(p, vec2(0.2, -1.0)) * (6.2831853 / 3.5)  + t * 0.60) * 0.008;
-      h += sin(dot(p, vec2(0.9, -0.1)) * (6.2831853 / 1.8)  + t * 0.90) * 0.004;
-      return h;
+    /* Gerstner Wave implementation */
+    vec3 gerstnerWave(vec4 wave, vec3 p, inout vec3 tangent, inout vec3 binormal, float t) {
+      float steepness = wave.z * uWaveSteepness;
+      float wavelength = wave.w;
+      float k = 2.0 * 3.14159 / wavelength;
+      float c = sqrt(9.8 / k);
+      vec2 d = normalize(wave.xy);
+      float f = k * (dot(d, p.xz) - c * t);
+      float a = steepness / k;
+      
+      tangent += vec3(
+        -d.x * d.x * (steepness * sin(f)),
+        d.x * (steepness * cos(f)),
+        -d.x * d.y * (steepness * sin(f))
+      );
+      binormal += vec3(
+        -d.x * d.y * (steepness * sin(f)),
+        d.y * (steepness * cos(f)),
+        -d.y * d.y * (steepness * sin(f))
+      );
+      return vec3(
+        d.x * (a * cos(f)),
+        a * sin(f),
+        d.y * (a * cos(f))
+      );
     }
 
-    /* Analytic gradient of waveH — exactly the sum of d/dxz of each sine. */
-    vec2 waveG(vec2 p, float t) {
-      vec2 g = vec2(0.0);
-      float k;
-      k = 6.2831853 / 6.0;
-      g += vec2(1.0, 0.3)  * cos(dot(p, vec2(1.0, 0.3))  * k + t * 0.40) * 0.018 * k;
-      k = 6.2831853 / 11.0;
-      g += vec2(-0.7, 0.5) * cos(dot(p, vec2(-0.7, 0.5)) * k + t * 0.30) * 0.022 * k;
-      k = 6.2831853 / 3.5;
-      g += vec2(0.2, -1.0) * cos(dot(p, vec2(0.2, -1.0)) * k + t * 0.60) * 0.008 * k;
-      k = 6.2831853 / 1.8;
-      g += vec2(0.9, -0.1) * cos(dot(p, vec2(0.9, -0.1)) * k + t * 0.90) * 0.004 * k;
-      return g;
-    }
-
-    /* Radial ripple contribution at world XZ. */
     void rippleContrib(vec2 p, float t, out float dy, out vec2 dg, out float crest) {
       dy = 0.0;
       dg = vec2(0.0);
@@ -126,7 +106,6 @@ const WaterShaderMaterial = shaderMaterial(
           float decay = 1.0 - smoothstep(0.0, 3.5, age);
           float amp = 0.04 * decay * r.w;
           dy += amp * gauss;
-          /* radial derivative of gauss × amp */
           float dRadial = amp * gauss * (-2.0 * x / thick);
           vec2 dir = (p - r.xy) / max(dist, 0.001);
           dg += dir * dRadial;
@@ -137,26 +116,39 @@ const WaterShaderMaterial = shaderMaterial(
 
     void main() {
       vec4 worldPos = modelMatrix * vec4(position, 1.0);
-      vec2 xz = worldPos.xz;
+      vec3 p = worldPos.xyz;
       float t = uTime;
-
-      float hRest = waveH(xz, t);
-      vec2  gRest = waveG(xz, t);
+      
+      vec3 tangent = vec3(1.0, 0.0, 0.0);
+      vec3 binormal = vec3(0.0, 0.0, 1.0);
+      
+      // Wave directions, steepness baseline, wavelength
+      vec4 waveA = vec4(1.0, 0.3, 0.5, 6.0);
+      vec4 waveB = vec4(-0.7, 0.5, 0.4, 11.0);
+      vec4 waveC = vec4(0.2, -1.0, 0.2, 3.5);
+      vec4 waveD = vec4(0.9, -0.1, 0.1, 1.8);
+      
+      vec3 pOffset = vec3(0.0);
+      pOffset += gerstnerWave(waveA, p, tangent, binormal, t);
+      pOffset += gerstnerWave(waveB, p, tangent, binormal, t);
+      pOffset += gerstnerWave(waveC, p, tangent, binormal, t);
+      pOffset += gerstnerWave(waveD, p, tangent, binormal, t);
+      
+      p += pOffset;
+      
       float hRip; vec2 gRip; float crest;
-      rippleContrib(xz, t, hRip, gRip, crest);
-
-      worldPos.y += hRest + hRip;
-      vec2 grad = gRest + gRip;
-
-      /* Normal of the height field: N = normalize(-dH/dx, 1, -dH/dz).
-         grad.x = dH/dx, grad.y = dH/dz (because xz = worldPos.xz). */
-      vNormal = normalize(vec3(-grad.x, 1.0, -grad.y));
-      vWorldPos = worldPos.xyz;
-
-      vec4 viewPos = viewMatrix * worldPos;
+      rippleContrib(worldPos.xz, t, hRip, gRip, crest);
+      p.y += hRip;
+      tangent.y += gRip.x; 
+      binormal.y += gRip.y; 
+      
+      vNormal = normalize(cross(binormal, tangent));
+      vWorldPos = p;
+      
+      vec4 viewPos = viewMatrix * vec4(p, 1.0);
       vViewPos = viewPos.xyz;
       vCrest = crest;
-
+      
       gl_Position = projectionMatrix * viewPos;
     }
   `,
@@ -184,6 +176,11 @@ const WaterShaderMaterial = shaderMaterial(
     uniform vec3 uColorWaterNear;
     uniform vec3 uColorRippleTint;
     uniform vec3 uColorSpec;
+    
+    uniform vec3 uColorCaustics;
+    uniform vec3 uColorFoam;
+    uniform float uCausticIntensity;
+    uniform float uFoamThreshold;
 
     uniform vec3 uFogColor;
     uniform float uFogDensity;
@@ -205,6 +202,11 @@ const WaterShaderMaterial = shaderMaterial(
       p = fract(p * vec2(123.34, 456.21));
       p += dot(p, p + 45.32);
       return fract(p.x * p.y);
+    }
+    
+    vec2 hash2(vec2 p) {
+      p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+      return fract(sin(p)*43758.5453);
     }
 
     float vnoise(vec2 p) {
@@ -228,17 +230,28 @@ const WaterShaderMaterial = shaderMaterial(
       }
       return v;
     }
+    
+    float voronoi(vec2 x, float t) {
+      vec2 n = floor(x);
+      vec2 f = fract(x);
+      float res = 8.0;
+      for(int j=-1; j<=1; j++)
+      for(int i=-1; i<=1; i++) {
+        vec2 g = vec2(float(i),float(j));
+        vec2 o = hash2(n + g);
+        o = 0.5 + 0.5*sin(t + 6.2831*o);
+        vec2 r = g - f + o;
+        float d = dot(r,r);
+        res = min(res, d);
+      }
+      return sqrt(res);
+    }
 
     void main() {
       vec3 N = normalize(vNormal);
       vec3 V = normalize(cameraPosition - vWorldPos);
       float viewDist = length(vViewPos);
 
-      /* ── Domain-warped flow field (Iñigo Quilez trick) ───────────
-         fbm(p + fbm(p + fbm(p))) — produces slow, non-repeating motion
-         that reads as pigment drifting across wet paper. Reused below
-         for bokashi boundary, reflection UVs, and fresnel bleed so all
-         three transitions feel organically bled instead of pasted. */
       vec2 warpBase = vWorldPos.xz * uWarpScale;
       vec2 q = vec2(
         fbm(warpBase + vec2(0.0, uTime * 0.030)),
@@ -249,20 +262,16 @@ const WaterShaderMaterial = shaderMaterial(
         fbm(warpBase + 4.0 * q + vec2(8.3, 2.8))
       ) - 0.5;
 
-      /* ── Bokashi by distance ─────────────────────────────────────── */
       float bokT = clamp(smoothstep(8.0, 70.0, viewDist) + warp.x * uBokashiWarp, 0.0, 1.0);
       vec3 waterBody = mix(uColorWaterNear, uColorWaterFar, smoothstep(0.0, 0.5, bokT));
       waterBody = mix(waterBody, uColorHorizon, smoothstep(0.5, 1.0, bokT));
 
-      /* Pigment density — two not-quite-mixed tones drift over the body. */
       float pigment = fbm(vWorldPos.xz * 0.08 + vec2(uTime * 0.015, -uTime * 0.010));
       vec3 wetTone = mix(uColorWaterNear, uColorRippleTint, 0.25);
       waterBody = mix(waterBody, wetTone, smoothstep(0.4, 0.75, pigment) * uPigmentAmount);
 
-      /* ── Fresnel ─────────────────────────────────────────────────── */
       float F = pow(1.0 - max(0.0, dot(N, V)), uFresnelExp);
 
-      /* ── Reflection via reflected view ray → billboard plane ─────── */
       vec3 R = reflect(-V, N);
       vec3 reflCol = uColorHorizon;
       if (R.z < -0.001) {
@@ -271,18 +280,13 @@ const WaterShaderMaterial = shaderMaterial(
           vec3 hit = vWorldPos + R * tHit;
           float u = (hit.x - uBillboardX + uBillboardW * 0.5) / uBillboardW;
           float v = (hit.y - (uBillboardY - uBillboardH * 0.5)) / uBillboardH;
-          /* Wave-normal wobble + domain-warp bleed. The warp term is the
-             living-paper move — reflection edges breathe and drift. */
           u += -N.x * 0.04 + warp.x * uReflWarpU;
           v += -N.z * 0.02 + warp.y * uReflWarpV;
           if (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0) {
             vec4 sampleCol = texture2D(uMountainTex, vec2(u, v));
             vec3 mCol = sampleCol.rgb;
-            /* Match the billboard's own bottom-alpha fade so reflections
-               dissolve where the mountain does. */
             float bottomFade = 1.0 - smoothstep(0.75, 1.0, 1.0 - v);
             float mAlpha = sampleCol.a * bottomFade;
-            /* Desaturate 30%, tint 25% toward far-water palette. */
             float lum = dot(mCol, vec3(0.299, 0.587, 0.114));
             mCol = mix(mCol, vec3(lum), 0.30);
             mCol = mix(mCol, uColorWaterFar, 0.25);
@@ -291,25 +295,33 @@ const WaterShaderMaterial = shaderMaterial(
         }
       }
 
-      /* ── Combine water + reflection with noise-jittered fresnel ──── */
       float Fjitter = F * uReflStrength + warp.y * uFresnelJitter * smoothstep(0.1, 0.6, F);
       vec3 col = mix(waterBody, reflCol, clamp(Fjitter, 0.0, 1.0));
 
-      /* ── Edge darkening / pigment pooling on wave shoulders ─────── */
       float shoulder = 1.0 - abs(N.y);
       float pool = smoothstep(0.05, 0.25, shoulder);
       pool *= 0.5 + 0.5 * fbm(vWorldPos.xz * 0.4 + uTime * 0.020);
       col *= 1.0 - pool * uEdgeDarken;
 
-      /* ── Crest specular (Blinn-Phong), gated by ripple crest ─────── */
+      /* Caustics */
+      float caustics = voronoi(vWorldPos.xz * 0.5 + uTime * 0.2, uTime * 0.5);
+      caustics = pow(1.0 - caustics, 3.0) * uCausticIntensity;
+      float causticsMask = smoothstep(40.0, 10.0, viewDist);
+      col += uColorCaustics * caustics * causticsMask;
+
+      /* Crest Specular */
       vec3 H = normalize(uSunDir + V);
       float spec = pow(max(0.0, dot(N, H)), uCrestSpecExp);
       col += uColorSpec * spec * vCrest * uCrestSpecStrength;
 
-      /* Slight ripple tint on the wake for a touch of ink-wash. */
+      /* Wake Ripple Tint */
       col = mix(col, uColorRippleTint, vCrest * uRippleTint);
+      
+      /* Gerstner Foam */
+      float foamNoise = fbm(vWorldPos.xz * 2.0 - uTime * 0.5);
+      float foamMask = smoothstep(uFoamThreshold, uFoamThreshold + 0.05, vWorldPos.y) * foamNoise;
+      col = mix(col, uColorFoam, clamp(foamMask, 0.0, 1.0));
 
-      /* ── Manual exp² fog ─────────────────────────────────────────── */
       float fogAmount = 1.0 - exp(-pow(uFogDensity * viewDist, 2.0));
       col = mix(col, uFogColor, fogAmount);
 

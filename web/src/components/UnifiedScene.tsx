@@ -2,6 +2,7 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { folder, useControls } from 'leva';
 import { useTexture, useVideoTexture, Points, PointMaterial } from '@react-three/drei';
 import { useRef, useEffect, Suspense, useMemo, useState } from 'react';
 import React from 'react';
@@ -40,15 +41,25 @@ function applyGroupOpacity(group: Group, envelope: number): void {
     if (!mesh.material) return;
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     for (const mat of mats) {
-      if (!('opacity' in mat)) continue;
       // Skip materials that manage their own opacity (e.g. video textures)
       if ((mat as any).__selfManagedOpacity) continue;
-      // Store base opacity on first visit
-      if ((mat as any).__baseOpacity === undefined) {
-        (mat as any).__baseOpacity = mat.opacity;
+
+      if ('opacity' in mat) {
+        // Store base opacity on first visit
+        if ((mat as any).__baseOpacity === undefined) {
+          (mat as any).__baseOpacity = mat.opacity;
+        }
+        mat.opacity = (mat as any).__baseOpacity * envelope;
+        mat.transparent = true;
       }
-      mat.opacity = (mat as any).__baseOpacity * envelope;
-      mat.transparent = true;
+
+      if ('uOpacity' in mat) {
+        if ((mat as any).__baseUOpacity === undefined) {
+          (mat as any).__baseUOpacity = (mat as any).uOpacity;
+        }
+        (mat as any).uOpacity = (mat as any).__baseUOpacity * envelope;
+        mat.transparent = true;
+      }
     }
   });
 }
@@ -211,49 +222,119 @@ function UnifiedPostProcessing({ scrollProgress }: { scrollProgress: MotionValue
 // HERO SCENE GROUP
 // =============================================================================
 
-function ParallaxLayer({
+function Hero3DLayer({
   textureUrl,
-  z,
-  baseY = 0,
-  speed = 1,
-  scrollProgress,
+  position,
+  scale,
+  uPaperOpacity = 0,
   isActive,
+  mousePos,
+  touchMouse,
+  touchTarget,
+  isMobile,
+  uRadius = 0.2,
+  uStrength = 0.05,
+  uNoiseScale = 50.0,
+  uSpeed = 0.5,
 }: {
   textureUrl: string;
-  z: number;
-  baseY?: number;
-  speed?: number;
-  scrollProgress: MotionValue<number>;
+  position: [number, number, number];
+  scale: [number, number];
+  uPaperOpacity?: number;
   isActive?: React.MutableRefObject<boolean>;
+  mousePos: React.MutableRefObject<Vector2>;
+  touchMouse: React.MutableRefObject<Vector2>;
+  touchTarget: React.MutableRefObject<Vector2>;
+  isMobile: boolean;
+  uRadius?: number;
+  uStrength?: number;
+  uNoiseScale?: number;
+  uSpeed?: number;
 }) {
   const tex = useTexture(textureUrl) as Texture;
-  const { viewport, camera } = useThree();
-
-  const zVec = useMemo(() => new Vector3(0, 0, z), [z]);
-  const cv = viewport.getCurrentViewport(camera, zVec);
-  const image = tex.image as { width?: number; height?: number } | undefined;
-  const imageAspect = image?.width && image?.height ? image.width / image.height : 16 / 10;
-  const viewportAspect = cv.width / cv.height;
-  const containScale: [number, number] =
-    imageAspect > viewportAspect
-      ? [cv.width * 1.2, (cv.width * 1.2) / imageAspect]
-      : [cv.height * 1.2 * imageAspect, cv.height * 1.2];
-
   const materialRef = useRef<any>(null);
   const meshRef = useRef<Mesh>(null);
-  const lerpedP = useRef(0);
-  // Desktop cursor: drives both mesh rotation tilt AND shader watercolor
-  const mousePos = useRef(new Vector2(0, 0));
-  // Mobile touch: drives shader watercolor only (rotation tilt stays flat)
-  const touchMouse = useRef(new Vector2(10, 10));
-  const touchTarget = useRef(new Vector2(10, 10));
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     return () => {
       tex.dispose();
     };
   }, [tex]);
+
+  useFrame((state, delta) => {
+    if (isActive && !isActive.current) return;
+
+    if (materialRef.current) {
+      materialRef.current.uTime = state.clock.elapsedTime;
+      materialRef.current.uWind = state.clock.elapsedTime * 0.5;
+      materialRef.current.uRadius = uRadius;
+      materialRef.current.uStrength = uStrength;
+      materialRef.current.uNoiseScale = uNoiseScale;
+      materialRef.current.uSpeed = uSpeed;
+
+      if (isMobile) {
+        touchMouse.current.lerp(touchTarget.current, 0.1);
+        materialRef.current.uMouse.copy(touchMouse.current);
+      } else {
+        materialRef.current.uMouse.lerp(mousePos.current, 0.1);
+      }
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={position}>
+      <planeGeometry args={[scale[0], scale[1], 64, 64]} />
+      <WoodcutShader
+        ref={materialRef}
+        transparent
+        depthWrite={false}
+        uTexture={tex}
+        uPaperOpacity={uPaperOpacity}
+        uRadius={uRadius}
+        uStrength={uStrength}
+        uNoiseScale={uNoiseScale}
+        uSpeed={uSpeed}
+      />
+    </mesh>
+  );
+}
+
+function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+  const groupRef = useRef<Group>(null);
+  const lerpedP = useRef(0);
+  const isActive = useRef(true);
+
+  const mousePos = useRef(new Vector2(0, 0));
+  const touchMouse = useRef(new Vector2(10, 10));
+  const touchTarget = useRef(new Vector2(10, 10));
+  const [isMobile, setIsMobile] = useState(false);
+
+  const composition = useControls(
+    'Home Hero',
+    {
+      mountains: folder({
+        mX: { value: 1.0, min: -80, max: 80, step: 0.5 },
+        mY: { value: 23.5, min: -20, max: 40, step: 0.5 },
+        mZ: { value: -92, min: -200, max: -20, step: 1 },
+        mW: { value: 207, min: 40, max: 400, step: 1 },
+        mH: { value: 80, min: 10, max: 120, step: 1 },
+      }),
+      forest: folder({
+        fX: { value: 0.0, min: -80, max: 80, step: 0.5 },
+        fY: { value: -12.0, min: -40, max: 40, step: 0.5 },
+        fZ: { value: -70, min: -200, max: -20, step: 1 },
+        fW: { value: 150, min: 40, max: 400, step: 1 },
+        fH: { value: 40, min: 10, max: 120, step: 1 },
+      }),
+      inkBleed: folder({
+        radius: { value: 0.2, min: 0.0, max: 1.0, step: 0.01 },
+        strength: { value: 0.05, min: 0.0, max: 0.2, step: 0.005 },
+        noiseScale: { value: 50.0, min: 10.0, max: 200.0, step: 1.0 },
+        speed: { value: 0.5, min: 0.0, max: 2.0, step: 0.05 },
+      }),
+    },
+    { collapsed: false },
+  );
 
   // SSR-safe mobile detection, matches Tailwind md: breakpoint
   useEffect(() => {
@@ -306,43 +387,6 @@ function ParallaxLayer({
     };
   }, [isMobile]);
 
-  useFrame((state, delta) => {
-    if (isActive && !isActive.current) return;
-    lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-    const heroEnd = MODULE_TIMELINE.hero.exitEnd;
-    const heroProgress = Math.min(1, Math.max(0, lerpedP.current / heroEnd));
-
-    if (materialRef.current) {
-      materialRef.current.uTime = state.clock.elapsedTime;
-      if (isMobile) {
-        touchMouse.current.lerp(touchTarget.current, 0.1);
-        materialRef.current.uMouse.copy(touchMouse.current);
-      } else {
-        materialRef.current.uMouse.lerp(mousePos.current, 0.1);
-      }
-    }
-    if (meshRef.current) {
-      const targetY = baseY + heroProgress * (10 * speed);
-      meshRef.current.position.y = MathUtils.damp(meshRef.current.position.y, targetY, 5, delta);
-      // Parallax tilt uses desktop cursor only — mousePos stays at (0,0) on mobile
-      meshRef.current.rotation.x = MathUtils.damp(meshRef.current.rotation.x, mousePos.current.y * 0.025, 4, delta);
-      meshRef.current.rotation.y = MathUtils.damp(meshRef.current.rotation.y, mousePos.current.x * 0.03, 4, delta);
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={[0, baseY, z]}>
-      <planeGeometry args={[containScale[0], containScale[1], 64, 64]} />
-      <WoodcutShader ref={materialRef} transparent depthWrite={false} uTexture={tex} />
-    </mesh>
-  );
-}
-
-function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
-  const groupRef = useRef<Group>(null);
-  const lerpedP = useRef(0);
-  const isActive = useRef(true);
-
   useFrame((_, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
     if (groupRef.current) {
@@ -354,14 +398,41 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
   });
 
   return (
-    <group ref={groupRef} position={[0, -1, -6]}>
-      <ParallaxLayer
-        textureUrl="/bg_layer.webp"
-        z={-25}
-        baseY={2}
-        speed={0.35}
-        scrollProgress={scrollProgress}
+    <group ref={groupRef}>
+      {/* Solid Paper Background */}
+      <mesh position={[0, 0, -100]}>
+        <planeGeometry args={[500, 500]} />
+        <meshBasicMaterial color="#f9fafb" />
+      </mesh>
+      <Hero3DLayer
+        textureUrl="/home-hero/02-mountains.webp"
+        position={[composition.mX, composition.mY, composition.mZ]}
+        scale={[composition.mW, composition.mH]}
+        uPaperOpacity={0}
         isActive={isActive}
+        mousePos={mousePos}
+        touchMouse={touchMouse}
+        touchTarget={touchTarget}
+        isMobile={isMobile}
+        uRadius={composition.radius}
+        uStrength={composition.strength}
+        uNoiseScale={composition.noiseScale}
+        uSpeed={composition.speed}
+      />
+      <Hero3DLayer
+        textureUrl="/home-hero/04-forest.webp"
+        position={[composition.fX, composition.fY, composition.fZ]}
+        scale={[composition.fW, composition.fH]}
+        uPaperOpacity={0}
+        isActive={isActive}
+        mousePos={mousePos}
+        touchMouse={touchMouse}
+        touchTarget={touchTarget}
+        isMobile={isMobile}
+        uRadius={composition.radius}
+        uStrength={composition.strength}
+        uNoiseScale={composition.noiseScale}
+        uSpeed={composition.speed}
       />
     </group>
   );

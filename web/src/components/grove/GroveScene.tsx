@@ -151,7 +151,55 @@ function MistBand({
   );
 }
 
-function WaterPlane({ billboardX }: { billboardX: number }) {
+function BankBillboard({
+  texPath,
+  x,
+  y,
+  z,
+  w,
+  h,
+  alpha = 1,
+}: {
+  texPath: string;
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+  h: number;
+  alpha?: number;
+}) {
+  const texture = useTexture(texPath, (loaded) => {
+    const t = (Array.isArray(loaded) ? loaded[0] : loaded) as Texture;
+    t.colorSpace = SRGBColorSpace;
+    t.magFilter = LinearFilter;
+    t.minFilter = LinearFilter;
+  }) as Texture;
+
+  const material = useMemo(() => {
+    return new MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      depthWrite: false,
+      opacity: alpha,
+    });
+  }, [texture, alpha]);
+
+  return (
+    <mesh position={[x, y, z]} material={material}>
+      <planeGeometry args={[w, h, 1, 1]} />
+    </mesh>
+  );
+}
+
+function WaterPlane({
+  billboardX,
+  palette,
+  water,
+}: {
+  billboardX: number;
+  palette: (typeof DEFAULT_PRESET)['palette'];
+  water: (typeof DEFAULT_PRESET)['water'];
+}) {
   const meshRef = useRef<Mesh | null>(null);
   const matRef = useRef<ShaderMaterial | null>(null);
   const ripples = useRef<RippleSlot[]>([]);
@@ -171,42 +219,6 @@ function WaterPlane({ billboardX }: { billboardX: number }) {
     ripplesBuf.current = new Float32Array(MAX_RIPPLES * 4);
   }, []);
 
-  // ── Palette (vec3 colors via in-place .set so we don't reallocate) ──
-  const palette = useControls(
-    'Palette',
-    {
-      horizon: '#c7ccc9',
-      waterFar: '#6b7a85',
-      waterNear: '#b2b9b8',
-      rippleTint: '#8a9299',
-      specColor: '#e8ecef',
-      sunX: { value: -0.3, min: -1, max: 1, step: 0.01 },
-      sunY: { value: 0.4, min: 0, max: 1, step: 0.01 },
-      sunZ: { value: -0.6, min: -1, max: 1, step: 0.01 },
-    },
-    { collapsed: false },
-  );
-
-  // ── Water feel knobs ──
-  const water = useControls(
-    'Water',
-    {
-      fresnelExp: { value: 4.0, min: 0.5, max: 10, step: 0.05 },
-      reflStrength: { value: 0.9, min: 0, max: 1, step: 0.01 },
-      fresnelJitter: { value: 0.08, min: 0, max: 0.5, step: 0.005 },
-      bokashiWarp: { value: 0.12, min: 0, max: 0.5, step: 0.005 },
-      reflWarpU: { value: 0.022, min: 0, max: 0.1, step: 0.001 },
-      reflWarpV: { value: 0.016, min: 0, max: 0.1, step: 0.001 },
-      warpScale: { value: 0.15, min: 0.02, max: 0.6, step: 0.005 },
-      pigmentAmount: { value: 0.3, min: 0, max: 1, step: 0.01 },
-      edgeDarken: { value: 0.14, min: 0, max: 0.5, step: 0.005 },
-      crestSpecStrength: { value: 0.35, min: 0, max: 2, step: 0.01 },
-      crestSpecExp: { value: 80, min: 4, max: 256, step: 1 },
-      rippleTint: { value: 0.12, min: 0, max: 0.5, step: 0.005 },
-    },
-    { collapsed: true },
-  );
-
   useFrame(() => {
     if (!matRef.current || startedAt.current === null || !ripplesBuf.current) return;
     const now = (performance.now() - startedAt.current) / 1000;
@@ -220,6 +232,8 @@ function WaterPlane({ billboardX }: { billboardX: number }) {
     (u.uColorWaterNear.value as Color).set(palette.waterNear);
     (u.uColorRippleTint.value as Color).set(palette.rippleTint);
     (u.uColorSpec.value as Color).set(palette.specColor);
+    (u.uColorCaustics.value as Color).set(palette.causticsColor);
+    (u.uColorFoam.value as Color).set(palette.foamColor);
     u.uSunDir.value.set(palette.sunX, palette.sunY, palette.sunZ).normalize();
 
     u.uFresnelExp.value = water.fresnelExp;
@@ -234,6 +248,9 @@ function WaterPlane({ billboardX }: { billboardX: number }) {
     u.uCrestSpecStrength.value = water.crestSpecStrength;
     u.uCrestSpecExp.value = water.crestSpecExp;
     u.uRippleTint.value = water.rippleTint;
+    u.uCausticIntensity.value = water.causticIntensity;
+    u.uFoamThreshold.value = water.foamThreshold;
+    u.uWaveSteepness.value = water.waveSteepness;
 
     ripples.current = ripples.current.filter((r) => now - r.t0 < 3.5);
     const buf = ripplesBuf.current;
@@ -297,40 +314,484 @@ function CameraParallax() {
   return null;
 }
 
-function SceneContent() {
-  const composition = useControls(
-    'Composition',
-    {
-      mountain: folder({
-        mountainX: { value: -22, min: -80, max: 80, step: 0.5 },
-        mountainY: { value: 14, min: -5, max: 40, step: 0.5 },
-        mountainZ: { value: -95, min: -200, max: -20, step: 1 },
-        mountainW: { value: 180, min: 40, max: 400, step: 1 },
-        mountainH: { value: 38, min: 10, max: 120, step: 1 },
-      }),
-      mist1: folder({
-        mist1Y: { value: 2.4, min: 0, max: 20, step: 0.1 },
-        mist1Z: { value: -55, min: -180, max: -10, step: 1 },
-        mist1W: { value: 320, min: 40, max: 600, step: 1 },
-        mist1H: { value: 5.0, min: 0.5, max: 20, step: 0.1 },
-        mist1Alpha: { value: 0.32, min: 0, max: 1, step: 0.01 },
-        mist1Tint: '#e1e3de',
-      }),
-      mist2: folder({
-        mist2Y: { value: 6.0, min: 0, max: 25, step: 0.1 },
-        mist2Z: { value: -82, min: -180, max: -10, step: 1 },
-        mist2W: { value: 400, min: 40, max: 600, step: 1 },
-        mist2H: { value: 7.0, min: 0.5, max: 20, step: 0.1 },
-        mist2Alpha: { value: 0.42, min: 0, max: 1, step: 0.01 },
-        mist2Tint: '#e1e3de',
-      }),
-      fog: folder({
-        fogColor: '#cdd1cc',
-        fogDensity: { value: 0.0095, min: 0, max: 0.05, step: 0.0005 },
-      }),
+const DEFAULT_PRESET = {
+  palette: {
+    horizon: '#000000',
+    waterFar: '#050a12',
+    waterNear: '#122238',
+    rippleTint: '#526c8a',
+    specColor: '#ffffff',
+    causticsColor: '#ffffff',
+    foamColor: '#ffffff',
+    sunX: 0.0,
+    sunY: 0.7,
+    sunZ: 0.7,
+  },
+  water: {
+    fresnelExp: 7.0,
+    reflStrength: 1.0,
+    fresnelJitter: 0.0,
+    bokashiWarp: 0.05,
+    reflWarpU: 0.0,
+    reflWarpV: 0.0,
+    warpScale: 0.005,
+    pigmentAmount: 0.1,
+    edgeDarken: 0.8,
+    crestSpecStrength: 1.2,
+    crestSpecExp: 256,
+    rippleTint: 0.1,
+    causticIntensity: 0.1,
+    foamThreshold: -0.02,
+    waveSteepness: 0.005,
+  },
+  composition: {
+    mountainX: 13.0,
+    mountainY: 15.5,
+    mountainZ: -92,
+    mountainW: 180,
+    mountainH: 35,
+    mist1Y: 0.0,
+    mist1Z: -35,
+    mist1W: 383,
+    mist1H: 2.4,
+    mist1Alpha: 0.1,
+    mist1Tint: '#0c1a2e',
+    mist2Y: 4.7,
+    mist2Z: -96,
+    mist2W: 400,
+    mist2H: 9.7,
+    mist2Alpha: 0.2,
+    mist2Tint: '#050a12',
+    fogColor: '#000000',
+    fogDensity: 0.005,
+    bankFarX: 1.0,
+    bankFarY: 2.5,
+    bankFarZ: -58,
+    bankFarW: 127,
+    bankFarH: 15,
+    bankFarAlpha: 1.0,
+  },
+};
+
+const PRESETS: Record<
+  string,
+  {
+    palette?: Partial<typeof DEFAULT_PRESET.palette>;
+    water?: Partial<typeof DEFAULT_PRESET.water>;
+    composition?: Partial<typeof DEFAULT_PRESET.composition>;
+  }
+> = {
+  Default: DEFAULT_PRESET,
+  DeepNight: {
+    palette: {
+      horizon: '#030614',
+      waterFar: '#0b193d',
+      waterNear: '#1c2d54',
+      rippleTint: '#4a5b78',
+      specColor: '#ffffff',
+      causticsColor: '#a0b4d4',
+      foamColor: '#d6e2f2',
+      sunX: -0.6,
+      sunY: 0.8,
+      sunZ: -0.8,
     },
+    water: {
+      fresnelExp: 3.5,
+      reflStrength: 0.95,
+      fresnelJitter: 0.02,
+      bokashiWarp: 0.15,
+      reflWarpU: 0.01,
+      reflWarpV: 0.01,
+      warpScale: 0.03,
+      pigmentAmount: 0.4,
+      edgeDarken: 0.4,
+      crestSpecStrength: 0.8,
+      crestSpecExp: 120,
+      rippleTint: 0.5,
+      causticIntensity: 0.15,
+      foamThreshold: 0.02,
+      waveSteepness: 0.02,
+    },
+    composition: {
+      fogColor: '#0a1024',
+      fogDensity: 0.015,
+      mist1Tint: '#1c2a47',
+      mist2Tint: '#101a30',
+      mist1Alpha: 0.4,
+      mist2Alpha: 0.6,
+    },
+  },
+  Frost: {
+    palette: {
+      horizon: '#c6d1d9',
+      waterFar: '#87a2ba',
+      waterNear: '#a3bedb',
+      rippleTint: '#d8e5f2',
+      specColor: '#ffffff',
+      causticsColor: '#ffffff',
+      foamColor: '#ffffff',
+      sunX: 0.2,
+      sunY: 0.5,
+      sunZ: -0.4,
+    },
+    water: {
+      fresnelExp: 1.5,
+      reflStrength: 0.85,
+      fresnelJitter: 0.05,
+      bokashiWarp: 0.2,
+      reflWarpU: 0.03,
+      reflWarpV: 0.02,
+      warpScale: 0.05,
+      pigmentAmount: 0.2,
+      edgeDarken: 0.05,
+      crestSpecStrength: 0.6,
+      crestSpecExp: 60,
+      rippleTint: 0.3,
+      causticIntensity: 0.4,
+      foamThreshold: -0.01,
+      waveSteepness: 0.04,
+    },
+    composition: {
+      fogColor: '#bac7d4',
+      fogDensity: 0.012,
+      mist1Tint: '#dce5ed',
+      mist2Tint: '#b2c5d6',
+      mist1Alpha: 0.3,
+      mist2Alpha: 0.4,
+    },
+  },
+  Storm: {
+    palette: {
+      horizon: '#11151c',
+      waterFar: '#2b3947',
+      waterNear: '#4c6173',
+      rippleTint: '#7a91a3',
+      specColor: '#b3c4d1',
+      causticsColor: '#ffffff',
+      foamColor: '#e0eaf2',
+      sunX: -0.8,
+      sunY: 0.2,
+      sunZ: -0.2,
+    },
+    water: {
+      fresnelExp: 4.0,
+      reflStrength: 0.8,
+      fresnelJitter: 0.1,
+      bokashiWarp: 0.25,
+      reflWarpU: 0.05,
+      reflWarpV: 0.04,
+      warpScale: 0.1,
+      pigmentAmount: 0.6,
+      edgeDarken: 0.3,
+      crestSpecStrength: 0.4,
+      crestSpecExp: 40,
+      rippleTint: 0.6,
+      causticIntensity: 0.1,
+      foamThreshold: 0.05,
+      waveSteepness: 0.08,
+    },
+    composition: {
+      fogColor: '#26313d',
+      fogDensity: 0.025,
+      mist1Tint: '#4f6478',
+      mist2Tint: '#354657',
+      mist1Alpha: 0.6,
+      mist2Alpha: 0.7,
+    },
+  },
+  Moonlight: {
+    palette: {
+      horizon: '#000000',
+      waterFar: '#0d1d36',
+      waterNear: '#2b4d75',
+      rippleTint: '#8eaacc',
+      specColor: '#ffffff',
+      causticsColor: '#ffffff',
+      foamColor: '#f2f6fc',
+      sunX: 0.0,
+      sunY: 0.6,
+      sunZ: 0.5,
+    },
+    water: {
+      fresnelExp: 5.0,
+      reflStrength: 0.98,
+      fresnelJitter: 0.01,
+      bokashiWarp: 0.1,
+      reflWarpU: 0.0,
+      reflWarpV: 0.0,
+      warpScale: 0.01,
+      pigmentAmount: 0.2,
+      edgeDarken: 0.6,
+      crestSpecStrength: 1.0,
+      crestSpecExp: 180,
+      rippleTint: 0.2,
+      causticIntensity: 0.3,
+      foamThreshold: 0.0,
+      waveSteepness: 0.01,
+    },
+    composition: {
+      fogColor: '#050a12',
+      fogDensity: 0.008,
+      mist1Tint: '#1b3252',
+      mist2Tint: '#0d1b30',
+      mist1Alpha: 0.2,
+      mist2Alpha: 0.3,
+    },
+  },
+  MoonlightMist: {
+    palette: {
+      horizon: '#080c14',
+      waterFar: '#11223b',
+      waterNear: '#36567a',
+      rippleTint: '#a4bccc',
+      specColor: '#eef2f5',
+      causticsColor: '#dbe5f0',
+      foamColor: '#ffffff',
+      sunX: 0.1,
+      sunY: 0.4,
+      sunZ: 0.6,
+    },
+    water: {
+      fresnelExp: 4.5,
+      reflStrength: 0.9,
+      fresnelJitter: 0.03,
+      bokashiWarp: 0.15,
+      reflWarpU: 0.02,
+      reflWarpV: 0.02,
+      warpScale: 0.04,
+      pigmentAmount: 0.3,
+      edgeDarken: 0.5,
+      crestSpecStrength: 0.8,
+      crestSpecExp: 120,
+      rippleTint: 0.3,
+      causticIntensity: 0.2,
+      foamThreshold: 0.01,
+      waveSteepness: 0.015,
+    },
+    composition: {
+      fogColor: '#0e1726',
+      fogDensity: 0.018,
+      mist1Tint: '#2b4566',
+      mist2Tint: '#1a2e47',
+      mist1Alpha: 0.5,
+      mist2Alpha: 0.6,
+    },
+  },
+  MoonlightStorm: {
+    palette: {
+      horizon: '#000000',
+      waterFar: '#081426',
+      waterNear: '#1c3854',
+      rippleTint: '#6b8aab',
+      specColor: '#ffffff',
+      causticsColor: '#ffffff',
+      foamColor: '#eef4fa',
+      sunX: -0.2,
+      sunY: 0.5,
+      sunZ: 0.4,
+    },
+    water: {
+      fresnelExp: 6.0,
+      reflStrength: 0.95,
+      fresnelJitter: 0.08,
+      bokashiWarp: 0.2,
+      reflWarpU: 0.04,
+      reflWarpV: 0.03,
+      warpScale: 0.08,
+      pigmentAmount: 0.4,
+      edgeDarken: 0.7,
+      crestSpecStrength: 0.9,
+      crestSpecExp: 100,
+      rippleTint: 0.5,
+      causticIntensity: 0.4,
+      foamThreshold: 0.03,
+      waveSteepness: 0.06,
+    },
+    composition: {
+      fogColor: '#03070d',
+      fogDensity: 0.012,
+      mist1Tint: '#12253d',
+      mist2Tint: '#081426',
+      mist1Alpha: 0.4,
+      mist2Alpha: 0.5,
+    },
+  },
+  MidnightLake: {
+    palette: {
+      horizon: '#000000',
+      waterFar: '#050a12',
+      waterNear: '#122238',
+      rippleTint: '#526c8a',
+      specColor: '#ffffff',
+      causticsColor: '#ffffff',
+      foamColor: '#ffffff',
+      sunX: 0.0,
+      sunY: 0.7,
+      sunZ: 0.7,
+    },
+    water: {
+      fresnelExp: 7.0,
+      reflStrength: 1.0,
+      fresnelJitter: 0.0,
+      bokashiWarp: 0.05,
+      reflWarpU: 0.0,
+      reflWarpV: 0.0,
+      warpScale: 0.005,
+      pigmentAmount: 0.1,
+      edgeDarken: 0.8,
+      crestSpecStrength: 1.2,
+      crestSpecExp: 256,
+      rippleTint: 0.1,
+      causticIntensity: 0.1,
+      foamThreshold: -0.02,
+      waveSteepness: 0.005,
+    },
+    composition: {
+      fogColor: '#000000',
+      fogDensity: 0.005,
+      mist1Tint: '#0c1a2e',
+      mist2Tint: '#050a12',
+      mist1Alpha: 0.1,
+      mist2Alpha: 0.2,
+    },
+  },
+  ClearMorning: {
+    palette: {
+      horizon: '#1a3375',
+      waterFar: '#338ce6',
+      waterNear: '#80bad9',
+      rippleTint: '#dbe9f0',
+      specColor: '#ffffff',
+      causticsColor: '#ffffff',
+      foamColor: '#ffffff',
+      sunX: -0.4,
+      sunY: 0.4,
+      sunZ: -0.5,
+    },
+    water: {
+      fresnelExp: 2.0,
+      reflStrength: 0.92,
+      fresnelJitter: 0.03,
+      bokashiWarp: 0.12,
+      reflWarpU: 0.01,
+      reflWarpV: 0.01,
+      warpScale: 0.02,
+      pigmentAmount: 0.25,
+      edgeDarken: 0.1,
+      crestSpecStrength: 0.7,
+      crestSpecExp: 90,
+      rippleTint: 0.3,
+      causticIntensity: 0.3,
+      foamThreshold: 0.02,
+      waveSteepness: 0.03,
+    },
+    composition: {
+      fogColor: '#587382',
+      fogDensity: 0.009,
+      mist1Tint: '#f0f5f7',
+      mist2Tint: '#d8e5eb',
+      mist1Alpha: 0.2,
+      mist2Alpha: 0.4,
+    },
+  },
+};
+
+function SceneContent() {
+  const [palette, setPalette] = useControls(
+    'Palette',
+    () => ({
+      horizon: DEFAULT_PRESET.palette.horizon,
+      waterFar: DEFAULT_PRESET.palette.waterFar,
+      waterNear: DEFAULT_PRESET.palette.waterNear,
+      rippleTint: DEFAULT_PRESET.palette.rippleTint,
+      specColor: DEFAULT_PRESET.palette.specColor,
+      causticsColor: DEFAULT_PRESET.palette.causticsColor,
+      foamColor: DEFAULT_PRESET.palette.foamColor,
+      sunX: { value: DEFAULT_PRESET.palette.sunX, min: -1, max: 1, step: 0.01 },
+      sunY: { value: DEFAULT_PRESET.palette.sunY, min: 0, max: 1, step: 0.01 },
+      sunZ: { value: DEFAULT_PRESET.palette.sunZ, min: -1, max: 1, step: 0.01 },
+    }),
     { collapsed: false },
   );
+
+  const [water, setWater] = useControls(
+    'Water',
+    () => ({
+      fresnelExp: { value: DEFAULT_PRESET.water.fresnelExp, min: 0.5, max: 10, step: 0.05 },
+      reflStrength: { value: DEFAULT_PRESET.water.reflStrength, min: 0, max: 1, step: 0.01 },
+      fresnelJitter: { value: DEFAULT_PRESET.water.fresnelJitter, min: 0, max: 0.5, step: 0.005 },
+      bokashiWarp: { value: DEFAULT_PRESET.water.bokashiWarp, min: 0, max: 0.5, step: 0.005 },
+      reflWarpU: { value: DEFAULT_PRESET.water.reflWarpU, min: 0, max: 0.1, step: 0.001 },
+      reflWarpV: { value: DEFAULT_PRESET.water.reflWarpV, min: 0, max: 0.1, step: 0.001 },
+      warpScale: { value: DEFAULT_PRESET.water.warpScale, min: 0.02, max: 0.6, step: 0.005 },
+      pigmentAmount: { value: DEFAULT_PRESET.water.pigmentAmount, min: 0, max: 1, step: 0.01 },
+      edgeDarken: { value: DEFAULT_PRESET.water.edgeDarken, min: 0, max: 0.5, step: 0.005 },
+      crestSpecStrength: { value: DEFAULT_PRESET.water.crestSpecStrength, min: 0, max: 2, step: 0.01 },
+      crestSpecExp: { value: DEFAULT_PRESET.water.crestSpecExp, min: 4, max: 256, step: 1 },
+      rippleTint: { value: DEFAULT_PRESET.water.rippleTint, min: 0, max: 1, step: 0.005 },
+      causticIntensity: { value: DEFAULT_PRESET.water.causticIntensity, min: 0, max: 1, step: 0.01 },
+      foamThreshold: { value: DEFAULT_PRESET.water.foamThreshold, min: -0.05, max: 0.1, step: 0.001 },
+      waveSteepness: { value: DEFAULT_PRESET.water.waveSteepness, min: 0, max: 0.2, step: 0.001 },
+    }),
+    { collapsed: true },
+  );
+
+  const [composition, setComposition] = useControls(
+    'Composition',
+    () => ({
+      mountain: folder({
+        mountainX: { value: DEFAULT_PRESET.composition.mountainX, min: -80, max: 80, step: 0.5 },
+        mountainY: { value: DEFAULT_PRESET.composition.mountainY, min: -5, max: 40, step: 0.5 },
+        mountainZ: { value: DEFAULT_PRESET.composition.mountainZ, min: -200, max: -20, step: 1 },
+        mountainW: { value: DEFAULT_PRESET.composition.mountainW, min: 40, max: 400, step: 1 },
+        mountainH: { value: DEFAULT_PRESET.composition.mountainH, min: 10, max: 120, step: 1 },
+      }),
+      mist1: folder({
+        mist1Y: { value: DEFAULT_PRESET.composition.mist1Y, min: 0, max: 20, step: 0.1 },
+        mist1Z: { value: DEFAULT_PRESET.composition.mist1Z, min: -180, max: -10, step: 1 },
+        mist1W: { value: DEFAULT_PRESET.composition.mist1W, min: 40, max: 600, step: 1 },
+        mist1H: { value: DEFAULT_PRESET.composition.mist1H, min: 0.5, max: 20, step: 0.1 },
+        mist1Alpha: { value: DEFAULT_PRESET.composition.mist1Alpha, min: 0, max: 1, step: 0.01 },
+        mist1Tint: DEFAULT_PRESET.composition.mist1Tint,
+      }),
+      mist2: folder({
+        mist2Y: { value: DEFAULT_PRESET.composition.mist2Y, min: 0, max: 25, step: 0.1 },
+        mist2Z: { value: DEFAULT_PRESET.composition.mist2Z, min: -180, max: -10, step: 1 },
+        mist2W: { value: DEFAULT_PRESET.composition.mist2W, min: 40, max: 600, step: 1 },
+        mist2H: { value: DEFAULT_PRESET.composition.mist2H, min: 0.5, max: 20, step: 0.1 },
+        mist2Alpha: { value: DEFAULT_PRESET.composition.mist2Alpha, min: 0, max: 1, step: 0.01 },
+        mist2Tint: DEFAULT_PRESET.composition.mist2Tint,
+      }),
+      fog: folder({
+        fogColor: DEFAULT_PRESET.composition.fogColor,
+        fogDensity: { value: DEFAULT_PRESET.composition.fogDensity, min: 0, max: 0.05, step: 0.0005 },
+      }),
+      bankFar: folder({
+        bankFarX: { value: DEFAULT_PRESET.composition.bankFarX, min: -80, max: 80, step: 0.5 },
+        bankFarY: { value: DEFAULT_PRESET.composition.bankFarY, min: -5, max: 40, step: 0.5 },
+        bankFarZ: { value: DEFAULT_PRESET.composition.bankFarZ, min: -200, max: -20, step: 1 },
+        bankFarW: { value: DEFAULT_PRESET.composition.bankFarW, min: 40, max: 400, step: 1 },
+        bankFarH: { value: DEFAULT_PRESET.composition.bankFarH, min: 10, max: 120, step: 1 },
+        bankFarAlpha: { value: DEFAULT_PRESET.composition.bankFarAlpha, min: 0, max: 1, step: 0.01 },
+      }),
+    }),
+    { collapsed: false },
+  );
+
+  useControls('Presets', {
+    theme: {
+      options: Object.keys(PRESETS),
+      value: 'Default',
+      onChange: (v) => {
+        const p = PRESETS[v];
+        if (p) {
+          if (p.palette) setPalette(p.palette);
+          if (p.water) setWater(p.water);
+          if (p.composition) setComposition(p.composition);
+        }
+      },
+    },
+  });
 
   return (
     <>
@@ -360,7 +821,16 @@ function SceneContent() {
         alpha={composition.mist2Alpha}
         tint={composition.mist2Tint}
       />
-      <WaterPlane billboardX={composition.mountainX} />
+      <BankBillboard
+        texPath="/grove/03-far-bank.webp"
+        x={composition.bankFarX}
+        y={composition.bankFarY}
+        z={composition.bankFarZ}
+        w={composition.bankFarW}
+        h={composition.bankFarH}
+        alpha={composition.bankFarAlpha}
+      />
+      <WaterPlane billboardX={composition.mountainX} palette={palette} water={water} />
     </>
   );
 }

@@ -8,19 +8,24 @@ const WoodcutShaderMaterial = shaderMaterial(
     uTexture: null,
     uTime: 0,
     uColorBase: new THREE.Color('#18181b'), // Foreground token — ink
-    uColorPaper: new THREE.Color('#f9fafb'), // Background token — paper
-    uColorWater: new THREE.Color('#d1e8e2'), // Pale map blue — watercolor bleed
-    uColorSun: new THREE.Color('#fcd34d'), // Faded sunset orange — cursor hotspot
+    uColorPaper: new THREE.Color('#f9fafb'), // Background token — paper (used as fill for transparent areas if needed)
     uOpacity: 1.0,
-    uPaperOpacity: 1.0, // 1.0 = opaque paper (hero), 0.0 = transparent paper (sprites)
+    uPaperOpacity: 1.0, // 1.0 = fill transparent areas with uColorPaper, 0.0 = leave transparent
     uWind: 0.0, // Global synchronized continuous wind
     uMouse: new THREE.Vector2(0, 0), // Normalized cursor (-1..1)
+
+    // Ink Bleed Leva Controls
+    uRadius: 0.2,
+    uStrength: 0.05,
+    uNoiseScale: 50.0,
+    uSpeed: 0.5,
   },
   // Vertex Shader
   `
     varying vec2 vUv;
     varying float vDisplacement;
     varying vec2 vWorldPos;
+    varying vec2 vScreenPos;
     uniform sampler2D uTexture;
     uniform float uTime;
     uniform float uWind;
@@ -34,38 +39,16 @@ const WoodcutShaderMaterial = shaderMaterial(
       vUv = uv;
       vec3 pos = position;
 
-      /* ── VERTEX EFFECTS DISABLED — uncomment block to re-enable ─────────
-         Kept verbatim so A/B toggling is a single uncomment. When re-enabling,
-         also set pos.z += displacement, pos.x += wind, pos.y += wind * 0.2,
-         pos.x += pushDir.x * mousePush, pos.z -= mousePush * 0.5 below.
-
-      // Luminance-based Z pop — ink surges forward, paper stays flat
-      vec4 texData = texture2D(uTexture, vUv);
-      float lum = getLuminance(texData.rgb);
-      float displacement = (1.0 - lum) * 0.5;
-
-      // Time-driven wind sway — top rows sway more via vUv.y weight
-      float swayBlend = vUv.y;
-      float wind = sin(pos.x * 0.2 + uWind * 1.5) * 0.2 * swayBlend;
-
-      // Mouse repulsion: pushes vertices away from the cursor
-      vec2 worldMouse = uMouse * 50.0;
-      float distToMouse = distance(pos.xy, worldMouse);
-      float mousePush = smoothstep(20.0, 0.0, distToMouse) * 3.0 * swayBlend;
-      vec2 pushDir = normalize(pos.xy - worldMouse);
-
-      pos.z += displacement;
-      pos.x += wind;
-      pos.y += wind * 0.2;
-      pos.x += pushDir.x * mousePush;
-      pos.z -= mousePush * 0.5;
-      ── END DISABLED BLOCK ───────────────────────────────────────────── */
-
-      // Passthrough for fragment varyings (watercolor still reads vWorldPos)
+      // Passthrough for fragment varyings
       vDisplacement = 0.0;
       vWorldPos = pos.xy;
 
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      vec4 clipPos = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      
+      // Calculate normalized device coordinates (-1 to 1) for the fragment
+      vScreenPos = clipPos.xy / clipPos.w;
+      
+      gl_Position = clipPos;
     }
   `,
   // Fragment Shader
@@ -73,56 +56,94 @@ const WoodcutShaderMaterial = shaderMaterial(
     precision highp float;
     varying vec2 vUv;
     varying vec2 vWorldPos;
+    varying vec2 vScreenPos;
     varying float vDisplacement;
     uniform sampler2D uTexture;
     uniform float uTime;
     uniform vec3 uColorBase;
     uniform vec3 uColorPaper;
-    uniform vec3 uColorWater;
-    uniform vec3 uColorSun;
     uniform float uOpacity;
     uniform float uPaperOpacity;
     uniform vec2 uMouse;
+    
+    uniform float uRadius;
+    uniform float uStrength;
+    uniform float uNoiseScale;
+    uniform float uSpeed;
 
-    float getLuminance(vec3 color) {
-      return dot(color, vec3(0.299, 0.587, 0.114));
+    // Classic 2D noise for organic bleed
+    float random(vec2 st) {
+        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+    }
+
+    // Value Noise
+    float noise(vec2 st) {
+        vec2 i = floor(st);
+        vec2 f = fract(st);
+
+        // Four corners
+        float a = random(i);
+        float b = random(i + vec2(1.0, 0.0));
+        float c = random(i + vec2(0.0, 1.0));
+        float d = random(i + vec2(1.0, 1.0));
+
+        vec2 u = f * f * (3.0 - 2.0 * f);
+
+        return mix(a, b, u.x) +
+                (c - a)* u.y * (1.0 - u.x) +
+                (d - b) * u.x * u.y;
     }
 
     void main() {
-      vec4 texColorG = texture2D(uTexture, vUv);
-      float lum = getLuminance(texColorG.rgb);
+      // 1. Calculate Cursor Proximity using Screen Coordinates
+      // Both vScreenPos and uMouse are in NDC (-1 to 1).
+      // If window aspect ratio is not 1:1, distance will be an oval, but it's fine for this effect.
+      // To make it circular, we would need to pass aspect ratio, but we'll stick to basic distance for now.
+      float distToMouse = distance(vScreenPos, uMouse);
+      
+      // The "Wetness" radius — 1.0 at center of cursor, 0.0 at edge
+      // Scale radius by 2 because screen space is -1 to 1 (width 2)
+      float wetRadius = 1.0 - smoothstep(0.0, uRadius * 2.0, distToMouse);
 
-      // Isolate Ink (Black) vs Paper (White)
-      float inkIntensity = 1.0 - smoothstep(0.4, 0.6, lum);
-      float paperIntensity = smoothstep(0.4, 0.6, lum);
+      // 2. Generate Organic Noise for the Bleed Pattern
+      float timeFlow = uTime * uSpeed;
+      float noiseVal = noise(vUv * uNoiseScale + timeFlow); // High frequency fiber noise
+      float macroNoise = noise(vUv * (uNoiseScale * 0.1) - timeFlow * 0.5); // Low freq for clustering
 
-      // Sky Mask: fade paper color at top of plane for overlap-friendly layers
-      float skyGradient = smoothstep(0.6, 1.0, vUv.y);
-      float paperAlpha = 1.0 - (skyGradient * paperIntensity);
+      // Combine noises to create a chaotic bleed map
+      float bleedMap = (noiseVal * 0.7 + macroNoise * 0.3);
+      
+      // 3. Distort UVs based on the Bleed Map and Wetness
+      vec2 distortedUv = vUv;
+      
+      if (wetRadius > 0.01 && uStrength > 0.0) {
+        // Create an outward push vector based on noise
+        vec2 pushDir = vec2(
+          noise(vUv * 10.0 + uTime) - 0.5,
+          noise(vUv * 10.0 - uTime + 100.0) - 0.5
+        );
+        
+        distortedUv += pushDir * bleedMap * wetRadius * uStrength;
+      }
 
-      // Watercolor Injection — cursor-following radial washes
-      float distToMouse = distance(vWorldPos * 0.1, uMouse);
-      float waterRadius = smoothstep(1.5, 0.0, distToMouse); // wide soft blue
-      float sunRadius = smoothstep(0.5, 0.0, distToMouse); // tight bright orange core
+      // 4. Sample Texture with Distorted UVs
+      vec4 texColor = texture2D(uTexture, distortedUv);
+      float inkIntensity = texColor.a;
 
-      // Organic flow distortion via time
-      float flow = sin(vUv.x * 10.0 + uTime) * cos(vUv.y * 10.0 - uTime) * 0.1;
-      waterRadius += flow * waterRadius;
+      // 5. Soften/Blur the edges where wet
+      if (wetRadius > 0.01 && uStrength > 0.0) {
+         // Soften the alpha contrast based on wetness
+         inkIntensity *= smoothstep(0.0, 0.5 + (uStrength * 5.0), inkIntensity + (bleedMap * wetRadius * 0.5));
+      }
 
-      // Mix the watercolor into the base paper tint
-      vec3 injectedPaperColor = mix(uColorPaper, uColorWater, waterRadius * 0.6);
-      injectedPaperColor = mix(injectedPaperColor, uColorSun, sunRadius * 0.8);
+      // 6. Combine Ink and Paper
+      vec3 finalColor = mix(uColorPaper, uColorBase, inkIntensity);
+      
+      float finalAlpha = mix(inkIntensity, 1.0, uPaperOpacity) * uOpacity;
 
-      // Combine ink and injected paper
-      vec3 finalColor = mix(injectedPaperColor, uColorBase, inkIntensity);
+      if (finalAlpha < 0.05) discard;
 
-      float baseAlpha = texColorG.a;
-      float adjustedPaperAlpha = paperAlpha * uPaperOpacity;
-      float alphaOut = max(inkIntensity, adjustedPaperAlpha) * uOpacity * baseAlpha;
-
-      if (alphaOut < 0.05) discard;
-
-      gl_FragColor = vec4(finalColor, alphaOut);
+      gl_FragColor = vec4(finalColor, finalAlpha);
     }
   `,
 );

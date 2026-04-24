@@ -3,7 +3,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useRef, useMemo, useState, useEffect } from 'react';
 import { useScroll, useMotionValueEvent } from 'framer-motion';
-import { Color, Mesh, Vector2 } from 'three';
+import { Color, Mesh, Vector2, MathUtils } from 'three';
 
 /* ── Hoisted constants (avoid per-render allocations) ──── */
 const PAPER_COLOR = new Color('#f9fafb'); // Background token — paper
@@ -46,6 +46,21 @@ function AtmosphereLayer() {
 
 interface CaseStudySceneProps {
   slug: string;
+}
+
+function CaseStudyCamera({ scrollProgress }: { scrollProgress: React.RefObject<number> }) {
+  const { camera } = useThree();
+  useFrame(() => {
+    const p = scrollProgress.current ?? 0;
+    // Hero zone: z 20->-28, y 0->4, rotX 0->0.15
+    const heroY = MathUtils.lerp(0, 4, p);
+    const heroZ = MathUtils.lerp(20, -28, p);
+    const heroRX = MathUtils.lerp(0, 0.15, p);
+
+    camera.position.set(0, heroY, heroZ);
+    camera.rotation.set(heroRX, 0, 0);
+  });
+  return null;
 }
 
 export default function CaseStudyScene({ slug }: CaseStudySceneProps) {
@@ -94,11 +109,12 @@ export default function CaseStudyScene({ slug }: CaseStudySceneProps) {
       style={{ opacity: containerOpacity, transition: 'opacity 0.12s linear' }}
     >
       <Canvas
-        camera={{ position: [0, 0, 5], fov: 50 }}
+        camera={{ position: [0, 0, 20], fov: 50 }}
         dpr={[1, 1.5]}
         gl={{ antialias: false, alpha: false }}
         frameloop={isPaused ? 'demand' : 'always'}
       >
+        <CaseStudyCamera scrollProgress={scrollProgressRef} />
         <AtmosphereLayer />
         <HeroLandscape slug={slug} scrollProgress={scrollProgressRef} />
       </Canvas>
