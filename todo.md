@@ -1062,3 +1062,156 @@ payoff. `/grill-me` session resolved the design tree below.
 - **Compass-always-visible may feel busy.** Current cursor only appears near eggs. Permanent could become visual noise on long scrolls. Worth A/B testing opacity (0.85 → 0.5) once live.
 - **`/shhhh` discoverability.** Single Forest sprite + compass spin is the only way in. If playtest shows nobody finds it, increase sprite size or add a second hint (e.g., zone-entry shimmer on Forest enter).
 - **Water performance on mobile.** Custom shader on a fullscreen plane on mid-tier Android could chug. Plan for a mobile-tier shader variant (skip caustics, reduce ripple count) gated behind viewport width or DPR check.
+
+# Hero Content Early Fade
+
+## Plan
+
+- [x] Update the homepage hero overlay fade window so the text begins fading around the marked Basecamp scroll point.
+- [x] Keep the hero vertical motion aligned with the new fade-out end point.
+- [x] Verify the changed ranges are formatted cleanly and summarize the result.
+
+## Review
+
+- Updated `web/src/components/HomeClient.tsx` so hero overlay opacity now holds until `0.05` scroll progress and fades out by `0.11`, instead of holding until `0.06` and fading by `0.14`.
+- Updated the hero upward motion endpoint to `0.11` so the movement completes with the earlier opacity fade.
+- Dev server hot-recompiled the page successfully.
+
+# Hero Watercolor Shader
+
+## Plan
+
+- [x] Rework `WoodcutMaterial` with restrained watercolor wash uniforms, paper grain, edge pooling, and gentler pigment diffusion.
+- [x] Wire the new watercolor controls into the homepage hero through `UnifiedScene`.
+- [x] Apply fixed restrained watercolor defaults to case study heroes through `HeroLandscape`.
+- [x] Run lint/typecheck and visually verify homepage + one case study in the in-app browser.
+
+## Review
+
+- Updated `web/src/components/shaders/WoodcutMaterial.ts` with named Three imports, watercolor wash uniforms, alpha/luminance-aware ink sampling, paper grain, edge pooling, and restrained cursor/touch pigment diffusion.
+- Added explicit alpha-vs-luminance ink mode so homepage alpha-mask layers and case study landscape layers both render correctly.
+- Updated `web/src/components/UnifiedScene.tsx` with homepage Leva `watercolor` controls and scroll-progress uniform wiring.
+- Updated `web/src/components/HeroLandscape.tsx` with fixed watercolor defaults so case study heroes use the same material language.
+- Follow-up tuning pass restored a much clearer yellow-to-blue watercolor relationship: stronger golden cursor/core wash, more saturated blue outer bleed, higher wash intensity, and open cursor wash instead of edge-only tinting.
+- Verification: `npm run lint`, `npm run typecheck`, and `npm run build` passed. In-app browser checks on `/` and `/work/craftedkit` showed no shader console errors. A mobile-sized Playwright smoke check on `/` and `/work/craftedkit` also showed no console errors. `npm run guardrails` still fails on unchanged asset-size violations for `public/home-hero/02-mountains.webp`, `05-mist.webp`, and `06-near-bank.webp`.
+
+# Hero Scene Visible At Scroll Zero
+
+## Plan
+
+- [x] Update the scene opacity helper so a module that starts at scroll progress `0` is visible immediately.
+- [x] Verify the homepage at scroll `0` shows the 3D background behind the content.
+- [x] Run lint/typecheck and summarize the result.
+
+## Review
+
+- Updated `web/src/lib/moduleTimeline.ts` so an initial module with `enterStart <= 0` is rendered at full opacity immediately instead of starting blank at exact scroll progress `0`.
+- Verified with a top-of-page browser screenshot that the hero background plate is visible behind the content at scroll `0`.
+- `npm run lint` and `npm run typecheck` passed.
+
+# Hero Watercolor Crispness
+
+## Plan
+
+- [x] Keep the yellow-to-blue watercolor, but stop the wash from tinting the core ink strokes.
+- [x] Tighten the sampled ink mask and reduce open transparent wash so the hero does not feel hazy.
+- [x] Run lint/typecheck and browser-check the homepage hero.
+
+## Review
+
+- Updated `web/src/components/shaders/WoodcutMaterial.ts` so watercolor pigment no longer stains the core ink strokes; the final ink resolves back to the base ink color.
+- Tightened alpha/luminance ink sampling and removed the wet-radius ink softening that was making the mountain and forest strokes feel less crisp.
+- Lowered default wash intensity and edge pooling in `web/src/components/UnifiedScene.tsx` and `web/src/components/HeroLandscape.tsx` so the effect stays behind the ink instead of fogging the whole hero.
+- Verification: `npm run lint`, `npm run typecheck`, and `npm run build` passed. Browser reload of `/` showed no console errors; existing warnings are unchanged Framer/Three warnings.
+
+# Hero Watercolor Leva Defaults
+
+## Plan
+
+- [x] Read the live homepage Leva watercolor settings from the in-app browser.
+- [x] Promote those tuned values to the default shader/home/case-study watercolor settings.
+- [x] Add Leva color controls for the blue water wash and warm yellow core.
+- [x] Run lint/typecheck and verify the homepage control panel/browser render.
+
+## Review
+
+- Read live Leva values from the browser: radius `0.57`, wash intensity `1.40`, edge pool `0.21`, grain amount `0.08`, strength `0.12`, noise scale `27`, and speed `0.20`.
+- Updated `web/src/components/shaders/WoodcutMaterial.ts`, `web/src/components/UnifiedScene.tsx`, and `web/src/components/HeroLandscape.tsx` so those tuned values are now the defaults.
+- Added homepage Leva color controls `waterColor` and `warmColor`, wired into both homepage hero shader layers.
+- Verification: `npm run lint`, `npm run typecheck`, and `npm run build` passed. Browser check confirmed the new color controls are visible with no console errors.
+
+# Hero Card Whitespace
+
+## Plan
+
+- [x] Tighten the hero card width and padding so the panel wraps the intro content more closely.
+- [x] Preserve responsive readability and existing hero scroll/fade behavior.
+- [x] Run lint/typecheck and visually verify the homepage.
+
+## Review
+
+- Updated `web/src/components/HomeClient.tsx` to reduce the hero card from `max-w-3xl` to `max-w-[36rem]`.
+- Tightened hero card padding and vertical spacing between the logo, eyebrow, headline, body copy, and CTA buttons.
+- Verification: `npm run lint` and `npm run typecheck` passed. Browser check confirmed the card now hugs the intro content more closely with no console errors.
+
+# Hero Watercolor Edge + Mobile Scroll
+
+## Plan
+
+- [x] Split edge and cursor pigment in `WoodcutMaterial` so edge pooling reads as `waterColor`.
+- [x] Add scroll-driven diagonal mobile watercolor targeting to the homepage hero.
+- [x] Keep case-study mobile scroll behavior unchanged while inheriting the shared shader fix.
+- [x] Run lint/typecheck/build and browser-check desktop/mobile hero behavior.
+
+## Review
+
+- Updated `web/src/components/shaders/WoodcutMaterial.ts` so pooled edge pigment blends toward `waterColor` first, then the tighter cursor core blends toward `warmColor`.
+- Reduced warm wash spread by tightening the warm core threshold and boosting edge-water contribution so blue can read around silhouette pooling.
+- Updated `web/src/components/UnifiedScene.tsx` so homepage mobile no longer needs touch events for the baseline effect; scroll now drives a deterministic diagonal wet target through the hero.
+- Case-study heroes were left structurally unchanged and inherit the shared material color split.
+- Verification: `npm run lint`, `npm run typecheck`, and `npm run build` passed. Browser checks for `/` and `/work/craftedkit` showed no console errors; local mobile smoke checks also reported no console errors.
+
+# Contain Watercolor To Heroes
+
+## Plan
+
+- [x] Make `WoodcutMaterial` defaults inert so non-hero scene users do not inherit watercolor wash.
+- [x] Keep homepage and case-study heroes explicitly opted into watercolor through their existing uniform wiring.
+- [x] Run lint/typecheck/build and browser-check the Forest section artifact is gone.
+
+## Review
+
+- Updated `web/src/components/shaders/WoodcutMaterial.ts` so watercolor, distortion, edge pooling, grain, and paper fill default to off.
+- Homepage and case-study heroes still opt into watercolor explicitly through their existing uniform props, including explicit paper opacity where needed.
+- Non-hero users such as `DeepForest` now get transparent woodcut rendering instead of inheriting the watercolor wash/paper fill.
+- Verification: `npm run lint`, `npm run typecheck`, and `npm run build` passed. Browser checks reported no console errors.
+
+# Sprite Sheet Bleed Fix
+
+## Plan
+
+- [x] Add a shared sprite-sheet texture helper that clamps atlas sampling, disables mipmaps, keeps linear filtering, and applies frame UV insets.
+- [x] Wire the helper into the active homepage sprite users: Forest stag, Alpine bird, and Summit fox.
+- [x] Give the fox a larger inset because its atlas dimensions do not divide evenly into the configured grid.
+- [x] Run lint/typecheck/build and browser-check the affected homepage scroll zones.
+
+## Review
+
+- Added `web/src/lib/spriteSheetTexture.ts` to configure animated sprite textures with clamp-to-edge wrapping, no mipmaps, linear filtering, and inset frame UVs.
+- Updated the active Forest stag, Alpine bird, and Summit fox sprite renderers to use the shared helper instead of sampling exact atlas cell boundaries.
+- The fox now defaults to a larger `6px` inset because `fox_sprite.webp` is `1402x1122`, which does not divide evenly into its `4x4` grid.
+- Verification: `npm run lint`, `npm run typecheck`, and `npm run build` passed. Browser console checks showed no new shader/sprite errors; the in-app browser screenshot API timed out on the WebGL canvas, so final visual inspection should happen in the live browser view.
+
+# `/shhhh` Default Scene Restore
+
+## Plan
+
+- [ ] Restore the default `/shhhh` palette, water, and mountain/mist composition values to the earlier committed look.
+- [ ] Keep the newer preset system, Gerstner water, foam, caustics, and specular controls.
+- [ ] Render the existing near-bank asset so the mountain/water scene regains foreground depth.
+- [ ] Align Leva ranges so default and preset values are not silently clamped.
+- [ ] Run lint/typecheck/build and browser-check `/shhhh`.
+
+## Review
+
+- Pending.

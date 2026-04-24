@@ -11,7 +11,16 @@ import '@/components/shaders/WoodcutMaterial';
 /* ── Hoisted constants ──────────────────────────────────── */
 const COLOR_BASE = new Color('#18181b'); // Foreground token — ink
 const COLOR_PAPER = new Color('#f9fafb'); // Background token — paper
+const COLOR_WATER = new Color('#38aeea'); // Clear blue watercolor bleed
+const COLOR_WARM = new Color('#f6c400'); // Golden yellow cursor core
 const MOBILE_QUERY = '(max-width: 767px)';
+const WATER_RADIUS = 0.57;
+const WASH_INTENSITY = 1.4;
+const EDGE_POOL = 0.21;
+const GRAIN_AMOUNT = 0.08;
+const DISTORTION_STRENGTH = 0.12;
+const NOISE_SCALE = 27.0;
+const FLOW_SPEED = 0.2;
 // Off-screen resting position so smoothstep(1.5, 0.0, distToMouse) → 0
 const OFFSCREEN_MOUSE = new Vector2(10, 10);
 
@@ -75,6 +84,7 @@ function Hero3DLayer({
   touchMouse,
   touchTarget,
   isMobile,
+  scrollProgress,
 }: {
   textureUrl: string;
   position: [number, number, number];
@@ -85,6 +95,7 @@ function Hero3DLayer({
   touchMouse: React.MutableRefObject<Vector2>;
   touchTarget: React.MutableRefObject<Vector2>;
   isMobile: boolean;
+  scrollProgress: React.RefObject<number>;
 }) {
   const tex = useTexture(textureUrl) as Texture;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,6 +114,15 @@ function Hero3DLayer({
     if (materialRef.current) {
       materialRef.current.uTime = state.clock.elapsedTime * 0.15;
       materialRef.current.uWind = state.clock.elapsedTime * 0.15;
+      materialRef.current.uRadius = WATER_RADIUS;
+      materialRef.current.uWashIntensity = WASH_INTENSITY;
+      materialRef.current.uEdgePool = EDGE_POOL;
+      materialRef.current.uGrainAmount = GRAIN_AMOUNT;
+      materialRef.current.uStrength = DISTORTION_STRENGTH;
+      materialRef.current.uNoiseScale = NOISE_SCALE;
+      materialRef.current.uSpeed = FLOW_SPEED;
+      materialRef.current.uScrollProgress = scrollProgress.current ?? 0;
+      materialRef.current.uUseLuminance = 1;
       if (isMobile) {
         touchMouse.current.lerp(touchTarget.current, 0.1);
         materialRef.current.uMouse.copy(touchMouse.current);
@@ -121,15 +141,24 @@ function Hero3DLayer({
   return (
     <mesh ref={meshRef} position={position}>
       <planeGeometry args={[scale[0], scale[1], 64, 64]} />
-      {/* @ts-expect-error - R3F JSX element registered via extend() */}
       <woodcutShaderMaterial
         ref={materialRef}
         uTexture={tex}
         uColorBase={COLOR_BASE}
         uColorPaper={COLOR_PAPER}
+        uColorWater={COLOR_WATER}
+        uColorWarm={COLOR_WARM}
         uOpacity={1}
         uPaperOpacity={uPaperOpacity}
         uWind={0}
+        uRadius={WATER_RADIUS}
+        uWashIntensity={WASH_INTENSITY}
+        uEdgePool={EDGE_POOL}
+        uGrainAmount={GRAIN_AMOUNT}
+        uStrength={DISTORTION_STRENGTH}
+        uNoiseScale={NOISE_SCALE}
+        uSpeed={FLOW_SPEED}
+        uUseLuminance={1}
         transparent
         depthWrite={false}
       />
@@ -201,6 +230,7 @@ function HeroPlane({ textureUrl, scrollProgress, isMobile }: HeroPlaneProps) {
         touchMouse={touchMouse}
         touchTarget={touchTarget}
         isMobile={isMobile}
+        scrollProgress={scrollProgress}
       />
       <Hero3DLayer
         textureUrl="/grove/05-mist.webp"
@@ -212,6 +242,7 @@ function HeroPlane({ textureUrl, scrollProgress, isMobile }: HeroPlaneProps) {
         touchMouse={touchMouse}
         touchTarget={touchTarget}
         isMobile={isMobile}
+        scrollProgress={scrollProgress}
       />
       <Hero3DLayer
         textureUrl={textureUrl}
@@ -223,6 +254,7 @@ function HeroPlane({ textureUrl, scrollProgress, isMobile }: HeroPlaneProps) {
         touchMouse={touchMouse}
         touchTarget={touchTarget}
         isMobile={isMobile}
+        scrollProgress={scrollProgress}
       />
       <Hero3DLayer
         textureUrl="/grove/05-mist.webp"
@@ -234,6 +266,7 @@ function HeroPlane({ textureUrl, scrollProgress, isMobile }: HeroPlaneProps) {
         touchMouse={touchMouse}
         touchTarget={touchTarget}
         isMobile={isMobile}
+        scrollProgress={scrollProgress}
       />
       <Hero3DLayer
         textureUrl="/grove/06-near-bank.webp"
@@ -245,6 +278,7 @@ function HeroPlane({ textureUrl, scrollProgress, isMobile }: HeroPlaneProps) {
         touchMouse={touchMouse}
         touchTarget={touchTarget}
         isMobile={isMobile}
+        scrollProgress={scrollProgress}
       />
     </group>
   );

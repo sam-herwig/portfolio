@@ -77,6 +77,9 @@ export function sceneOpacity(module: ModuleName, progress: number): number {
   const fadeOutStart = w.exitStart;
   const fadeOutEnd = w.exitEnd + XFADE;
 
+  // The first module owns the initial viewport; do not render it blank at
+  // scroll progress 0 just because its enter window starts at 0.
+  if (fadeInStart <= 0 && progress <= fadeInEnd) return 1;
   if (progress <= fadeInStart || progress >= fadeOutEnd) return 0;
   if (progress < fadeInEnd) return Math.max(0, Math.min(1, (progress - fadeInStart) / (fadeInEnd - fadeInStart)));
   if (progress > fadeOutStart) return Math.max(0, Math.min(1, (fadeOutEnd - progress) / (fadeOutEnd - fadeOutStart)));

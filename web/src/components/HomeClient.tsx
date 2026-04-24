@@ -190,9 +190,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
 
   // ── Hero content ──
   const scrollHintOpacity = useTransform(scrollYProgress, [0, heroRange[1]], [1, 0]);
-  // Text fades out early (0.06→0.14) so the 3D backdrop has solo screen time
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.06, 0.14], [1, 1, 0]);
-  const heroY = useTransform(scrollYProgress, [0, 0.14], reducedMotion ? [0, 0] : [0, -56]);
+  // Text fades out early (0.05→0.11) so the 3D backdrop has solo screen time
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.05, 0.11], [1, 1, 0]);
+  const heroY = useTransform(scrollYProgress, [0, 0.11], reducedMotion ? [0, 0] : [0, -56]);
 
   // ── Camp content opacity — starts at enterEnd (after scene fully visible) ──
   const campContentOpacity = useTransform(
@@ -260,13 +260,13 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
         >
           <div className="sticky top-0 flex min-h-screen items-center px-4 pb-24 pt-28 md:px-8 lg:px-12">
             <motion.div style={{ opacity: heroOpacity, y: heroY }} className="w-full">
-              <GlassPanel className="mx-auto max-w-3xl p-7 md:mx-0 md:ml-[8vw] md:p-10 lg:p-12">
+              <GlassPanel className="mx-auto max-w-[36rem] p-6 md:mx-0 md:ml-[8vw] md:p-8">
                 <Image
                   src="/logo-mark.svg"
                   alt=""
                   width={44}
                   height={44}
-                  className="mb-5 h-11 w-11"
+                  className="mb-4 h-11 w-11"
                   aria-hidden="true"
                   unoptimized
                   priority
@@ -274,13 +274,13 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
                 <p className="text-[0.65rem] font-inter uppercase tracking-[0.35em] text-foreground/60 font-bold drop-shadow-sm">
                   Denver · Front End / Creative Engineering
                 </p>
-                <h1 className="mt-4 max-w-[14ch] md:max-w-[10ch] text-5xl font-bold leading-[0.92] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-[5.6rem] font-instrument">
+                <h1 className="mt-3 max-w-[14ch] md:max-w-[10ch] text-5xl font-bold leading-[0.92] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-[5.6rem] font-instrument">
                   Let&apos;s climb a mountain
                 </h1>
-                <p className="mt-5 max-w-[34ch] text-base leading-8 text-foreground/80 font-medium md:text-lg font-inter">
+                <p className="mt-4 max-w-[34ch] text-base leading-8 text-foreground/80 font-medium md:text-lg font-inter">
                   3D web, motion, marketing sites. Most of the good stuff lives a little above the treeline.
                 </p>
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <a
                     href="mailto:sam@samherwig.dev"
                     aria-label="Send email to start a project"

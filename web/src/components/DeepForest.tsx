@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/immutability, react/display-name */
 import { useTexture, Html } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
-import { Texture, Mesh, Group, MeshBasicMaterial, RepeatWrapping, MirroredRepeatWrapping, MathUtils } from 'three';
+import { Texture, Mesh, Group, MeshBasicMaterial, MirroredRepeatWrapping, MathUtils } from 'three';
 import { useRef, useMemo, useEffect, forwardRef } from 'react';
 import { MotionValue } from 'framer-motion';
 import { MODULE_TIMELINE } from '@/lib/moduleTimeline';
+import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
 
@@ -19,6 +20,7 @@ function AnimatedSprite({
   frames = 8,
   cols = 8,
   rows = 1,
+  frameInsetPx = 4,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -34,6 +36,7 @@ function AnimatedSprite({
   frames?: number;
   cols?: number;
   rows?: number;
+  frameInsetPx?: number;
   scrollStart: number;
   scrollEnd: number;
   cycles?: number;
@@ -46,12 +49,10 @@ function AnimatedSprite({
   const playhead = useRef(0); // Added to accumulate velocity independently
 
   const clonedTex = useMemo(() => {
-    const clone = tex.clone();
-    clone.wrapS = RepeatWrapping;
-    clone.wrapT = RepeatWrapping;
-    clone.repeat.set(1 / cols, 1 / rows);
+    const clone = configureSpriteSheetTexture(tex.clone());
+    setSpriteSheetFrame(clone, { frame: 0, cols, rows, insetPx: frameInsetPx });
     return clone;
-  }, [tex, cols, rows]);
+  }, [tex, cols, rows, frameInsetPx]);
   useEffect(() => {
     return () => {
       tex.dispose();
@@ -72,10 +73,7 @@ function AnimatedSprite({
       if (clamped > 0 && clamped < 1) {
         playhead.current += delta * cycles;
         const currentFrame = Math.floor(playhead.current) % frames;
-        const col = currentFrame % cols;
-        const row = Math.floor(currentFrame / cols);
-        clonedTex.offset.x = col / cols;
-        clonedTex.offset.y = (rows - 1 - row) / rows;
+        setSpriteSheetFrame(clonedTex, { frame: currentFrame, cols, rows, insetPx: frameInsetPx });
       }
     }
   });

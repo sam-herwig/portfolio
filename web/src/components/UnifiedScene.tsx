@@ -21,7 +21,6 @@ import {
   BufferAttribute,
   AmbientLight,
   Color,
-  RepeatWrapping,
   MirroredRepeatWrapping,
   MathUtils,
 } from 'three';
@@ -31,6 +30,7 @@ import { useQualityStore, qualityPresets } from '@/lib/quality';
 import './shaders/WoodcutMaterial';
 import DeepForest from './DeepForest';
 import { MODULE_TIMELINE, sceneVisible, sceneOpacity, sceneChildRanges } from '@/lib/moduleTimeline';
+import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
 
 // ── Scene envelope helper ─────────────────────────────────────────────
 // Applies sceneOpacity as a multiplier on all materials in a group,
@@ -65,6 +65,8 @@ function applyGroupOpacity(group: Group, envelope: number): void {
 }
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
+const DEFAULT_WATERCOLOR_WASH = '#38aeea';
+const DEFAULT_WATERCOLOR_WARM = '#f6c400';
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -236,6 +238,12 @@ function Hero3DLayer({
   uStrength = 0.05,
   uNoiseScale = 50.0,
   uSpeed = 0.5,
+  uWashIntensity = 0.45,
+  uEdgePool = 0.35,
+  uGrainAmount = 0.08,
+  uColorWater = DEFAULT_WATERCOLOR_WASH,
+  uColorWarm = DEFAULT_WATERCOLOR_WARM,
+  scrollProgress,
 }: {
   textureUrl: string;
   position: [number, number, number];
@@ -250,8 +258,16 @@ function Hero3DLayer({
   uStrength?: number;
   uNoiseScale?: number;
   uSpeed?: number;
+  uWashIntensity?: number;
+  uEdgePool?: number;
+  uGrainAmount?: number;
+  uColorWater?: string;
+  uColorWarm?: string;
+  scrollProgress: MotionValue<number>;
 }) {
   const tex = useTexture(textureUrl) as Texture;
+  const waterColor = useMemo(() => new Color(uColorWater), [uColorWater]);
+  const warmColor = useMemo(() => new Color(uColorWarm), [uColorWarm]);
   const materialRef = useRef<any>(null);
   const meshRef = useRef<Mesh>(null);
 
@@ -271,6 +287,13 @@ function Hero3DLayer({
       materialRef.current.uStrength = uStrength;
       materialRef.current.uNoiseScale = uNoiseScale;
       materialRef.current.uSpeed = uSpeed;
+      materialRef.current.uWashIntensity = uWashIntensity;
+      materialRef.current.uEdgePool = uEdgePool;
+      materialRef.current.uGrainAmount = uGrainAmount;
+      materialRef.current.uScrollProgress = scrollProgress.get();
+      materialRef.current.uUseLuminance = 0;
+      materialRef.current.uColorWater.set(uColorWater);
+      materialRef.current.uColorWarm.set(uColorWarm);
 
       if (isMobile) {
         touchMouse.current.lerp(touchTarget.current, 0.1);
@@ -289,11 +312,17 @@ function Hero3DLayer({
         transparent
         depthWrite={false}
         uTexture={tex}
+        uColorWater={waterColor}
+        uColorWarm={warmColor}
         uPaperOpacity={uPaperOpacity}
         uRadius={uRadius}
         uStrength={uStrength}
         uNoiseScale={uNoiseScale}
         uSpeed={uSpeed}
+        uWashIntensity={uWashIntensity}
+        uEdgePool={uEdgePool}
+        uGrainAmount={uGrainAmount}
+        uUseLuminance={0}
       />
     </mesh>
   );
@@ -326,11 +355,16 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
         fW: { value: 150, min: 40, max: 400, step: 1 },
         fH: { value: 40, min: 10, max: 120, step: 1 },
       }),
-      inkBleed: folder({
-        radius: { value: 0.2, min: 0.0, max: 1.0, step: 0.01 },
-        strength: { value: 0.05, min: 0.0, max: 0.2, step: 0.005 },
-        noiseScale: { value: 50.0, min: 10.0, max: 200.0, step: 1.0 },
-        speed: { value: 0.5, min: 0.0, max: 2.0, step: 0.05 },
+      watercolor: folder({
+        waterColor: { value: DEFAULT_WATERCOLOR_WASH },
+        warmColor: { value: DEFAULT_WATERCOLOR_WARM },
+        radius: { value: 0.57, min: 0.0, max: 1.2, step: 0.01 },
+        washIntensity: { value: 1.4, min: 0.0, max: 1.4, step: 0.01 },
+        edgePool: { value: 0.21, min: 0.0, max: 1.0, step: 0.01 },
+        grainAmount: { value: 0.08, min: 0.0, max: 0.3, step: 0.005 },
+        strength: { value: 0.12, min: 0.0, max: 0.2, step: 0.005 },
+        noiseScale: { value: 27.0, min: 10.0, max: 200.0, step: 1.0 },
+        speed: { value: 0.2, min: 0.0, max: 2.0, step: 0.05 },
       }),
     },
     { collapsed: false },
@@ -345,50 +379,33 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
     return () => mql.removeEventListener('change', update);
   }, []);
 
-  // Desktop: ambient mousemove drives cursor. Mobile: press-to-activate touch.
+  // Desktop: ambient mousemove drives cursor. Mobile is scroll-driven in useFrame.
   useEffect(() => {
-    if (!isMobile) {
-      const onMouse = (e: MouseEvent) => {
-        mousePos.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-        mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
-      };
-      window.addEventListener('mousemove', onMouse, { passive: true });
-      return () => window.removeEventListener('mousemove', onMouse);
-    }
-    const onTouchStart = (e: TouchEvent) => {
-      const t = e.touches[0];
-      if (!t) return;
-      const nx = (t.clientX / window.innerWidth) * 2 - 1;
-      const ny = -(t.clientY / window.innerHeight) * 2 + 1;
-      // Snap both current + target so watercolor appears instantly at finger
-      touchMouse.current.set(nx, ny);
-      touchTarget.current.set(nx, ny);
+    if (isMobile) return;
+
+    const onMouse = (e: MouseEvent) => {
+      mousePos.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
     };
-    const onTouchMove = (e: TouchEvent) => {
-      const t = e.touches[0];
-      if (!t) return;
-      const nx = (t.clientX / window.innerWidth) * 2 - 1;
-      const ny = -(t.clientY / window.innerHeight) * 2 + 1;
-      touchTarget.current.set(nx, ny);
-    };
-    const onTouchEnd = () => {
-      // Lerp toward off-screen so watercolor fades in place
-      touchTarget.current.set(10, 10);
-    };
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    window.addEventListener('touchend', onTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
-    return () => {
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('touchcancel', onTouchEnd);
-    };
+    window.addEventListener('mousemove', onMouse, { passive: true });
+    return () => window.removeEventListener('mousemove', onMouse);
   }, [isMobile]);
 
   useFrame((_, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
+
+    if (isMobile) {
+      const heroWindow = MODULE_TIMELINE.hero;
+      const heroP = MathUtils.clamp(
+        (lerpedP.current - heroWindow.ownStart) / (heroWindow.ownEnd - heroWindow.ownStart),
+        0,
+        1,
+      );
+      const x = MathUtils.lerp(-0.55, 0.55, heroP) + Math.sin(heroP * Math.PI * 2) * 0.1;
+      const y = MathUtils.lerp(0.55, -0.45, heroP);
+      touchTarget.current.set(x, y);
+    }
+
     if (groupRef.current) {
       const opacity = sceneOpacity('hero', lerpedP.current);
       isActive.current = opacity > 0;
@@ -418,6 +435,12 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
         uStrength={composition.strength}
         uNoiseScale={composition.noiseScale}
         uSpeed={composition.speed}
+        uWashIntensity={composition.washIntensity}
+        uEdgePool={composition.edgePool}
+        uGrainAmount={composition.grainAmount}
+        uColorWater={composition.waterColor}
+        uColorWarm={composition.warmColor}
+        scrollProgress={scrollProgress}
       />
       <Hero3DLayer
         textureUrl="/home-hero/04-forest.webp"
@@ -433,6 +456,12 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
         uStrength={composition.strength}
         uNoiseScale={composition.noiseScale}
         uSpeed={composition.speed}
+        uWashIntensity={composition.washIntensity}
+        uEdgePool={composition.edgePool}
+        uGrainAmount={composition.grainAmount}
+        uColorWater={composition.waterColor}
+        uColorWarm={composition.warmColor}
+        scrollProgress={scrollProgress}
       />
     </group>
   );
@@ -692,6 +721,7 @@ function AlpineAnimatedSprite({
   frames = 8,
   cols = 8,
   rows = 1,
+  frameInsetPx = 4,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -707,6 +737,7 @@ function AlpineAnimatedSprite({
   frames?: number;
   cols?: number;
   rows?: number;
+  frameInsetPx?: number;
   scrollStart: number;
   scrollEnd: number;
   cycles?: number;
@@ -719,12 +750,10 @@ function AlpineAnimatedSprite({
   const playhead = useRef(0);
 
   const clonedTex = useMemo(() => {
-    const c = tex.clone();
-    c.wrapS = RepeatWrapping;
-    c.wrapT = RepeatWrapping;
-    c.repeat.set(1 / cols, 1 / rows);
+    const c = configureSpriteSheetTexture(tex.clone());
+    setSpriteSheetFrame(c, { frame: 0, cols, rows, insetPx: frameInsetPx });
     return c;
-  }, [tex, cols, rows]);
+  }, [tex, cols, rows, frameInsetPx]);
 
   useEffect(() => {
     return () => {
@@ -746,10 +775,7 @@ function AlpineAnimatedSprite({
         playhead.current = 0;
       }
       const frame = Math.floor(playhead.current) % frames;
-      const col = frame % cols;
-      const row = Math.floor(frame / cols);
-      clonedTex.offset.x = col / cols;
-      clonedTex.offset.y = (rows - 1 - row) / rows;
+      setSpriteSheetFrame(clonedTex, { frame, cols, rows, insetPx: frameInsetPx });
     }
   });
 
@@ -1154,6 +1180,7 @@ function OneShotAnimatedFox({
   frames = 8,
   cols = 8,
   rows = 1,
+  frameInsetPx = 6,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -1164,12 +1191,10 @@ function OneShotAnimatedFox({
   const summit = MODULE_TIMELINE.summit;
 
   const clonedTex = useMemo(() => {
-    const c = tex.clone();
-    c.wrapS = RepeatWrapping;
-    c.wrapT = RepeatWrapping;
-    c.repeat.set(1 / cols, 1 / rows);
+    const c = configureSpriteSheetTexture(tex.clone());
+    setSpriteSheetFrame(c, { frame: 0, cols, rows, insetPx: frameInsetPx });
     return c;
-  }, [tex, cols, rows]);
+  }, [tex, cols, rows, frameInsetPx]);
 
   const lerpedP = useRef(0);
 
@@ -1197,20 +1222,13 @@ function OneShotAnimatedFox({
 
       if (walkProgress >= 1.0) {
         const lastFrame = frames - 1;
-        const col = lastFrame % cols;
-        const row = Math.floor(lastFrame / cols);
-        clonedTex.offset.x = col / cols;
-        clonedTex.offset.y = (rows - 1 - row) / rows;
+        setSpriteSheetFrame(clonedTex, { frame: lastFrame, cols, rows, insetPx: frameInsetPx });
       } else if (walkProgress > 0) {
         const totalFrames = walkProgress * cycles * frames;
         const currentFrame = Math.floor(totalFrames) % frames;
-        const col = currentFrame % cols;
-        const row = Math.floor(currentFrame / cols);
-        clonedTex.offset.x = col / cols;
-        clonedTex.offset.y = (rows - 1 - row) / rows;
+        setSpriteSheetFrame(clonedTex, { frame: currentFrame, cols, rows, insetPx: frameInsetPx });
       } else {
-        clonedTex.offset.x = 0;
-        clonedTex.offset.y = (rows - 1) / rows;
+        setSpriteSheetFrame(clonedTex, { frame: 0, cols, rows, insetPx: frameInsetPx });
       }
 
       // Fade in 0.00→0.20, hold 0.20→0.55, fade out 0.55→0.70 (matches cliff)

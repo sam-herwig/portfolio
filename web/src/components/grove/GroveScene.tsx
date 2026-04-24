@@ -74,6 +74,7 @@ function MountainBillboard({ x, y, z, w, h }: { x: number; y: number; z: number;
       map: texture,
       transparent: true,
       depthWrite: false,
+      depthTest: false,
     });
     mat.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
@@ -180,6 +181,7 @@ function BankBillboard({
       map: texture,
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       opacity: alpha,
     });
   }, [texture, alpha]);
@@ -316,60 +318,66 @@ function CameraParallax() {
 
 const DEFAULT_PRESET = {
   palette: {
-    horizon: '#000000',
-    waterFar: '#050a12',
-    waterNear: '#122238',
-    rippleTint: '#526c8a',
-    specColor: '#ffffff',
+    horizon: '#c7ccc9',
+    waterFar: '#6b7a85',
+    waterNear: '#b2b9b8',
+    rippleTint: '#8a9299',
+    specColor: '#e8ecef',
     causticsColor: '#ffffff',
     foamColor: '#ffffff',
-    sunX: 0.0,
-    sunY: 0.7,
-    sunZ: 0.7,
+    sunX: -0.3,
+    sunY: 0.4,
+    sunZ: -0.6,
   },
   water: {
-    fresnelExp: 7.0,
-    reflStrength: 1.0,
-    fresnelJitter: 0.0,
-    bokashiWarp: 0.05,
-    reflWarpU: 0.0,
-    reflWarpV: 0.0,
-    warpScale: 0.005,
-    pigmentAmount: 0.1,
-    edgeDarken: 0.8,
-    crestSpecStrength: 1.2,
-    crestSpecExp: 256,
-    rippleTint: 0.1,
-    causticIntensity: 0.1,
-    foamThreshold: -0.02,
-    waveSteepness: 0.005,
+    fresnelExp: 4.0,
+    reflStrength: 0.9,
+    fresnelJitter: 0.08,
+    bokashiWarp: 0.12,
+    reflWarpU: 0.022,
+    reflWarpV: 0.016,
+    warpScale: 0.15,
+    pigmentAmount: 0.3,
+    edgeDarken: 0.14,
+    crestSpecStrength: 0.35,
+    crestSpecExp: 80,
+    rippleTint: 0.12,
+    causticIntensity: 0.2,
+    foamThreshold: 0.02,
+    waveSteepness: 0.035,
   },
   composition: {
-    mountainX: 13.0,
-    mountainY: 15.5,
-    mountainZ: -92,
+    mountainX: -22,
+    mountainY: 14,
+    mountainZ: -95,
     mountainW: 180,
-    mountainH: 35,
-    mist1Y: 0.0,
-    mist1Z: -35,
-    mist1W: 383,
-    mist1H: 2.4,
-    mist1Alpha: 0.1,
-    mist1Tint: '#0c1a2e',
-    mist2Y: 4.7,
-    mist2Z: -96,
+    mountainH: 38,
+    mist1Y: 2.4,
+    mist1Z: -55,
+    mist1W: 320,
+    mist1H: 5.0,
+    mist1Alpha: 0.32,
+    mist1Tint: '#e1e3de',
+    mist2Y: 6.0,
+    mist2Z: -82,
     mist2W: 400,
-    mist2H: 9.7,
-    mist2Alpha: 0.2,
-    mist2Tint: '#050a12',
-    fogColor: '#000000',
-    fogDensity: 0.005,
-    bankFarX: 1.0,
-    bankFarY: 2.5,
+    mist2H: 7.0,
+    mist2Alpha: 0.42,
+    mist2Tint: '#e1e3de',
+    fogColor: '#cdd1cc',
+    fogDensity: 0.0095,
+    bankFarX: 0,
+    bankFarY: 2.0,
     bankFarZ: -58,
     bankFarW: 127,
     bankFarH: 15,
     bankFarAlpha: 1.0,
+    bankNearX: 0,
+    bankNearY: -0.8,
+    bankNearZ: -18,
+    bankNearW: 95,
+    bankNearH: 22,
+    bankNearAlpha: 0.9,
   },
 };
 
@@ -723,9 +731,9 @@ function SceneContent() {
       bokashiWarp: { value: DEFAULT_PRESET.water.bokashiWarp, min: 0, max: 0.5, step: 0.005 },
       reflWarpU: { value: DEFAULT_PRESET.water.reflWarpU, min: 0, max: 0.1, step: 0.001 },
       reflWarpV: { value: DEFAULT_PRESET.water.reflWarpV, min: 0, max: 0.1, step: 0.001 },
-      warpScale: { value: DEFAULT_PRESET.water.warpScale, min: 0.02, max: 0.6, step: 0.005 },
+      warpScale: { value: DEFAULT_PRESET.water.warpScale, min: 0, max: 0.6, step: 0.005 },
       pigmentAmount: { value: DEFAULT_PRESET.water.pigmentAmount, min: 0, max: 1, step: 0.01 },
-      edgeDarken: { value: DEFAULT_PRESET.water.edgeDarken, min: 0, max: 0.5, step: 0.005 },
+      edgeDarken: { value: DEFAULT_PRESET.water.edgeDarken, min: 0, max: 1, step: 0.005 },
       crestSpecStrength: { value: DEFAULT_PRESET.water.crestSpecStrength, min: 0, max: 2, step: 0.01 },
       crestSpecExp: { value: DEFAULT_PRESET.water.crestSpecExp, min: 4, max: 256, step: 1 },
       rippleTint: { value: DEFAULT_PRESET.water.rippleTint, min: 0, max: 1, step: 0.005 },
@@ -773,6 +781,14 @@ function SceneContent() {
         bankFarW: { value: DEFAULT_PRESET.composition.bankFarW, min: 40, max: 400, step: 1 },
         bankFarH: { value: DEFAULT_PRESET.composition.bankFarH, min: 10, max: 120, step: 1 },
         bankFarAlpha: { value: DEFAULT_PRESET.composition.bankFarAlpha, min: 0, max: 1, step: 0.01 },
+      }),
+      bankNear: folder({
+        bankNearX: { value: DEFAULT_PRESET.composition.bankNearX, min: -80, max: 80, step: 0.5 },
+        bankNearY: { value: DEFAULT_PRESET.composition.bankNearY, min: -10, max: 30, step: 0.5 },
+        bankNearZ: { value: DEFAULT_PRESET.composition.bankNearZ, min: -80, max: -5, step: 1 },
+        bankNearW: { value: DEFAULT_PRESET.composition.bankNearW, min: 40, max: 400, step: 1 },
+        bankNearH: { value: DEFAULT_PRESET.composition.bankNearH, min: 5, max: 120, step: 1 },
+        bankNearAlpha: { value: DEFAULT_PRESET.composition.bankNearAlpha, min: 0, max: 1, step: 0.01 },
       }),
     }),
     { collapsed: false },
@@ -829,6 +845,15 @@ function SceneContent() {
         w={composition.bankFarW}
         h={composition.bankFarH}
         alpha={composition.bankFarAlpha}
+      />
+      <BankBillboard
+        texPath="/grove/06-near-bank.webp"
+        x={composition.bankNearX}
+        y={composition.bankNearY}
+        z={composition.bankNearZ}
+        w={composition.bankNearW}
+        h={composition.bankNearH}
+        alpha={composition.bankNearAlpha}
       />
       <WaterPlane billboardX={composition.mountainX} palette={palette} water={water} />
     </>
