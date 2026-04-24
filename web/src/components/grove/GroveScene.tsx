@@ -30,32 +30,11 @@ interface RippleSlot {
   strength: number;
 }
 
-function SkyDome() {
-  const texture = useMemo<CanvasTexture | null>(() => {
-    if (typeof document === 'undefined') return null;
-    const canvas = document.createElement('canvas');
-    canvas.width = 2;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    const g = ctx.createLinearGradient(0, 0, 0, 512);
-    g.addColorStop(0.0, '#9ea7b2');
-    g.addColorStop(0.25, '#aab2ba');
-    g.addColorStop(0.55, '#bcc2c4');
-    g.addColorStop(0.78, '#c7cbc8');
-    g.addColorStop(1.0, '#cbccc6');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 2, 512);
-    const tex = new CanvasTexture(canvas);
-    tex.colorSpace = SRGBColorSpace;
-    return tex;
-  }, []);
-
-  if (!texture) return null;
+function SkyDome({ horizonColor }: { horizonColor: string }) {
   return (
     <mesh>
       <sphereGeometry args={[SKY_RADIUS, 32, 32]} />
-      <meshBasicMaterial map={texture} side={BackSide} fog={false} depthWrite={false} />
+      <meshBasicMaterial color={horizonColor} side={BackSide} fog={false} depthWrite={false} />
     </mesh>
   );
 }
@@ -75,6 +54,7 @@ function MountainBillboard({ x, y, z, w, h }: { x: number; y: number; z: number;
       transparent: true,
       depthWrite: false,
       depthTest: false,
+      fog: false,
     });
     mat.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
@@ -318,66 +298,60 @@ function CameraParallax() {
 
 const DEFAULT_PRESET = {
   palette: {
-    horizon: '#c7ccc9',
-    waterFar: '#6b7a85',
-    waterNear: '#b2b9b8',
-    rippleTint: '#8a9299',
+    horizon: '#0b1958',
+    waterFar: '#2584c7',
+    waterNear: '#6e9db1',
+    rippleTint: '#b5b6b7',
     specColor: '#e8ecef',
     causticsColor: '#ffffff',
-    foamColor: '#ffffff',
-    sunX: -0.3,
+    foamColor: '#f0f4f5',
+    sunX: -0.6,
     sunY: 0.4,
     sunZ: -0.6,
   },
   water: {
-    fresnelExp: 4.0,
+    fresnelExp: 2.45,
     reflStrength: 0.9,
-    fresnelJitter: 0.08,
-    bokashiWarp: 0.12,
-    reflWarpU: 0.022,
-    reflWarpV: 0.016,
-    warpScale: 0.15,
+    fresnelJitter: 0.04,
+    bokashiWarp: 0.18,
+    reflWarpU: 0.0,
+    reflWarpV: 0.0,
+    warpScale: 0.02,
     pigmentAmount: 0.3,
     edgeDarken: 0.14,
-    crestSpecStrength: 0.35,
+    crestSpecStrength: 0.59,
     crestSpecExp: 80,
-    rippleTint: 0.12,
-    causticIntensity: 0.2,
-    foamThreshold: 0.02,
-    waveSteepness: 0.035,
+    rippleTint: 0.4,
+    causticIntensity: 0.23,
+    foamThreshold: 0.01,
+    waveSteepness: 0.03,
   },
   composition: {
-    mountainX: -22,
-    mountainY: 14,
-    mountainZ: -95,
+    mountainX: 18.5,
+    mountainY: 38.5,
+    mountainZ: -116,
     mountainW: 180,
-    mountainH: 38,
-    mist1Y: 2.4,
-    mist1Z: -55,
-    mist1W: 320,
-    mist1H: 5.0,
-    mist1Alpha: 0.32,
+    mountainH: 71,
+    mist1Y: 0.0,
+    mist1Z: -35,
+    mist1W: 383,
+    mist1H: 2.4,
+    mist1Alpha: 0.26,
     mist1Tint: '#e1e3de',
-    mist2Y: 6.0,
-    mist2Z: -82,
+    mist2Y: 4.7,
+    mist2Z: -96,
     mist2W: 400,
-    mist2H: 7.0,
-    mist2Alpha: 0.42,
+    mist2H: 9.7,
+    mist2Alpha: 0.51,
     mist2Tint: '#e1e3de',
-    fogColor: '#cdd1cc',
-    fogDensity: 0.0095,
-    bankFarX: 0,
-    bankFarY: 2.0,
-    bankFarZ: -58,
+    fogColor: '#414b4b',
+    fogDensity: 0.01,
+    bankFarX: 1.0,
+    bankFarY: 11.5,
+    bankFarZ: -129,
     bankFarW: 127,
-    bankFarH: 15,
+    bankFarH: 41,
     bankFarAlpha: 1.0,
-    bankNearX: 0,
-    bankNearY: -0.8,
-    bankNearZ: -18,
-    bankNearW: 95,
-    bankNearH: 22,
-    bankNearAlpha: 0.9,
   },
 };
 
@@ -782,14 +756,6 @@ function SceneContent() {
         bankFarH: { value: DEFAULT_PRESET.composition.bankFarH, min: 10, max: 120, step: 1 },
         bankFarAlpha: { value: DEFAULT_PRESET.composition.bankFarAlpha, min: 0, max: 1, step: 0.01 },
       }),
-      bankNear: folder({
-        bankNearX: { value: DEFAULT_PRESET.composition.bankNearX, min: -80, max: 80, step: 0.5 },
-        bankNearY: { value: DEFAULT_PRESET.composition.bankNearY, min: -10, max: 30, step: 0.5 },
-        bankNearZ: { value: DEFAULT_PRESET.composition.bankNearZ, min: -80, max: -5, step: 1 },
-        bankNearW: { value: DEFAULT_PRESET.composition.bankNearW, min: 40, max: 400, step: 1 },
-        bankNearH: { value: DEFAULT_PRESET.composition.bankNearH, min: 5, max: 120, step: 1 },
-        bankNearAlpha: { value: DEFAULT_PRESET.composition.bankNearAlpha, min: 0, max: 1, step: 0.01 },
-      }),
     }),
     { collapsed: false },
   );
@@ -813,7 +779,7 @@ function SceneContent() {
     <>
       <fogExp2 attach="fog" args={[composition.fogColor, composition.fogDensity]} />
       <CameraParallax />
-      <SkyDome />
+      <SkyDome horizonColor={palette.horizon} />
       <MountainBillboard
         x={composition.mountainX}
         y={composition.mountainY}
@@ -845,15 +811,6 @@ function SceneContent() {
         w={composition.bankFarW}
         h={composition.bankFarH}
         alpha={composition.bankFarAlpha}
-      />
-      <BankBillboard
-        texPath="/grove/06-near-bank.webp"
-        x={composition.bankNearX}
-        y={composition.bankNearY}
-        z={composition.bankNearZ}
-        w={composition.bankNearW}
-        h={composition.bankNearH}
-        alpha={composition.bankNearAlpha}
       />
       <WaterPlane billboardX={composition.mountainX} palette={palette} water={water} />
     </>
