@@ -1,14 +1,19 @@
 'use client';
 
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, extend, useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
-import { EffectComposer } from '@react-three/postprocessing';
+import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { folder, useControls } from 'leva';
 import { forwardRef, Suspense, useEffect, useMemo, useRef } from 'react';
 import type { Mesh, ShaderMaterial, Texture } from 'three';
-import { BackSide, CanvasTexture, Color, LinearFilter, MeshBasicMaterial, SRGBColorSpace } from 'three';
+import { AdditiveBlending, CanvasTexture, Color, LinearFilter, MeshBasicMaterial, SRGBColorSpace } from 'three';
 import { MAX_RIPPLES, WaterShaderMaterial } from '@/components/shaders/WaterMaterial';
+import { SumiSkyShaderMaterial } from '@/components/shaders/SumiSkyMaterial';
 import { PaperOverlayEffect } from '@/components/grove/PaperOverlay';
+
+extend({ SumiSkyShaderMaterial });
+
+const SumiSkyShader = 'sumiSkyShaderMaterial' as any;
 
 /**
  * GroveScene — /shhhh dawn lake, true 3D.
@@ -21,7 +26,6 @@ import { PaperOverlayEffect } from '@/components/grove/PaperOverlay';
 
 const WATER_SIZE = 400;
 const WATER_SEGMENTS = 192;
-const SKY_RADIUS = 150;
 
 interface RippleSlot {
   x: number;
@@ -30,41 +34,40 @@ interface RippleSlot {
   strength: number;
 }
 
-function SkyDome({ skyGradient }: { skyGradient: [string, string, string, string, string] }) {
-  const texture = useMemo<CanvasTexture | null>(() => {
-    if (typeof document === 'undefined') return null;
-    const canvas = document.createElement('canvas');
-    canvas.width = 2;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    const g = ctx.createLinearGradient(0, 0, 0, 512);
-    g.addColorStop(0.0, skyGradient[0]);
-    g.addColorStop(0.25, skyGradient[1]);
-    g.addColorStop(0.5, skyGradient[2]);
-    g.addColorStop(0.75, skyGradient[3]);
-    g.addColorStop(1.0, skyGradient[4]);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 2, 512);
-    const tex = new CanvasTexture(canvas);
-    tex.colorSpace = SRGBColorSpace;
-    return tex;
-  }, [skyGradient]);
+function SumiSky({
+  palette,
+  fbmScale,
+}: {
+  palette: { skyHorizon: string; skyZenith: string; skyMilky: string; skyStar: string };
+  fbmScale: number;
+}) {
+  const matRef = useRef<any>(null);
+
+  useFrame((state) => {
+    if (matRef.current) {
+      matRef.current.uTime = state.clock.elapsedTime;
+    }
+  });
 
   return (
-    <mesh>
-      <sphereGeometry args={[SKY_RADIUS, 32, 32]} />
-      {texture ? (
-        <meshBasicMaterial map={texture} side={BackSide} fog={false} depthWrite={false} />
-      ) : (
-        <meshBasicMaterial color={skyGradient[4]} side={BackSide} fog={false} depthWrite={false} />
-      )}
+    <mesh position={[0, 20, -180]} frustumCulled={false}>
+      <planeGeometry args={[800, 400]} />
+      <SumiSkyShader
+        ref={matRef}
+        uColorHorizon={palette.skyHorizon}
+        uColorZenith={palette.skyZenith}
+        uColorMilky={palette.skyMilky}
+        uColorStar={palette.skyStar}
+        uFbmScale={fbmScale}
+        depthWrite={true}
+        transparent={false}
+      />
     </mesh>
   );
 }
 
 function MountainBillboard({ x, y, z, w, h }: { x: number; y: number; z: number; w: number; h: number }) {
-  const texture = useTexture('/grove/02-mountains.webp', (loaded) => {
+  const texture = useTexture('/grove/02-mountains-new.webp', (loaded) => {
     const t = (Array.isArray(loaded) ? loaded[0] : loaded) as Texture;
     t.colorSpace = SRGBColorSpace;
     t.magFilter = LinearFilter;
@@ -151,7 +154,15 @@ function MistBand({
   return (
     <mesh position={[0, y, z]}>
       <planeGeometry args={[w, h, 1, 1]} />
-      <meshBasicMaterial ref={matRef} map={texture} transparent depthWrite={false} fog={false} opacity={alpha} />
+      <meshBasicMaterial
+        ref={matRef}
+        map={texture}
+        transparent
+        depthWrite={false}
+        fog={false}
+        opacity={alpha}
+        blending={AdditiveBlending}
+      />
     </mesh>
   );
 }
@@ -187,6 +198,7 @@ function BankBillboard({
       depthWrite: false,
       depthTest: false,
       opacity: alpha,
+      blending: AdditiveBlending,
     });
   }, [texture, alpha]);
 
@@ -213,7 +225,7 @@ function WaterPlane({
   const startedAt = useRef<number | null>(null);
   const lastClickAt = useRef<number>(-Infinity);
 
-  const mountainTex = useTexture('/grove/02-mountains.webp', (loaded) => {
+  const mountainTex = useTexture('/grove/02-mountains-new.webp', (loaded) => {
     const t = (Array.isArray(loaded) ? loaded[0] : loaded) as Texture;
     t.colorSpace = SRGBColorSpace;
     t.magFilter = LinearFilter;
@@ -322,11 +334,11 @@ function CameraParallax() {
 
 const DEFAULT_PRESET = {
   palette: {
-    sky0: '#9ea7b2',
-    sky1: '#aab2ba',
-    sky2: '#bcc2c4',
-    sky3: '#c7cbc8',
-    sky4: '#cbccc6',
+    skyHorizon: '#0b1958',
+    skyZenith: '#040b2e',
+    skyMilky: '#2b3970',
+    skyStar: '#a6b2d1',
+    skyFbmScale: 2.2,
     horizon: '#0b1958',
     waterFar: '#2584c7',
     waterNear: '#6e9db1',
@@ -381,6 +393,9 @@ const DEFAULT_PRESET = {
     bankFarW: 127,
     bankFarH: 41,
     bankFarAlpha: 1.0,
+    bloomIntensity: 0.5,
+    bloomThreshold: 0.2,
+    vignetteDarkness: 0.6,
   },
 };
 
@@ -395,11 +410,11 @@ const PRESETS: Record<
   Default: DEFAULT_PRESET,
   BloodMoon: {
     palette: {
-      sky0: '#170303',
-      sky1: '#3d0808',
-      sky2: '#660b0b',
-      sky3: '#991111',
-      sky4: '#cc1b1b',
+      skyHorizon: '#3d0808',
+      skyZenith: '#170303',
+      skyMilky: '#660b0b',
+      skyStar: '#cc1b1b',
+      skyFbmScale: 2.2,
       horizon: '#3d0808',
       waterFar: '#1a0404',
       waterNear: '#3d1211',
@@ -420,6 +435,9 @@ const PRESETS: Record<
       rippleTint: 0.5,
     },
     composition: {
+      bloomIntensity: 1.2,
+      bloomThreshold: 0.1,
+      vignetteDarkness: 0.8,
       fogColor: '#170303',
       fogDensity: 0.02,
       mist1Tint: '#3d0808',
@@ -430,11 +448,11 @@ const PRESETS: Record<
   },
   EtherealDawn: {
     palette: {
-      sky0: '#4b5773',
-      sky1: '#7b7b96',
-      sky2: '#aeb1bf',
-      sky3: '#d6ced6',
-      sky4: '#f2e8ef',
+      skyHorizon: '#7b7b96',
+      skyZenith: '#4b5773',
+      skyMilky: '#aeb1bf',
+      skyStar: '#f2e8ef',
+      skyFbmScale: 2.2,
       horizon: '#7b7b96',
       waterFar: '#53658a',
       waterNear: '#8ba2cc',
@@ -447,6 +465,9 @@ const PRESETS: Record<
       sunZ: 0.8,
     },
     composition: {
+      bloomIntensity: 0.4,
+      bloomThreshold: 0.3,
+      vignetteDarkness: 0.4,
       fogColor: '#8a8e9e',
       fogDensity: 0.015,
       mist1Tint: '#e6dce3',
@@ -457,11 +478,11 @@ const PRESETS: Record<
   },
   AbyssalNight: {
     palette: {
-      sky0: '#010205',
-      sky1: '#030814',
-      sky2: '#050d24',
-      sky3: '#071536',
-      sky4: '#091c47',
+      skyHorizon: '#030814',
+      skyZenith: '#010205',
+      skyMilky: '#050d24',
+      skyStar: '#4f85f5',
+      skyFbmScale: 2.2,
       horizon: '#030814',
       waterFar: '#020612',
       waterNear: '#081738',
@@ -480,6 +501,9 @@ const PRESETS: Record<
       rippleTint: 0.2,
     },
     composition: {
+      bloomIntensity: 0.6,
+      bloomThreshold: 0.2,
+      vignetteDarkness: 0.7,
       fogColor: '#01030a',
       fogDensity: 0.025,
       mist1Tint: '#040b1c',
@@ -490,11 +514,11 @@ const PRESETS: Record<
   },
   GoldenHour: {
     palette: {
-      sky0: '#3b5c87',
-      sky1: '#748eb5',
-      sky2: '#c2b3aa',
-      sky3: '#e8b87d',
-      sky4: '#f79a40',
+      skyHorizon: '#e8b87d',
+      skyZenith: '#3b5c87',
+      skyMilky: '#c2b3aa',
+      skyStar: '#f79a40',
+      skyFbmScale: 2.2,
       horizon: '#e8b87d',
       waterFar: '#446894',
       waterNear: '#8c8c73',
@@ -513,6 +537,9 @@ const PRESETS: Record<
       crestSpecStrength: 0.7,
     },
     composition: {
+      bloomIntensity: 0.7,
+      bloomThreshold: 0.25,
+      vignetteDarkness: 0.5,
       fogColor: '#7a6a58',
       fogDensity: 0.01,
       mist1Tint: '#e0c9b1',
@@ -523,11 +550,11 @@ const PRESETS: Record<
   },
   DeepNight: {
     palette: {
-      sky0: '#000000',
-      sky1: '#111111',
-      sky2: '#222222',
-      sky3: '#333333',
-      sky4: '#030614',
+      skyHorizon: '#030614',
+      skyZenith: '#050510',
+      skyMilky: '#101530',
+      skyStar: '#d6e2f2',
+      skyFbmScale: 2.2,
       horizon: '#030614',
       waterFar: '#0b193d',
       waterNear: '#1c2d54',
@@ -557,6 +584,9 @@ const PRESETS: Record<
       waveSteepness: 0.02,
     },
     composition: {
+      bloomIntensity: 0.5,
+      bloomThreshold: 0.2,
+      vignetteDarkness: 0.7,
       fogColor: '#0a1024',
       fogDensity: 0.015,
       mist1Tint: '#1c2a47',
@@ -567,11 +597,11 @@ const PRESETS: Record<
   },
   Frost: {
     palette: {
-      sky0: '#000000',
-      sky1: '#111111',
-      sky2: '#222222',
-      sky3: '#333333',
-      sky4: '#c6d1d9',
+      skyHorizon: '#c6d1d9',
+      skyZenith: '#7ea4c4',
+      skyMilky: '#bdd4e4',
+      skyStar: '#f2f8fc',
+      skyFbmScale: 2.2,
       horizon: '#c6d1d9',
       waterFar: '#87a2ba',
       waterNear: '#a3bedb',
@@ -601,6 +631,9 @@ const PRESETS: Record<
       waveSteepness: 0.04,
     },
     composition: {
+      bloomIntensity: 0.6,
+      bloomThreshold: 0.3,
+      vignetteDarkness: 0.4,
       fogColor: '#bac7d4',
       fogDensity: 0.012,
       mist1Tint: '#dce5ed',
@@ -611,11 +644,11 @@ const PRESETS: Record<
   },
   Storm: {
     palette: {
-      sky0: '#000000',
-      sky1: '#111111',
-      sky2: '#222222',
-      sky3: '#333333',
-      sky4: '#11151c',
+      skyHorizon: '#11151c',
+      skyZenith: '#14181d',
+      skyMilky: '#313a45',
+      skyStar: '#b3c4d1',
+      skyFbmScale: 2.2,
       horizon: '#11151c',
       waterFar: '#2b3947',
       waterNear: '#4c6173',
@@ -645,6 +678,9 @@ const PRESETS: Record<
       waveSteepness: 0.08,
     },
     composition: {
+      bloomIntensity: 1,
+      bloomThreshold: 0.15,
+      vignetteDarkness: 0.8,
       fogColor: '#26313d',
       fogDensity: 0.025,
       mist1Tint: '#4f6478',
@@ -655,11 +691,11 @@ const PRESETS: Record<
   },
   Moonlight: {
     palette: {
-      sky0: '#000000',
-      sky1: '#111111',
-      sky2: '#222222',
-      sky3: '#333333',
-      sky4: '#000000',
+      skyHorizon: '#000000',
+      skyZenith: '#040b17',
+      skyMilky: '#112240',
+      skyStar: '#ffffff',
+      skyFbmScale: 2.2,
       horizon: '#000000',
       waterFar: '#0d1d36',
       waterNear: '#2b4d75',
@@ -689,6 +725,9 @@ const PRESETS: Record<
       waveSteepness: 0.01,
     },
     composition: {
+      bloomIntensity: 0.8,
+      bloomThreshold: 0.2,
+      vignetteDarkness: 0.7,
       fogColor: '#050a12',
       fogDensity: 0.008,
       mist1Tint: '#1b3252',
@@ -699,11 +738,11 @@ const PRESETS: Record<
   },
   MoonlightMist: {
     palette: {
-      sky0: '#000000',
-      sky1: '#111111',
-      sky2: '#222222',
-      sky3: '#333333',
-      sky4: '#080c14',
+      skyHorizon: '#080c14',
+      skyZenith: '#0c1322',
+      skyMilky: '#283b54',
+      skyStar: '#eef2f5',
+      skyFbmScale: 2.2,
       horizon: '#080c14',
       waterFar: '#11223b',
       waterNear: '#36567a',
@@ -733,6 +772,9 @@ const PRESETS: Record<
       waveSteepness: 0.015,
     },
     composition: {
+      bloomIntensity: 0.7,
+      bloomThreshold: 0.2,
+      vignetteDarkness: 0.65,
       fogColor: '#0e1726',
       fogDensity: 0.018,
       mist1Tint: '#2b4566',
@@ -743,11 +785,11 @@ const PRESETS: Record<
   },
   MoonlightStorm: {
     palette: {
-      sky0: '#000000',
-      sky1: '#111111',
-      sky2: '#222222',
-      sky3: '#333333',
-      sky4: '#000000',
+      skyHorizon: '#000000',
+      skyZenith: '#080914',
+      skyMilky: '#1d2140',
+      skyStar: '#ffffff',
+      skyFbmScale: 2.2,
       horizon: '#000000',
       waterFar: '#081426',
       waterNear: '#1c3854',
@@ -777,6 +819,9 @@ const PRESETS: Record<
       waveSteepness: 0.06,
     },
     composition: {
+      bloomIntensity: 0.9,
+      bloomThreshold: 0.15,
+      vignetteDarkness: 0.75,
       fogColor: '#03070d',
       fogDensity: 0.012,
       mist1Tint: '#12253d',
@@ -787,11 +832,11 @@ const PRESETS: Record<
   },
   MidnightLake: {
     palette: {
-      sky0: '#000000',
-      sky1: '#111111',
-      sky2: '#222222',
-      sky3: '#333333',
-      sky4: '#000000',
+      skyHorizon: '#000000',
+      skyZenith: '#020610',
+      skyMilky: '#081a38',
+      skyStar: '#ffffff',
+      skyFbmScale: 2.2,
       horizon: '#000000',
       waterFar: '#050a12',
       waterNear: '#122238',
@@ -821,6 +866,9 @@ const PRESETS: Record<
       waveSteepness: 0.005,
     },
     composition: {
+      bloomIntensity: 0.7,
+      bloomThreshold: 0.2,
+      vignetteDarkness: 0.8,
       fogColor: '#000000',
       fogDensity: 0.005,
       mist1Tint: '#0c1a2e',
@@ -831,11 +879,11 @@ const PRESETS: Record<
   },
   ClearMorning: {
     palette: {
-      sky0: '#000000',
-      sky1: '#111111',
-      sky2: '#222222',
-      sky3: '#333333',
-      sky4: '#1a3375',
+      skyHorizon: '#1a3375',
+      skyZenith: '#3a7bd5',
+      skyMilky: '#a4c9eb',
+      skyStar: '#f3a183',
+      skyFbmScale: 2.2,
       horizon: '#1a3375',
       waterFar: '#338ce6',
       waterNear: '#80bad9',
@@ -865,6 +913,9 @@ const PRESETS: Record<
       waveSteepness: 0.03,
     },
     composition: {
+      bloomIntensity: 0.5,
+      bloomThreshold: 0.3,
+      vignetteDarkness: 0.4,
       fogColor: '#587382',
       fogDensity: 0.009,
       mist1Tint: '#f0f5f7',
@@ -879,11 +930,11 @@ function SceneContent() {
   const [palette, setPalette] = useControls(
     'Palette',
     () => ({
-      sky0: DEFAULT_PRESET.palette.sky0,
-      sky1: DEFAULT_PRESET.palette.sky1,
-      sky2: DEFAULT_PRESET.palette.sky2,
-      sky3: DEFAULT_PRESET.palette.sky3,
-      sky4: DEFAULT_PRESET.palette.sky4,
+      skyHorizon: DEFAULT_PRESET.palette.skyHorizon,
+      skyZenith: DEFAULT_PRESET.palette.skyZenith,
+      skyMilky: DEFAULT_PRESET.palette.skyMilky,
+      skyStar: DEFAULT_PRESET.palette.skyStar,
+      skyFbmScale: { value: DEFAULT_PRESET.palette.skyFbmScale, min: 0.1, max: 10, step: 0.1 },
       horizon: DEFAULT_PRESET.palette.horizon,
       waterFar: DEFAULT_PRESET.palette.waterFar,
       waterNear: DEFAULT_PRESET.palette.waterNear,
@@ -958,6 +1009,11 @@ function SceneContent() {
         bankFarH: { value: DEFAULT_PRESET.composition.bankFarH, min: 10, max: 120, step: 1 },
         bankFarAlpha: { value: DEFAULT_PRESET.composition.bankFarAlpha, min: 0, max: 1, step: 0.01 },
       }),
+      post: folder({
+        bloomIntensity: { value: DEFAULT_PRESET.composition.bloomIntensity, min: 0, max: 5, step: 0.1 },
+        bloomThreshold: { value: DEFAULT_PRESET.composition.bloomThreshold, min: 0, max: 1, step: 0.05 },
+        vignetteDarkness: { value: DEFAULT_PRESET.composition.vignetteDarkness, min: 0, max: 1, step: 0.05 },
+      }),
     }),
     { collapsed: false },
   );
@@ -981,7 +1037,7 @@ function SceneContent() {
     <>
       <fogExp2 attach="fog" args={[composition.fogColor, composition.fogDensity]} />
       <CameraParallax />
-      <SkyDome skyGradient={[palette.sky0, palette.sky1, palette.sky2, palette.sky3, palette.sky4]} />
+      <SumiSky palette={palette} fbmScale={palette.skyFbmScale} />
       <MountainBillboard
         x={composition.mountainX}
         y={composition.mountainY}
@@ -1015,6 +1071,11 @@ function SceneContent() {
         alpha={composition.bankFarAlpha}
       />
       <WaterPlane billboardX={composition.mountainX} palette={palette} water={water} />
+      <EffectComposer>
+        <Bloom intensity={composition.bloomIntensity} luminanceThreshold={composition.bloomThreshold} />
+        <Vignette darkness={composition.vignetteDarkness} offset={0.1} />
+        <PaperPass />
+      </EffectComposer>
     </>
   );
 }
@@ -1078,9 +1139,6 @@ export default function GroveScene() {
     >
       <Suspense fallback={null}>
         <SceneContent />
-        <EffectComposer>
-          <PaperPass />
-        </EffectComposer>
       </Suspense>
     </Canvas>
   );

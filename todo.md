@@ -1,3 +1,97 @@
+# Camp Module Upgrade — Night Scene Depth + Illumination
+
+## Context
+
+Camp (scroll 0.42–0.58) currently reads as a flat video + particles slab: one big campfire video at z=-250, a uniform-random starfield, a linear ember column. Against Hero's bespoke `WoodcutMaterial` and Alpine's parallax ledges, it's the weakest module on the site alongside Summit.
+
+This mission upgrades Camp to craft-parity via three new John Fellows woodblock silhouette layers (already produced and cut to `/web/public/camp/{canopy,tent,branch}.webp`), a painted fire-glow halo (not a physical `<pointLight>` — staying graphic), a custom ink-wash night-sky shader to replace the random starfield, a subtle silhouette warm-tint shader, and split ember clusters. Summit is a separate follow-up mission.
+
+## Goal
+
+Turn Camp from "flat diorama" into an inhabited night scene with real compositional depth, while preserving the graphic John Fellows aesthetic (no 3D rim-lighting, no photorealism).
+
+## Scope
+
+**In:** `CampSceneGroup` inside `UnifiedScene.tsx`; 3 new shader materials in `web/src/components/shaders/`; the 3 silhouette WebPs already in `/web/public/camp/`.
+
+**Explicitly out** (deferred to future missions):
+- Camera changes ("sit down at the fire" spline dolly)
+- Time-of-day scrubber (dusk → stars → moonrise)
+- Kettle / steam plume hero prop
+- Log-anchored 3D→2D HTML card
+- Scroll-velocity wind-bias on embers
+- Heat-haze refraction over fire video
+- Constellation chapters, meteor on velocity threshold, firefly layer
+
+## Plan
+
+### Composition layers (silhouettes)
+
+- [ ] 1. Add three new meshes to `CampSceneGroup` at z-depths: canopy `z=-40` top-of-frame, tent `z=-15` center-ground, branch `z=+5` top intruding foreground
+- [ ] 2. Wire all three to a new `SilhouetteWarmMaterial` (step 10), `alphaTest=0.5`, `transparent=true`, `depthWrite=true`
+- [ ] 3. Scale each plane so it reads at intended frame coverage; expose positions and scales via Leva for fine-tuning
+
+### Deep-ink background with paper grain
+
+- [ ] 4. Add a background plane at `z=-200` replacing the implicit dark void
+- [ ] 5. Shader: base tone `#050514` + `fiberNoise` primitive reused from `WoodcutMaterial` for subtle paper-grain variation (amplitude ~0.03)
+
+### Fire-glow halo shader
+
+- [ ] 6. Create `web/src/components/shaders/FireHaloMaterial.ts` using `shaderMaterial`
+- [ ] 7. Additive radial billboard at `(0, -2, -10)`, scale ~12×12
+- [ ] 8. Uniforms: `uTime`, `uEmberPulse` (fed from existing `scrollVelocity` ref, clamped), `uColorWarm` (`#ea580c`), `uRadius`, `uFbmScale`
+- [ ] 9. Fragment: `smoothstep(radius, 0, length(uv-0.5))` × warm color × `(0.7 + fbm*0.3)`, pulse modulates intensity; `blending=AdditiveBlending`, `depthWrite=false`
+
+### Silhouette warm-tint shader
+
+- [ ] 10. Create `web/src/components/shaders/SilhouetteWarmMaterial.ts`
+- [ ] 11. Uniforms: `uTexture`, `uFireAnchor` (vec3 world-space), `uWarmColor` (`#f6c400` muted), `uInfluenceRadius`, `uFirePulse`
+- [ ] 12. Vertex: pass world-space position as varying
+- [ ] 13. Fragment: sample texture, multiply by a warm-tint factor keyed on `distance(vWorldPos, uFireAnchor)` via `smoothstep`; amplitude modulated by `uFirePulse` (shared with FireHalo)
+
+### Ink-wash night sky shader
+
+- [ ] 14. Create `web/src/components/shaders/SumiSkyMaterial.ts`
+- [ ] 15. Full-screen background dome plane at `z=-180` (in front of paper-grain background, behind everything else)
+- [ ] 16. Fragment:
+  - Vertical gradient from `#020617` (horizon) to `#060a1a` (zenith)
+  - 3-octave domain-warped fbm modulates the gradient for painterly unevenness
+  - Milky-way band via a rotated ellipse mask × its own fbm, subtle off-white tint
+  - Stars via hashed `step()` threshold on a second noise layer with `sin(uTime*speed + hash)` twinkle
+- [ ] 17. Remove the existing `Starfield` Points geometry from `CampSceneGroup`
+
+### Split ember clusters
+
+- [ ] 18. Refactor `CampfireEmbers` into two `<points>` clusters:
+  - **Hot-fast**: 30 particles, `#fde68a`, short life (~1.5s), tight vertical cone, faster rise
+  - **Cool-slow**: 30 particles, `#ea580c`, longer life (~3.5s), wider drift, slower rise
+- [ ] 19. Preserve existing velocity-reactive emission rate wiring
+
+### Integration
+
+- [ ] 20. Wire everything inside `CampSceneGroup`'s existing `applyGroupOpacity` envelope so the module timeline contract still handles fade-in/fade-out
+- [ ] 21. Add a Leva panel folder `"Home Camp"` exposing: silhouette z-depths and scales, halo intensity + radius + fbm scale, sky fbm scale + gradient endpoints, ember cluster counts
+- [ ] 22. Smoke-test scroll range 0.40–0.60 — confirm no regression on adjacent modules (Forest exit, Alpine enter)
+
+### Guardrails + review
+
+- [ ] 23. Run `cd web && npm run guardrails` (lint + typecheck + format + build)
+- [ ] 24. Start `npm run dev`, scroll through Camp in the browser, verify:
+  - Three silhouettes composite correctly at intended z-depths
+  - Fire halo pulses subtly with ember velocity
+  - Silhouettes show a whisper of warm tint on the fire-facing side
+  - Ink-wash sky reads as painted night, not uniform random points
+  - Ember clusters differentiate hot-fast vs cool-slow
+  - No z-fighting, no flicker, no broken transparency on Forest→Camp or Camp→Alpine crossfades
+- [ ] 25. Populate the Review section below with diff summary, perf notes, and any follow-up items surfaced during implementation
+
+## Review
+
+_(Populated after execution.)_
+
+---
+
 ## Shhhh Asset Prompting Plan
 
 - [x] 1. Read the `shhhh` route, grove scene, and existing cairn/monogram assets to lock the visual constraints.

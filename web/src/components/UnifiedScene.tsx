@@ -23,11 +23,16 @@ import {
   Color,
   MirroredRepeatWrapping,
   MathUtils,
+  AdditiveBlending,
 } from 'three';
 import PostProcessingStack from './PostProcessingStack';
 import QualityMonitor from './QualityMonitor';
 import { useQualityStore, qualityPresets } from '@/lib/quality';
 import './shaders/WoodcutMaterial';
+import './shaders/FireHaloMaterial';
+import './shaders/SilhouetteWarmMaterial';
+import './shaders/SumiSkyMaterial';
+import './shaders/GroundMaterial';
 import DeepForest from './DeepForest';
 import { MODULE_TIMELINE, sceneVisible, sceneOpacity, sceneChildRanges } from '@/lib/moduleTimeline';
 import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
@@ -65,12 +70,20 @@ function applyGroupOpacity(group: Group, envelope: number): void {
 }
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
+const FireHaloShader = 'fireHaloShaderMaterial' as any;
+const SilhouetteWarmShader = 'silhouetteWarmShaderMaterial' as any;
+const SumiSkyShader = 'sumiSkyShaderMaterial' as any;
+const GroundShader = 'groundShaderMaterial' as any;
 const DEFAULT_WATERCOLOR_WASH = '#38aeea';
 const DEFAULT_WATERCOLOR_WARM = '#f6c400';
 declare global {
   namespace JSX {
     interface IntrinsicElements {
       woodcutShaderMaterial: any;
+      fireHaloShaderMaterial: any;
+      silhouetteWarmShaderMaterial: any;
+      sumiSkyShaderMaterial: any;
+      groundShaderMaterial: any;
     }
   }
 }
@@ -507,91 +520,91 @@ function ForestSceneGroup({
 // CAMP SCENE GROUP
 // =============================================================================
 
-function Starfield({
-  scrollVelocity,
-  isActive,
-}: {
-  scrollVelocity: React.MutableRefObject<number>;
-  isActive?: React.MutableRefObject<boolean>;
-}) {
-  const ref = useRef<any>(null);
-  const tier = useQualityStore((s) => s.tier);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const baseCount = isMobile ? 800 : 2000;
-  const count = Math.max(200, Math.round(baseCount * qualityPresets[tier].particleMultiplier));
-
-  const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 400;
-      pos[i * 3 + 1] = Math.random() * 200;
-      pos[i * 3 + 2] = -50 - Math.random() * 200;
-    }
-    return pos;
-  }, [count]);
-
-  useFrame((state, delta) => {
-    if (isActive && !isActive.current) return;
-    if (ref.current) {
-      const vel = Math.min(scrollVelocity.current * 50, 3);
-      ref.current.rotation.y = state.clock.elapsedTime * (0.01 + vel * 0.05);
-      (ref.current.material as PointsMaterial).size = 0.5 + Math.sin(state.clock.elapsedTime * 2) * 0.2;
-      const targetScale = 1 + vel * 0.3;
-      ref.current.scale.setScalar(MathUtils.damp(ref.current.scale.x, targetScale, 4, delta));
+function SumiSky({ isActive, fbmScale }: { isActive: React.MutableRefObject<boolean>; fbmScale: number }) {
+  const matRef = useRef<any>(null);
+  useFrame((state) => {
+    if (!isActive.current) return;
+    if (matRef.current) {
+      matRef.current.uTime = state.clock.elapsedTime;
+      matRef.current.uFbmScale = fbmScale;
     }
   });
-
+  // Large plane covering the camp sky. z=-180 sits behind everything else in
+  // the module (video ledge is at z=-250 but the sky should read as the
+  // backdrop against the silhouettes at z=-40..+5).
   return (
-    <Points ref={ref} positions={positions} stride={3} frustumCulled={false}>
-      <PointMaterial transparent color="#ffffff" size={0.8} sizeAttenuation={true} depthWrite={false} />
-    </Points>
+    <mesh position={[0, 20, -180]} frustumCulled={false}>
+      <planeGeometry args={[800, 400]} />
+      <SumiSkyShader ref={matRef} transparent={false} depthWrite={true} />
+    </mesh>
   );
 }
 
-function CampfireEmbers({
+type EmberClusterProps = {
+  count: number;
+  color: string;
+  size: number;
+  opacity: number;
+  life: number; // seconds to rise from base to top
+  riseSpeed: number;
+  spread: number; // horizontal drift radius
+  coneWidth: number; // initial spawn radius
+  scrollVelocity: React.MutableRefObject<number>;
+  isActive: React.MutableRefObject<boolean>;
+};
+
+function EmberCluster({
+  count,
+  color,
+  size,
+  opacity,
+  life,
+  riseSpeed,
+  spread,
+  coneWidth,
   scrollVelocity,
   isActive,
-}: {
-  scrollVelocity: React.MutableRefObject<number>;
-  isActive?: React.MutableRefObject<boolean>;
-}) {
-  const count = 60;
+}: EmberClusterProps) {
   const meshRef = useRef<THREEPoints>(null);
 
   const [positions, velocities] = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const vel = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 2;
+      pos[i * 3] = (Math.random() - 0.5) * coneWidth;
       pos[i * 3 + 1] = -3 + Math.random() * 0.5;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 2;
-      vel[i * 3] = (Math.random() - 0.5) * 0.3;
-      vel[i * 3 + 1] = 0.5 + Math.random() * 1.5;
-      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * coneWidth;
+      vel[i * 3] = (Math.random() - 0.5) * spread;
+      vel[i * 3 + 1] = riseSpeed * (0.7 + Math.random() * 0.6);
+      vel[i * 3 + 2] = (Math.random() - 0.5) * spread;
     }
     return [pos, vel];
-  }, []);
+  }, [count, coneWidth, spread, riseSpeed]);
 
   useFrame((state, delta) => {
-    if (isActive && !isActive.current) return;
+    if (!isActive.current) return;
     if (!meshRef.current) return;
     const geo = meshRef.current.geometry;
     const posAttr = geo.attributes.position as BufferAttribute;
     const vel2 = Math.min(scrollVelocity.current * 30, 2);
     const emissionRate = 1 + vel2 * 2;
 
-    for (let i = 0; i < count; i++) {
-      (posAttr.array as Float32Array)[i * 3] += velocities[i * 3] * delta * emissionRate;
-      (posAttr.array as Float32Array)[i * 3 + 1] += velocities[i * 3 + 1] * delta * emissionRate;
-      (posAttr.array as Float32Array)[i * 3 + 2] += velocities[i * 3 + 2] * delta * emissionRate;
+    const arr = posAttr.array as Float32Array;
+    // Top-of-life y, derived from vertical speed × life — keeps the two
+    // clusters visually distinct (hot = quick burst, cool = long drift).
+    const topY = -3 + riseSpeed * life;
 
-      if ((posAttr.array as Float32Array)[i * 3 + 1] > 10) {
-        (posAttr.array as Float32Array)[i * 3] = (Math.random() - 0.5) * 2;
-        (posAttr.array as Float32Array)[i * 3 + 1] = -3;
-        (posAttr.array as Float32Array)[i * 3 + 2] = (Math.random() - 0.5) * 2;
+    for (let i = 0; i < count; i++) {
+      arr[i * 3] += velocities[i * 3] * delta * emissionRate;
+      arr[i * 3 + 1] += velocities[i * 3 + 1] * delta * emissionRate;
+      arr[i * 3 + 2] += velocities[i * 3 + 2] * delta * emissionRate;
+
+      if (arr[i * 3 + 1] > topY) {
+        arr[i * 3] = (Math.random() - 0.5) * coneWidth;
+        arr[i * 3 + 1] = -3;
+        arr[i * 3 + 2] = (Math.random() - 0.5) * coneWidth;
       }
     }
-    // Only upload buffer when a particle actually reset position
     posAttr.needsUpdate = true;
   });
 
@@ -600,67 +613,114 @@ function CampfireEmbers({
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.08} color="#f59e0b" transparent opacity={0.6} sizeAttenuation depthWrite={false} />
+      <pointsMaterial size={size} color={color} transparent opacity={opacity} sizeAttenuation depthWrite={false} />
     </points>
   );
 }
 
-function VideoCampLedge({
-  videoUrl,
+function CampSilhouette({
+  url,
   position,
-  scrollProgress,
+  scale,
+  firePulse,
+  fireAnchor,
+  influenceRadius,
+  warmStrength,
 }: {
-  videoUrl: string;
+  url: string;
   position: [number, number, number];
-  scrollProgress: MotionValue<number>;
+  scale: [number, number];
+  firePulse: React.MutableRefObject<number>;
+  fireAnchor: [number, number, number];
+  influenceRadius: number;
+  warmStrength: number;
 }) {
-  const camp = MODULE_TIMELINE.camp;
-  const tex = useVideoTexture(videoUrl, { start: true, muted: true, crossOrigin: 'Anonymous' });
-  const meshRef = useRef<Mesh>(null);
-  const lerpedP = useRef(0);
-  const dynScale = useVideoCoverScale(position);
+  const tex = useTexture(url);
+  const matRef = useRef<any>(null);
 
-  // Mark material as self-managed before first applyGroupOpacity pass
-  useEffect(() => {
-    if (meshRef.current) {
-      const mat = meshRef.current.material as MeshBasicMaterial;
-      (mat as any).__selfManagedOpacity = true;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!tex?.image) return;
-    const vid = tex.image as HTMLVideoElement;
-    const unsub = scrollProgress.on('change', (v: number) => {
-      if (v > camp.ownStart && v < camp.ownEnd) {
-        if (vid.paused) vid.play().catch(() => {});
-      } else {
-        if (!vid.paused) {
-          vid.pause();
-          vid.currentTime = 0;
-        }
-      }
-    });
-    return () => {
-      unsub();
-      tex.dispose();
-    };
-  }, [tex, scrollProgress, camp.ownStart, camp.ownEnd]);
-
-  useFrame((state, delta) => {
-    if (meshRef.current && tex.image) {
-      lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-      const animP = Math.min(1, Math.max(0, (lerpedP.current - camp.ownStart) / (camp.enterEnd - camp.ownStart)));
-      const mat = meshRef.current.material as MeshBasicMaterial;
-      (mat as any).__selfManagedOpacity = true;
-      mat.opacity = animP;
-    }
+  useFrame(() => {
+    if (!matRef.current) return;
+    matRef.current.uFirePulse = firePulse.current;
+    matRef.current.uFireAnchor.set(fireAnchor[0], fireAnchor[1], fireAnchor[2]);
+    matRef.current.uInfluenceRadius = influenceRadius;
+    matRef.current.uWarmStrength = warmStrength;
   });
 
   return (
-    <mesh ref={meshRef} position={position} frustumCulled={false}>
-      <planeGeometry args={dynScale} />
-      <meshBasicMaterial map={tex} transparent depthWrite={false} opacity={0} />
+    <mesh position={position} frustumCulled={false}>
+      <planeGeometry args={scale} />
+      <SilhouetteWarmShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
+    </mesh>
+  );
+}
+
+function FireHalo({
+  position,
+  scale,
+  firePulse,
+  radius,
+  fbmScale,
+  intensity,
+}: {
+  position: [number, number, number];
+  scale: [number, number];
+  firePulse: React.MutableRefObject<number>;
+  radius: number;
+  fbmScale: number;
+  intensity: number;
+}) {
+  const matRef = useRef<any>(null);
+
+  useFrame((state) => {
+    if (!matRef.current) return;
+    matRef.current.uTime = state.clock.elapsedTime;
+    matRef.current.uEmberPulse = firePulse.current;
+    matRef.current.uRadius = radius;
+    matRef.current.uFbmScale = fbmScale;
+    matRef.current.uIntensity = intensity;
+  });
+
+  return (
+    <mesh position={position} frustumCulled={false}>
+      <planeGeometry args={scale} />
+      <FireHaloShader ref={matRef} transparent depthWrite={false} blending={AdditiveBlending} />
+    </mesh>
+  );
+}
+
+function Ground({
+  firePulse,
+  fireAnchor,
+  y,
+  size,
+  influenceRadius,
+  warmStrength,
+  isActive,
+}: {
+  firePulse: React.MutableRefObject<number>;
+  fireAnchor: [number, number, number];
+  y: number;
+  size: number;
+  influenceRadius: number;
+  warmStrength: number;
+  isActive: React.MutableRefObject<boolean>;
+}) {
+  const matRef = useRef<any>(null);
+
+  useFrame((state) => {
+    if (!isActive.current) return;
+    if (!matRef.current) return;
+    matRef.current.uTime = state.clock.elapsedTime;
+    matRef.current.uFirePulse = firePulse.current;
+    matRef.current.uFireAnchor.set(fireAnchor[0], fireAnchor[1], fireAnchor[2]);
+    matRef.current.uInfluenceRadius = influenceRadius;
+    matRef.current.uWarmStrength = warmStrength;
+  });
+
+  return (
+    <mesh position={[0, y, -40]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={false}>
+      <planeGeometry args={[size, size]} />
+      <GroundShader ref={matRef} transparent={false} depthWrite={true} />
     </mesh>
   );
 }
@@ -676,15 +736,57 @@ function CampSceneGroup({
   const lightRef = useRef<AmbientLight>(null);
   const lerpedP = useRef(0);
   const isActive = useRef(false);
+  const firePulse = useRef(0);
   const colorNight = useMemo(() => new Color('#020617'), []);
   const colorFire = useMemo(() => new Color('#ea580c'), []);
   const camp = MODULE_TIMELINE.camp;
+
+  const controls = useControls(
+    'Home Camp',
+    {
+      tentX: { value: -4, min: -20, max: 20, step: 0.25 },
+      tentY: { value: -4, min: -10, max: 10, step: 0.25 },
+      tentZ: { value: -15, min: -40, max: 0, step: 1 },
+      tentScale: { value: 30, min: 8, max: 80, step: 1 },
+      branchX: { value: -22, min: -40, max: 40, step: 0.5 },
+      branchY: { value: 4, min: -10, max: 20, step: 0.5 },
+      branchZ: { value: 0, min: -20, max: 20, step: 0.5 },
+      branchScale: { value: 48, min: 10, max: 120, step: 1 },
+      ridgeY: { value: -2, min: -20, max: 20, step: 0.25 },
+      ridgeZ: { value: -80, min: -200, max: -20, step: 1 },
+      ridgeScale: { value: 240, min: 60, max: 600, step: 2 },
+      fireX: { value: 4, min: -20, max: 20, step: 0.25 },
+      fireY: { value: -3, min: -10, max: 10, step: 0.25 },
+      fireZ: { value: -12, min: -30, max: 0, step: 0.5 },
+      fireScale: { value: 12, min: 2, max: 40, step: 0.5 },
+      haloIntensity: { value: 1.3, min: 0.2, max: 3.0, step: 0.05 },
+      haloRadius: { value: 0.48, min: 0.1, max: 0.5, step: 0.01 },
+      haloFbmScale: { value: 2.4, min: 0.5, max: 8.0, step: 0.1 },
+      haloScale: { value: 14, min: 2, max: 40, step: 0.5 },
+      warmInfluence: { value: 28.0, min: 2.0, max: 80.0, step: 0.5 },
+      warmStrength: { value: 0.35, min: 0.0, max: 1.0, step: 0.01 },
+      groundY: { value: -6, min: -20, max: 0, step: 0.25 },
+      groundSize: { value: 240, min: 60, max: 600, step: 2 },
+      groundInfluence: { value: 9.0, min: 1.0, max: 40.0, step: 0.25 },
+      groundWarmStrength: { value: 0.8, min: 0.0, max: 1.5, step: 0.02 },
+      skyFbmScale: { value: 2.2, min: 0.5, max: 8.0, step: 0.1 },
+      hotCount: { value: 30, min: 0, max: 120, step: 2 },
+      coolCount: { value: 30, min: 0, max: 120, step: 2 },
+    },
+    { collapsed: true },
+  );
 
   useFrame((state, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
     const p = lerpedP.current;
     const opacity = sceneOpacity('camp', p);
     isActive.current = opacity > 0;
+
+    // Damp the velocity-derived fire pulse; scroll bursts → halo + warm
+    // tint breathe briefly, then settle.
+    const rawPulse = Math.min(1, scrollVelocity.current * 30);
+    firePulse.current = MathUtils.damp(firePulse.current, rawPulse, 6, delta);
+
     if (groupRef.current) {
       groupRef.current.visible = opacity > 0;
       if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
@@ -696,12 +798,115 @@ function CampSceneGroup({
     }
   });
 
+  const fireAnchor: [number, number, number] = [controls.fireX, controls.fireY, controls.fireZ];
+  const tentPos: [number, number, number] = [controls.tentX, controls.tentY, controls.tentZ];
+  // Halo sits just behind the fire silhouette so the painted flames stay crisp
+  // while the additive glow pools around them.
+  const haloPos: [number, number, number] = [controls.fireX, controls.fireY, controls.fireZ - 2];
+
   return (
     <group ref={groupRef}>
       <ambientLight ref={lightRef} intensity={0.2} color="#020617" />
-      <Starfield scrollVelocity={scrollVelocity} isActive={isActive} />
-      <CampfireEmbers scrollVelocity={scrollVelocity} isActive={isActive} />
-      <VideoCampLedge videoUrl="/assets/videos/campfire.mp4" position={[0, 0, -250]} scrollProgress={scrollProgress} />
+
+      {/* Painted ink-wash sky */}
+      <SumiSky isActive={isActive} fbmScale={controls.skyFbmScale} />
+
+      {/* Distant treeline + peak shoulder — cold, no fire warm tint */}
+      <CampSilhouette
+        url="/camp/ridge.webp"
+        position={[0, controls.ridgeY, controls.ridgeZ]}
+        scale={[controls.ridgeScale, controls.ridgeScale * 0.375]}
+        firePulse={firePulse}
+        fireAnchor={fireAnchor}
+        influenceRadius={1.0}
+        warmStrength={0.0}
+      />
+
+      {/* Ground — deep ink wash with fire-warm pool */}
+      <Ground
+        firePulse={firePulse}
+        fireAnchor={fireAnchor}
+        y={controls.groundY}
+        size={controls.groundSize}
+        influenceRadius={controls.groundInfluence}
+        warmStrength={controls.groundWarmStrength}
+        isActive={isActive}
+      />
+
+      {/* Foreground side-tree — repurposed branch asset, left edge of frame */}
+      <CampSilhouette
+        url="/camp/branch.webp"
+        position={[controls.branchX, controls.branchY, controls.branchZ]}
+        scale={[controls.branchScale, controls.branchScale * 0.56]}
+        firePulse={firePulse}
+        fireAnchor={fireAnchor}
+        influenceRadius={controls.warmInfluence * 0.6}
+        warmStrength={controls.warmStrength * 0.8}
+      />
+
+      {/* Tent (mid-ground, nestled beside the fire) */}
+      <CampSilhouette
+        url="/camp/tent.webp"
+        position={tentPos}
+        scale={[controls.tentScale, controls.tentScale]}
+        firePulse={firePulse}
+        fireAnchor={fireAnchor}
+        influenceRadius={controls.warmInfluence}
+        warmStrength={controls.warmStrength}
+      />
+
+      {/* Fire-glow halo billboard — sits behind the painted campfire */}
+      <FireHalo
+        position={haloPos}
+        scale={[controls.haloScale, controls.haloScale]}
+        firePulse={firePulse}
+        radius={controls.haloRadius}
+        fbmScale={controls.haloFbmScale}
+        intensity={controls.haloIntensity}
+      />
+
+      {/* Campfire silhouette — painted flames with baked-in amber glow */}
+      <CampSilhouette
+        url="/camp/fire.webp"
+        position={fireAnchor}
+        scale={[controls.fireScale, controls.fireScale]}
+        firePulse={firePulse}
+        fireAnchor={fireAnchor}
+        influenceRadius={controls.warmInfluence * 1.2}
+        warmStrength={controls.warmStrength * 1.2}
+      />
+
+      {/* Embers rise from the fire anchor. Parent group handles translation so
+          EmberCluster keeps its simple origin-relative motion math. */}
+      <group position={fireAnchor}>
+        {/* Hot-fast embers — short life, tight cone, bright core */}
+        <EmberCluster
+          count={controls.hotCount}
+          color="#fde68a"
+          size={0.09}
+          opacity={0.85}
+          life={1.5}
+          riseSpeed={1.6}
+          spread={0.25}
+          coneWidth={1.2}
+          scrollVelocity={scrollVelocity}
+          isActive={isActive}
+        />
+
+        {/* Cool-slow embers — long drift, warm amber, wider cone */}
+        <EmberCluster
+          count={controls.coolCount}
+          color="#ea580c"
+          size={0.07}
+          opacity={0.55}
+          life={3.5}
+          riseSpeed={0.9}
+          spread={0.45}
+          coneWidth={2.2}
+          scrollVelocity={scrollVelocity}
+          isActive={isActive}
+        />
+      </group>
     </group>
   );
 }
