@@ -30,15 +30,22 @@ const WoodcutShaderMaterial = shaderMaterial(
   `
     varying vec2 vUv;
     varying vec2 vScreenPos;
+    uniform float uWind;
+    uniform float uTime;
 
     void main() {
       vUv = uv;
 
-      vec4 clipPos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      
+      // Apply vertex-based wind (stronger at the top, uv.y ~ 1.0)
+      vec3 pos = position;
+      float sway = sin(uTime * 1.2 + pos.x * 0.05 + pos.y * 0.1) * uWind;
+      pos.x += sway * smoothstep(0.2, 1.0, uv.y) * 2.0;
+
+      vec4 clipPos = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+
       // Calculate normalized device coordinates (-1 to 1) for the fragment
       vScreenPos = clipPos.xy / clipPos.w;
-      
+
       gl_Position = clipPos;
     }
   `,

@@ -1,13 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/immutability, react/display-name */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react/display-name */
 import { useTexture, Html } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
-import { Texture, Mesh, Group, MeshBasicMaterial, MirroredRepeatWrapping, MathUtils } from 'three';
+import { Texture, Mesh, Group, MeshBasicMaterial, MathUtils } from 'three';
 import { useRef, useMemo, useEffect, forwardRef } from 'react';
 import { MotionValue } from 'framer-motion';
 import { MODULE_TIMELINE } from '@/lib/moduleTimeline';
 import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
+import './shaders/ForestMistMaterial';
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
+const ForestMistShader = 'forestMistShaderMaterial' as any;
 
 function AnimatedSprite({
   textureUrl,
@@ -131,7 +133,15 @@ const ForestTree = forwardRef(({ textureUrl, position, scale, rotation = 0 }: an
     }
     if (materialRef.current) {
       materialRef.current.uTime = state.clock.elapsedTime;
-      materialRef.current.uWind = state.clock.elapsedTime * 1.5;
+      materialRef.current.uWind = 0.8; // Constant scalar for vertex wind
+
+      // Calculate watercolor bleed based on fog depth
+      const dist = camera.position.z - position[2];
+      let wash = Math.max(0, (dist - 40) / 80);
+      wash = Math.min(1.2, wash);
+
+      materialRef.current.uWashIntensity = wash;
+      materialRef.current.uEdgePool = wash * 0.4;
     }
   });
 
@@ -144,37 +154,70 @@ const ForestTree = forwardRef(({ textureUrl, position, scale, rotation = 0 }: an
   );
 });
 
-function ForestWall({ textureUrl, position, scale }: any) {
-  const tex = useTexture(textureUrl) as Texture;
-
-  const clonedTex = useMemo(() => {
-    const clone = tex.clone();
-    clone.wrapS = MirroredRepeatWrapping;
-    clone.wrapT = MirroredRepeatWrapping;
-    return clone;
-  }, [tex]);
-
-  useEffect(() => {
-    return () => {
-      tex.dispose();
-      clonedTex.dispose();
-    };
-  }, [tex, clonedTex]);
+/**
+ * Forest mist — painterly cool-fog backdrop. Replaces the auto-panning
+ * `forest_wall.webp` wallpaper. uMistDensity hero dial ramps 0.3 → 1.0
+ * across the forest enter→exit window so the fog visibly thickens as the
+ * camera walks deeper into the trees, then thins back out into Camp.
+ */
+function ForestMist({
+  scrollProgress,
+  position,
+  scale,
+}: {
+  scrollProgress: MotionValue<number>;
+  position: [number, number, number];
+  scale: [number, number];
+}) {
+  const matRef = useRef<any>(null);
+  const lerpedP = useRef(0);
+  const forest = MODULE_TIMELINE.forest;
 
   useFrame((state, delta) => {
-    // Slowly drift the background wall to create deep parallax
-    clonedTex.offset.x -= delta * 0.05;
+    lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
+    if (!matRef.current) return;
+    matRef.current.uTime = state.clock.elapsedTime;
+    // Mist density ramps 0.3 → 1.0 across forest.enterStart → exitEnd
+    // (couples to the deeper-walk camera arc, not a clock).
+    const span = forest.exitEnd - forest.enterStart;
+    const raw = span > 0 ? Math.min(1, Math.max(0, (lerpedP.current - forest.enterStart) / span)) : 0;
+    matRef.current.uMistDensity = MathUtils.lerp(0.3, 1.0, raw);
   });
 
   return (
-    <mesh position={position}>
+    <mesh position={position} frustumCulled={false}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial
-        map={clonedTex}
-        transparent
-        depthWrite={false} // Ensure it stays behind the trees
-        alphaTest={0.5}
-      />
+      <ForestMistShader ref={matRef} transparent={false} depthWrite={true} />
+    </mesh>
+  );
+}
+
+/**
+ * Mid-distance forest canopy silhouette. Painted assets are already cool
+ * slate-blue with built-in mist fade at the bottom; meshBasicMaterial
+ * passthrough is correct here — the SunRakeMaterial is reserved for layers
+ * that need warm-tinting (Summit/Alpine ridges).
+ */
+function CanopyLayer({
+  textureUrl,
+  position,
+  scale,
+}: {
+  textureUrl: string;
+  position: [number, number, number];
+  scale: [number, number];
+}) {
+  const tex = useTexture(textureUrl) as Texture;
+  useEffect(() => {
+    return () => {
+      tex.dispose();
+    };
+  }, [tex]);
+
+  return (
+    <mesh position={position} frustumCulled={false}>
+      <planeGeometry args={scale} />
+      <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} />
     </mesh>
   );
 }
@@ -282,13 +325,34 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
 
   return (
     <group>
-      {/* The Endless Background Wall of Trees */}
-      <ForestWall textureUrl="/forest_wall.webp" position={[0, 10, -180]} scale={[300, 300]} />
+      {/* Painted cool-mist backdrop (replaces auto-panning forest_wall) */}
+      <ForestMist scrollProgress={scrollProgress} position={[0, 10, -180]} scale={[400, 240]} />
+
+      {/* Forest Floor - Grounding the scene */}
+      <mesh position={[0, -20, -90]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[400, 300]} />
+        <ForestMistShader transparent={false} depthWrite={true} uMistDensity={0.8} />
+      </mesh>
+
+      {/* Far canopy silhouette — pale, atmospheric depth */}
+      <CanopyLayer textureUrl="/forest/canopy-far.webp" position={[0, 4, -160]} scale={[260, 145]} />
+
+      {/* Mid canopy silhouette — visible tree shapes through the mist */}
+      <CanopyLayer textureUrl="/forest/canopy-mid.webp" position={[0, 3, -120]} scale={[180, 100]} />
 
       {/* The Gauntlet of Trees - Staggered Left / Right */}
 
+      {/* Background Density Layer */}
+      <ForestTree textureUrl="/tree_1.webp" position={[-45, 0, -140]} scale={[70, 70]} rotation={0.02} />
+      <ForestTree textureUrl="/tree_2.webp" position={[40, 2, -130]} scale={[65, 65]} rotation={-0.03} />
+      <ForestTree textureUrl="/tree_3.webp" position={[-15, 3, -115]} scale={[55, 55]} rotation={0.01} />
+
       {/* Tree 4: Deep distance - The massive Sequoia anchoring the path (Left) */}
       <ForestTree ref={tree4Ref} textureUrl="/tree_sequoia.webp" position={[-28, 2, -85]} scale={[65, 65]} />
+
+      {/* Midground Density Layer */}
+      <ForestTree textureUrl="/tree_2.webp" position={[35, 1, -70]} scale={[60, 60]} rotation={-0.04} />
+      <ForestTree textureUrl="/tree_1.webp" position={[-38, 4, -40]} scale={[55, 55]} rotation={0.03} />
 
       {/* Tree 3: Mid-distance - The sharp Spruce (Right) */}
       <ForestTree
@@ -307,6 +371,9 @@ export default function DeepForest({ scrollProgress }: { scrollProgress: MotionV
         scale={[60, 60]}
         rotation={0.05}
       />
+
+      {/* Foreground Density Layer */}
+      <ForestTree textureUrl="/tree_3.webp" position={[32, -1, -10]} scale={[50, 50]} rotation={-0.02} />
 
       {/* Tree 1: Extreme foreground, framing the entrance - The stark Aspen (Right) */}
       <ForestTree ref={tree1Ref} textureUrl="/tree_aspen.webp" position={[25, -2, 0]} scale={[45, 45]} />

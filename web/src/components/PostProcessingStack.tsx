@@ -1,12 +1,17 @@
 'use client';
 
 import { EffectComposer, Noise, ChromaticAberration, Vignette, DepthOfField, Bloom } from '@react-three/postprocessing';
+import { useThree } from '@react-three/fiber';
 import { Vector2 } from 'three';
 import { useQualityStore, qualityPresets } from '@/lib/quality';
 
 export default function PostProcessingStack({ bloomIntensity = 0 }: { bloomIntensity?: number }) {
+  const { gl } = useThree();
   const tier = useQualityStore((s) => s.tier);
   const preset = qualityPresets[tier];
+  const contextAttributes = gl.getContextAttributes();
+
+  if (!contextAttributes) return null;
 
   return (
     <EffectComposer multisampling={preset.multisampling}>

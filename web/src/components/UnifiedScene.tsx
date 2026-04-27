@@ -3,7 +3,7 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
-import { useTexture, useVideoTexture, Points, PointMaterial } from '@react-three/drei';
+import { useTexture, Points, PointMaterial } from '@react-three/drei';
 import { useRef, useEffect, Suspense, useMemo, useState } from 'react';
 import React from 'react';
 import { MotionValue } from 'framer-motion';
@@ -24,6 +24,7 @@ import {
   MirroredRepeatWrapping,
   MathUtils,
   AdditiveBlending,
+  PerspectiveCamera,
 } from 'three';
 import PostProcessingStack from './PostProcessingStack';
 import QualityMonitor from './QualityMonitor';
@@ -31,8 +32,14 @@ import { useQualityStore, qualityPresets } from '@/lib/quality';
 import './shaders/WoodcutMaterial';
 import './shaders/FireHaloMaterial';
 import './shaders/SilhouetteWarmMaterial';
+import './shaders/SilhouetteSunRakeMaterial';
 import './shaders/SumiSkyMaterial';
+import './shaders/DawnSkyMaterial';
+import './shaders/DawnSunMaterial';
+import './shaders/CloudSeaMaterial';
+import './shaders/AlpineHazeMaterial';
 import './shaders/GroundMaterial';
+import './shaders/NightAtmosphereMaterial';
 import DeepForest from './DeepForest';
 import { MODULE_TIMELINE, sceneVisible, sceneOpacity, sceneChildRanges } from '@/lib/moduleTimeline';
 import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
@@ -72,18 +79,29 @@ function applyGroupOpacity(group: Group, envelope: number): void {
 const WoodcutShader = 'woodcutShaderMaterial' as any;
 const FireHaloShader = 'fireHaloShaderMaterial' as any;
 const SilhouetteWarmShader = 'silhouetteWarmShaderMaterial' as any;
+const SilhouetteSunRakeShader = 'silhouetteSunRakeShaderMaterial' as any;
 const SumiSkyShader = 'sumiSkyShaderMaterial' as any;
+const DawnSkyShader = 'dawnSkyShaderMaterial' as any;
+const CloudSeaShader = 'cloudSeaShaderMaterial' as any;
+const AlpineHazeShader = 'alpineHazeShaderMaterial' as any;
+const DawnSunShader = 'dawnSunShaderMaterial' as any;
 const GroundShader = 'groundShaderMaterial' as any;
+const NightAtmosphereShader = 'nightAtmosphereMaterial' as any;
 const DEFAULT_WATERCOLOR_WASH = '#38aeea';
-const DEFAULT_WATERCOLOR_WARM = '#f6c400';
+const DEFAULT_WATERCOLOR_WARM = '#ffcc00';
 declare global {
   namespace JSX {
     interface IntrinsicElements {
       woodcutShaderMaterial: any;
       fireHaloShaderMaterial: any;
       silhouetteWarmShaderMaterial: any;
+      silhouetteSunRakeShaderMaterial: any;
       sumiSkyShaderMaterial: any;
+      dawnSkyShaderMaterial: any;
+      dawnSunShaderMaterial: any;
+      cloudSeaShaderMaterial: any;
       groundShaderMaterial: any;
+      nightAtmosphereMaterial: any;
     }
   }
 }
@@ -139,11 +157,15 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
     const alpineZ = 15;
     const alpineRX = 0.15;
 
-    // Summit zone: static (0,0,20), rotX=0
+    // Summit zone: "step onto the ledge" — inherits alpine end-pose so there
+    // is no handoff jump, then strides forward and tilts down so the cliff
+    // foreground reveals as the camera crests the ridge.
+    const summitSpan = summit.ownEnd - summit.ownStart;
+    const summitP = Math.min(1, Math.max(0, (p - summit.ownStart) / summitSpan));
     const summitX = 0;
-    const summitY = 0;
-    const summitZ = 20;
-    const summitRX = 0;
+    const summitY = MathUtils.lerp(120, 128, summitP);
+    const summitZ = MathUtils.lerp(15, 2, summitP);
+    const summitRX = MathUtils.lerp(0.15, -0.18, summitP);
 
     // Blend weights using contract boundaries
     const blendWidth = 0.06; // transition width between zones
@@ -188,9 +210,12 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
               : 1 - (p - alpine.exitStart) / (alpine.ownEnd - alpine.exitStart),
       ),
     );
+    // Summit ramps in across alpine.exitStart → summit.ownStart so the camera
+    // weight crossfades smoothly with alpine. The summit start-pose is set to
+    // alpine's end-pose, so the pre-summit overlap blends two equal poses.
     const sw = Math.max(
       0,
-      Math.min(1, p < summit.ownStart ? 0 : (p - summit.ownStart) / (summit.enterEnd - summit.ownStart)),
+      Math.min(1, p < alpine.exitStart ? 0 : (p - alpine.exitStart) / (summit.ownStart - alpine.exitStart)),
     );
 
     const tot = hw + fw + cw + aw + sw || 1;
@@ -355,15 +380,15 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
     'Home Hero',
     {
       mountains: folder({
-        mX: { value: 1.0, min: -80, max: 80, step: 0.5 },
-        mY: { value: 23.5, min: -20, max: 40, step: 0.5 },
+        mX: { value: -8.0, min: -80, max: 80, step: 0.5 },
+        mY: { value: 28.5, min: -20, max: 40, step: 0.5 },
         mZ: { value: -92, min: -200, max: -20, step: 1 },
         mW: { value: 207, min: 40, max: 400, step: 1 },
         mH: { value: 80, min: 10, max: 120, step: 1 },
       }),
       forest: folder({
         fX: { value: 0.0, min: -80, max: 80, step: 0.5 },
-        fY: { value: -12.0, min: -40, max: 40, step: 0.5 },
+        fY: { value: -12.5, min: -40, max: 40, step: 0.5 },
         fZ: { value: -70, min: -200, max: -20, step: 1 },
         fW: { value: 150, min: 40, max: 400, step: 1 },
         fH: { value: 40, min: 10, max: 120, step: 1 },
@@ -371,13 +396,13 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
       watercolor: folder({
         waterColor: { value: DEFAULT_WATERCOLOR_WASH },
         warmColor: { value: DEFAULT_WATERCOLOR_WARM },
-        radius: { value: 0.57, min: 0.0, max: 1.2, step: 0.01 },
+        radius: { value: 0.35, min: 0.0, max: 1.2, step: 0.01 },
         washIntensity: { value: 1.4, min: 0.0, max: 1.4, step: 0.01 },
-        edgePool: { value: 0.21, min: 0.0, max: 1.0, step: 0.01 },
-        grainAmount: { value: 0.08, min: 0.0, max: 0.3, step: 0.005 },
-        strength: { value: 0.12, min: 0.0, max: 0.2, step: 0.005 },
-        noiseScale: { value: 27.0, min: 10.0, max: 200.0, step: 1.0 },
-        speed: { value: 0.2, min: 0.0, max: 2.0, step: 0.05 },
+        edgePool: { value: 0.12, min: 0.0, max: 1.0, step: 0.01 },
+        grainAmount: { value: 0.03, min: 0.0, max: 0.3, step: 0.005 },
+        strength: { value: 0.01, min: 0.0, max: 0.2, step: 0.005 },
+        noiseScale: { value: 15.0, min: 10.0, max: 200.0, step: 1.0 },
+        speed: { value: 0.05, min: 0.0, max: 2.0, step: 0.05 },
       }),
     },
     { collapsed: false },
@@ -540,6 +565,63 @@ function SumiSky({ isActive, fbmScale }: { isActive: React.MutableRefObject<bool
   );
 }
 
+function NightAtmosphere({ isActive }: { isActive: React.MutableRefObject<boolean> }) {
+  const matRef = useRef<any>(null);
+  useFrame((state) => {
+    if (!isActive.current) return;
+    if (matRef.current) {
+      matRef.current.uTime = state.clock.elapsedTime;
+    }
+  });
+  // Placed slightly in front of SumiSky so it layers the fog over the stars.
+  return (
+    <mesh position={[0, 20, -170]} frustumCulled={false}>
+      <planeGeometry args={[800, 400]} />
+      <NightAtmosphereShader ref={matRef} transparent={true} depthWrite={false} uOpacity={0.8} />
+    </mesh>
+  );
+}
+
+function CampsiteGround({
+  isActive,
+  firePulse,
+  fireAnchor,
+  position,
+  scale,
+}: {
+  isActive: React.MutableRefObject<boolean>;
+  firePulse: React.MutableRefObject<number>;
+  fireAnchor: [number, number, number];
+  position: [number, number, number];
+  scale: [number, number];
+}) {
+  const matRef = useRef<any>(null);
+  const vecAnchor = useMemo(() => new Vector3(), []);
+
+  useFrame((state) => {
+    if (!isActive.current) return;
+    if (matRef.current) {
+      matRef.current.uTime = state.clock.elapsedTime;
+      matRef.current.uFirePulse = firePulse.current;
+      matRef.current.uFireAnchor = vecAnchor.set(...fireAnchor);
+    }
+  });
+
+  return (
+    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={false}>
+      <planeGeometry args={scale} />
+      <GroundShader
+        ref={matRef}
+        transparent={true}
+        depthWrite={true}
+        uInfluenceRadius={12.0}
+        uWarmStrength={0.85}
+        uHorizonFade={0.8}
+      />
+    </mesh>
+  );
+}
+
 type EmberClusterProps = {
   count: number;
   color: string;
@@ -626,6 +708,7 @@ function CampSilhouette({
   fireAnchor,
   influenceRadius,
   warmStrength,
+  opacity = 1,
 }: {
   url: string;
   position: [number, number, number];
@@ -634,6 +717,7 @@ function CampSilhouette({
   fireAnchor: [number, number, number];
   influenceRadius: number;
   warmStrength: number;
+  opacity?: number;
 }) {
   const tex = useTexture(url);
   const matRef = useRef<any>(null);
@@ -644,12 +728,43 @@ function CampSilhouette({
     matRef.current.uFireAnchor.set(fireAnchor[0], fireAnchor[1], fireAnchor[2]);
     matRef.current.uInfluenceRadius = influenceRadius;
     matRef.current.uWarmStrength = warmStrength;
+    matRef.current.uOpacity = opacity;
   });
 
   return (
     <mesh position={position} frustumCulled={false}>
       <planeGeometry args={scale} />
       <SilhouetteWarmShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
+    </mesh>
+  );
+}
+
+function CampBillboard({
+  url,
+  position,
+  scale,
+  opacity = 1,
+}: {
+  url: string;
+  position: [number, number, number];
+  scale: [number, number];
+  opacity?: number;
+}) {
+  const tex = useTexture(url);
+  const material = useMemo(
+    () =>
+      new MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        depthWrite: false,
+        opacity,
+      }),
+    [tex, opacity],
+  );
+
+  return (
+    <mesh position={position} material={material} frustumCulled={false}>
+      <planeGeometry args={scale} />
     </mesh>
   );
 }
@@ -688,43 +803,6 @@ function FireHalo({
   );
 }
 
-function Ground({
-  firePulse,
-  fireAnchor,
-  y,
-  size,
-  influenceRadius,
-  warmStrength,
-  isActive,
-}: {
-  firePulse: React.MutableRefObject<number>;
-  fireAnchor: [number, number, number];
-  y: number;
-  size: number;
-  influenceRadius: number;
-  warmStrength: number;
-  isActive: React.MutableRefObject<boolean>;
-}) {
-  const matRef = useRef<any>(null);
-
-  useFrame((state) => {
-    if (!isActive.current) return;
-    if (!matRef.current) return;
-    matRef.current.uTime = state.clock.elapsedTime;
-    matRef.current.uFirePulse = firePulse.current;
-    matRef.current.uFireAnchor.set(fireAnchor[0], fireAnchor[1], fireAnchor[2]);
-    matRef.current.uInfluenceRadius = influenceRadius;
-    matRef.current.uWarmStrength = warmStrength;
-  });
-
-  return (
-    <mesh position={[0, y, -40]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={false}>
-      <planeGeometry args={[size, size]} />
-      <GroundShader ref={matRef} transparent={false} depthWrite={true} />
-    </mesh>
-  );
-}
-
 function CampSceneGroup({
   scrollProgress,
   scrollVelocity,
@@ -744,33 +822,44 @@ function CampSceneGroup({
   const controls = useControls(
     'Home Camp',
     {
-      tentX: { value: -4, min: -20, max: 20, step: 0.25 },
-      tentY: { value: -4, min: -10, max: 10, step: 0.25 },
+      tentX: { value: -11.0, min: -20, max: 20, step: 0.25 },
+      tentY: { value: -2.75, min: -10, max: 10, step: 0.25 },
       tentZ: { value: -15, min: -40, max: 0, step: 1 },
-      tentScale: { value: 30, min: 8, max: 80, step: 1 },
-      branchX: { value: -22, min: -40, max: 40, step: 0.5 },
-      branchY: { value: 4, min: -10, max: 20, step: 0.5 },
-      branchZ: { value: 0, min: -20, max: 20, step: 0.5 },
-      branchScale: { value: 48, min: 10, max: 120, step: 1 },
-      ridgeY: { value: -2, min: -20, max: 20, step: 0.25 },
-      ridgeZ: { value: -80, min: -200, max: -20, step: 1 },
-      ridgeScale: { value: 240, min: 60, max: 600, step: 2 },
-      fireX: { value: 4, min: -20, max: 20, step: 0.25 },
-      fireY: { value: -3, min: -10, max: 10, step: 0.25 },
-      fireZ: { value: -12, min: -30, max: 0, step: 0.5 },
-      fireScale: { value: 12, min: 2, max: 40, step: 0.5 },
-      haloIntensity: { value: 1.3, min: 0.2, max: 3.0, step: 0.05 },
+      tentScale: { value: 20, min: 8, max: 80, step: 1 },
+      branchX: { value: -22.5, min: -40, max: 40, step: 0.5 },
+      branchY: { value: 9.0, min: -10, max: 20, step: 0.5 },
+      branchZ: { value: 0.0, min: -20, max: 20, step: 0.5 },
+      branchScale: { value: 43, min: 10, max: 120, step: 1 },
+      ridgeY: { value: 20.0, min: -20, max: 20, step: 0.25 },
+      ridgeZ: { value: -102, min: -200, max: -20, step: 1 },
+      ridgeScale: { value: 250, min: 60, max: 600, step: 2 },
+      moonX: { value: 60.0, min: -60, max: 60, step: 0.5 },
+      moonY: { value: 40.0, min: 0, max: 40, step: 0.5 },
+      moonZ: { value: -166, min: -220, max: -30, step: 1 },
+      moonScale: { value: 41.0, min: 4, max: 60, step: 0.5 },
+      moonOpacity: { value: 0.69, min: 0, max: 1, step: 0.01 },
+      fireX: { value: 1.0, min: -20, max: 20, step: 0.25 },
+      fireY: { value: -3.75, min: -10, max: 10, step: 0.25 },
+      fireZ: { value: -17.5, min: -30, max: 0, step: 0.5 },
+      fireScale: { value: 12.5, min: 2, max: 40, step: 0.5 },
+      haloIntensity: { value: 2.2, min: 0.2, max: 3.0, step: 0.05 },
       haloRadius: { value: 0.48, min: 0.1, max: 0.5, step: 0.01 },
-      haloFbmScale: { value: 2.4, min: 0.5, max: 8.0, step: 0.1 },
+      haloFbmScale: { value: 3.4, min: 0.5, max: 8.0, step: 0.1 },
       haloScale: { value: 14, min: 2, max: 40, step: 0.5 },
       warmInfluence: { value: 28.0, min: 2.0, max: 80.0, step: 0.5 },
       warmStrength: { value: 0.35, min: 0.0, max: 1.0, step: 0.01 },
-      groundY: { value: -6, min: -20, max: 0, step: 0.25 },
-      groundSize: { value: 240, min: 60, max: 600, step: 2 },
-      groundInfluence: { value: 9.0, min: 1.0, max: 40.0, step: 0.25 },
-      groundWarmStrength: { value: 0.8, min: 0.0, max: 1.5, step: 0.02 },
-      skyFbmScale: { value: 2.2, min: 0.5, max: 8.0, step: 0.1 },
-      hotCount: { value: 30, min: 0, max: 120, step: 2 },
+      groundPlateX: { value: -11.0, min: -30, max: 30, step: 0.5 },
+      groundPlateY: { value: -11.0, min: -25, max: 5, step: 0.5 },
+      groundPlateZ: { value: -60, min: -60, max: 5, step: 1 },
+      groundPlateScale: { value: 65, min: 20, max: 180, step: 1 },
+      groundPlateOpacity: { value: 0.28, min: 0, max: 1, step: 0.01 },
+      underbrushX: { value: 6.0, min: -30, max: 30, step: 0.5 },
+      underbrushY: { value: -10.5, min: -25, max: 5, step: 0.5 },
+      underbrushZ: { value: 5, min: -30, max: 15, step: 1 },
+      underbrushScale: { value: 96, min: 20, max: 200, step: 1 },
+      underbrushOpacity: { value: 1, min: 0, max: 1, step: 0.01 },
+      skyFbmScale: { value: 2.7, min: 0.5, max: 8.0, step: 0.1 },
+      hotCount: { value: 72, min: 0, max: 120, step: 2 },
       coolCount: { value: 30, min: 0, max: 120, step: 2 },
     },
     { collapsed: true },
@@ -811,6 +900,17 @@ function CampSceneGroup({
       {/* Painted ink-wash sky */}
       <SumiSky isActive={isActive} fbmScale={controls.skyFbmScale} />
 
+      {/* Volumetric fog layer */}
+      <NightAtmosphere isActive={isActive} />
+
+      {/* Moon anchor — an asset billboard, kept cool so the fire remains the warm focal point */}
+      <CampBillboard
+        url="/camp_moon.webp"
+        position={[controls.moonX, controls.moonY, controls.moonZ]}
+        scale={[controls.moonScale, controls.moonScale]}
+        opacity={controls.moonOpacity}
+      />
+
       {/* Distant treeline + peak shoulder — cold, no fire warm tint */}
       <CampSilhouette
         url="/camp/ridge.webp"
@@ -822,15 +922,13 @@ function CampSceneGroup({
         warmStrength={0.0}
       />
 
-      {/* Ground — deep ink wash with fire-warm pool */}
-      <Ground
+      {/* Authored campsite floor plate — procedural shader with pulsing fire light pool */}
+      <CampsiteGround
+        isActive={isActive}
         firePulse={firePulse}
         fireAnchor={fireAnchor}
-        y={controls.groundY}
-        size={controls.groundSize}
-        influenceRadius={controls.groundInfluence}
-        warmStrength={controls.groundWarmStrength}
-        isActive={isActive}
+        position={[controls.groundPlateX, controls.groundPlateY, controls.groundPlateZ]}
+        scale={[controls.groundPlateScale, controls.groundPlateScale * 1.13]}
       />
 
       {/* Foreground side-tree — repurposed branch asset, left edge of frame */}
@@ -874,6 +972,18 @@ function CampSceneGroup({
         fireAnchor={fireAnchor}
         influenceRadius={controls.warmInfluence * 1.2}
         warmStrength={controls.warmStrength * 1.2}
+      />
+
+      {/* Foreground underbrush — closest parallax frame, leaving an open path into camp */}
+      <CampSilhouette
+        url="/camp/generated/underbrush-frame.png"
+        position={[controls.underbrushX, controls.underbrushY, controls.underbrushZ]}
+        scale={[controls.underbrushScale, controls.underbrushScale * 1.13]}
+        firePulse={firePulse}
+        fireAnchor={fireAnchor}
+        influenceRadius={controls.warmInfluence * 0.9}
+        warmStrength={controls.warmStrength * 0.9}
+        opacity={controls.underbrushOpacity}
       />
 
       {/* Embers rise from the fire anchor. Parent group handles translation so
@@ -1017,35 +1127,38 @@ function RockLedge({
   );
 }
 
-function AlpineWall({
-  textureUrl,
+/**
+ * Alpine haze — pre-dawn cool sky behind the alpine ridge silhouettes.
+ * Replaces the auto-panning `alpine_wall.webp`. uAltitudePulse hero dial
+ * couples to the climb (camera y -60 → 120), brightening the upper sky as
+ * the user crests. NO warm tones — that's Summit's job.
+ */
+function AlpineHaze({
+  isActive,
+  altitudePulseRef,
   position,
   scale,
+  fbmScale,
 }: {
-  textureUrl: string;
+  isActive: React.MutableRefObject<boolean>;
+  altitudePulseRef: React.MutableRefObject<number>;
   position: [number, number, number];
   scale: [number, number];
+  fbmScale: number;
 }) {
-  const tex = useTexture(textureUrl) as Texture;
-  const clonedTex = useMemo(() => {
-    const c = tex.clone();
-    c.wrapS = MirroredRepeatWrapping;
-    c.wrapT = MirroredRepeatWrapping;
-    return c;
-  }, [tex]);
-  useEffect(() => {
-    return () => {
-      tex.dispose();
-      clonedTex.dispose();
-    };
-  }, [tex, clonedTex]);
-  useFrame((state, delta) => {
-    clonedTex.offset.x -= delta * 0.05;
+  const matRef = useRef<any>(null);
+  useFrame((state) => {
+    if (!isActive.current) return;
+    if (matRef.current) {
+      matRef.current.uTime = state.clock.elapsedTime;
+      matRef.current.uFbmScale = fbmScale;
+      matRef.current.uAltitudePulse = altitudePulseRef.current;
+    }
   });
   return (
-    <mesh position={position}>
+    <mesh position={position} frustumCulled={false}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial map={clonedTex} transparent depthWrite={false} alphaTest={0.5} />
+      <AlpineHazeShader ref={matRef} transparent={false} depthWrite={true} />
     </mesh>
   );
 }
@@ -1087,20 +1200,86 @@ function SyncedRockLedge({
 function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
   const groupRef = useRef<Group>(null);
   const lerpedP = useRef(0);
+  const isActive = useRef(false);
+  const altitudePulse = useRef(0);
+  const cloudCoverage = useRef(0);
+  const sunPulseZero = useRef(0);
   const alpine = MODULE_TIMELINE.alpine;
+  const summit = MODULE_TIMELINE.summit;
   const ranges = useMemo(() => sceneChildRanges('alpine', 4), []);
 
   useFrame((state, delta) => {
+    lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
+    const p = lerpedP.current;
+    const opacity = sceneOpacity('alpine', p);
+    isActive.current = opacity > 0;
+
+    // Altitude pulse — couples to climb (alpine.enterStart → exitEnd).
+    // Smoothstep-eased so the brightening feels graded, not linear.
+    const altSpan = alpine.exitEnd - alpine.enterStart;
+    const altRaw = altSpan > 0 ? Math.min(1, Math.max(0, (p - alpine.enterStart) / altSpan)) : 0;
+    altitudePulse.current = altRaw * altRaw * (3.0 - 2.0 * altRaw);
+
+    // Cloud coverage — alpine ramps 0 → 0.6 across its full window, then
+    // hands off into Summit's full carpet (1.0) across the seam.
+    let coverage: number;
+    if (p < alpine.ownStart) coverage = 0;
+    else if (p < alpine.exitStart)
+      coverage = 0.6 * Math.min(1, (p - alpine.ownStart) / (alpine.exitStart - alpine.ownStart));
+    else if (p < summit.ownStart)
+      coverage = 0.6 + 0.4 * Math.min(1, (p - alpine.exitStart) / (summit.ownStart - alpine.exitStart));
+    else coverage = 1.0;
+    cloudCoverage.current = coverage;
+
     if (groupRef.current) {
-      lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-      const opacity = sceneOpacity('alpine', lerpedP.current);
       groupRef.current.visible = opacity > 0;
+      if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
     }
   });
 
   return (
     <group ref={groupRef}>
-      <AlpineWall textureUrl="/alpine_wall.webp" position={[0, 80, -500]} scale={[1200, 1200]} />
+      {/* Painterly pre-dawn haze sky — replaces auto-panning alpine_wall */}
+      <AlpineHaze
+        isActive={isActive}
+        altitudePulseRef={altitudePulse}
+        position={[0, 60, -300]}
+        scale={[1000, 500]}
+        fbmScale={2.0}
+      />
+
+      {/* Far ridge silhouette — atmospheric, very pale, sets horizon */}
+      <SunRakeSilhouette
+        url="/alpine/ridge-far.webp"
+        position={[0, 88, -260]}
+        scale={[320, 179]}
+        sunPulseRef={sunPulseZero}
+        sunDir={[0.6, 0.5]}
+        warmStrength={0}
+      />
+
+      {/* Mid ridge silhouette — definite peaks rising into view as user climbs */}
+      <SunRakeSilhouette
+        url="/alpine/ridge-mid.webp"
+        position={[0, 100, -200]}
+        scale={[360, 201]}
+        sunPulseRef={sunPulseZero}
+        sunDir={[0.6, 0.5]}
+        warmStrength={0}
+      />
+
+      {/* Distant cloud sea — condenses across the climb, hands off to Summit's full carpet */}
+      <CloudSea
+        isActive={isActive}
+        scrollProgress={scrollProgress}
+        sunPulseRef={sunPulseZero}
+        coverageRef={cloudCoverage}
+        position={[0, 60, -180]}
+        size={800}
+        fbmScale={1.6}
+        driftSpeed={0.4}
+      />
+
       <SyncedRockLedge
         textureUrl="/alpine_ledge_left.webp"
         position={[-12, 0, -5]}
@@ -1152,23 +1331,234 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
 // SUMMIT SCENE GROUP
 // =============================================================================
 
-function PanoramaLedge({
-  textureUrl,
+function DawnSky({
+  isActive,
+  fbmScale,
+  sunPulseRef,
   position,
   scale,
-  parallaxX = 0,
-  scrollProgress,
 }: {
-  textureUrl: string;
+  isActive: React.MutableRefObject<boolean>;
+  fbmScale: number;
+  sunPulseRef: React.MutableRefObject<number>;
   position: [number, number, number];
   scale: [number, number];
-  parallaxX?: number;
+}) {
+  const matRef = useRef<any>(null);
+  useFrame((state) => {
+    if (!isActive.current) return;
+    if (matRef.current) {
+      matRef.current.uTime = state.clock.elapsedTime;
+      matRef.current.uFbmScale = fbmScale;
+      matRef.current.uSunPulse = sunPulseRef.current;
+    }
+  });
+  return (
+    <mesh position={position} frustumCulled={false}>
+      <planeGeometry args={scale} />
+      <DawnSkyShader ref={matRef} transparent={false} depthWrite={true} />
+    </mesh>
+  );
+}
+
+function CloudSea({
+  isActive,
+  scrollProgress,
+  sunPulseRef,
+  coverageRef,
+  position,
+  size,
+  fbmScale,
+  driftSpeed,
+  sunDir,
+  horizonColor,
+}: {
+  isActive: React.MutableRefObject<boolean>;
   scrollProgress: MotionValue<number>;
+  sunPulseRef: React.MutableRefObject<number>;
+  coverageRef?: React.MutableRefObject<number>;
+  position: [number, number, number];
+  size: number;
+  fbmScale: number;
+  driftSpeed: number;
+  sunDir?: [number, number];
+  horizonColor?: string;
+}) {
+  const matRef = useRef<any>(null);
+  const horizonColorObj = useMemo(() => (horizonColor ? new Color(horizonColor) : null), [horizonColor]);
+  useFrame((state) => {
+    if (!isActive.current) return;
+    if (matRef.current) {
+      matRef.current.uTime = state.clock.elapsedTime;
+      matRef.current.uScrollProgress = scrollProgress.get();
+      matRef.current.uFbmScale = fbmScale;
+      matRef.current.uDriftSpeed = driftSpeed;
+      matRef.current.uSunPulse = sunPulseRef.current;
+      // Coverage: Summit defaults to 1.0 (full carpet); Alpine drives it
+      // 0 → 0.6 across the climb so the cloud sea condenses into being.
+      matRef.current.uCoverage = coverageRef ? coverageRef.current : 1.0;
+      if (sunDir) {
+        matRef.current.uSunDir.set(sunDir[0], sunDir[1]);
+      }
+      if (horizonColorObj) {
+        matRef.current.uHorizonColor.copy(horizonColorObj);
+      }
+    }
+  });
+  return (
+    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={false}>
+      <planeGeometry args={[size, size]} />
+      <CloudSeaShader ref={matRef} transparent depthWrite={false} />
+    </mesh>
+  );
+}
+
+function SunRakeSilhouette({
+  url,
+  position,
+  scale,
+  sunPulseRef,
+  sunDir,
+  warmStrength,
+  opacity = 1,
+  atmosphericMix = 0,
+  atmosphericColor,
+}: {
+  url: string;
+  position: [number, number, number];
+  scale: [number, number];
+  sunPulseRef: React.MutableRefObject<number>;
+  sunDir: [number, number];
+  warmStrength: number;
+  opacity?: number;
+  atmosphericMix?: number;
+  atmosphericColor?: string;
+}) {
+  const tex = useTexture(url);
+  const matRef = useRef<any>(null);
+  const atmosphericColorObj = useMemo(
+    () => (atmosphericColor ? new Color(atmosphericColor) : null),
+    [atmosphericColor],
+  );
+
+  useFrame(() => {
+    if (!matRef.current) return;
+    matRef.current.uSunPulse = sunPulseRef.current;
+    matRef.current.uSunDir.set(sunDir[0], sunDir[1]);
+    matRef.current.uWarmStrength = warmStrength;
+    matRef.current.uOpacity = opacity;
+    matRef.current.uAtmosphericMix = atmosphericMix;
+    if (atmosphericColorObj) {
+      matRef.current.uAtmosphericColor.copy(atmosphericColorObj);
+    }
+  });
+
+  return (
+    <mesh position={position} frustumCulled={false}>
+      <planeGeometry args={scale} />
+      <SilhouetteSunRakeShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
+    </mesh>
+  );
+}
+
+function DawnSun({
+  position,
+  scale,
+  sunPulseRef,
+  intensity,
+  sunColor,
+  haloColor,
+}: {
+  position: [number, number, number];
+  scale: [number, number];
+  sunPulseRef: React.MutableRefObject<number>;
+  intensity: number;
+  sunColor: string;
+  haloColor: string;
+}) {
+  const matRef = useRef<any>(null);
+  const sunColorObj = useMemo(() => new Color(sunColor), [sunColor]);
+  const haloColorObj = useMemo(() => new Color(haloColor), [haloColor]);
+
+  useFrame(() => {
+    if (!matRef.current) return;
+    matRef.current.uSunPulse = sunPulseRef.current;
+    matRef.current.uIntensity = intensity;
+    matRef.current.uSunColor.copy(sunColorObj);
+    matRef.current.uHaloColor.copy(haloColorObj);
+  });
+
+  return (
+    <mesh position={position} frustumCulled={false}>
+      <planeGeometry args={scale} />
+      <DawnSunShader ref={matRef} transparent depthWrite={false} />
+    </mesh>
+  );
+}
+
+// Project the screen-bottom edge ray onto a world-Z plane, accounting for
+// camera tilt. The original pinning math assumed the camera looks straight
+// ahead; with the summit camera tilted down (-0.18 rad), the screen-bottom
+// in world space is well below `camera.y - viewport.height/2`, which is why
+// the cliff and flag were drifting offscreen regardless of Leva tweaks.
+function screenBottomYAtZ(camera: PerspectiveCamera, z: number): number {
+  const halfV = (camera.fov * Math.PI) / 180 / 2;
+  const angle = camera.rotation.x - halfV;
+  const dirY = Math.sin(angle);
+  const dirZ = -Math.cos(angle);
+  // Avoid division by ~0 when camera is parallel to the plane.
+  if (Math.abs(dirZ) < 1e-4) return camera.position.y;
+  const t = (z - camera.position.z) / dirZ;
+  return camera.position.y + t * dirY;
+}
+
+// Project the screen-right edge ray onto a world-Z plane. Used to corner-pin
+// the cliff and any closing-beat assets in the lower-right of the frame.
+// Horizontal FOV is derived from the vertical FOV and aspect ratio.
+function screenRightXAtZ(camera: PerspectiveCamera, z: number): number {
+  const fovYRad = (camera.fov * Math.PI) / 180;
+  const halfV = fovYRad / 2;
+  const halfH = Math.atan(Math.tan(halfV) * camera.aspect);
+  const dirX = Math.sin(halfH);
+  const dirZ = -Math.cos(halfH) * Math.cos(camera.rotation.x);
+  if (Math.abs(dirZ) < 1e-4) return camera.position.x;
+  const t = (z - camera.position.z) / dirZ;
+  return camera.position.x + t * dirX;
+}
+
+// Corner-pinned cliff — anchors to the lower-right of the viewport at the
+// cliff's z. cornerOffsetX / cornerOffsetY are small fine-tune offsets in
+// world units (negative cornerOffsetX pulls the cliff inward from the right
+// edge, positive cornerOffsetY lifts it off the bottom edge). The cliff also
+// publishes its current rock-surface world Y/X to the optional anchorRef so
+// the flag sprite can plant on it without having to recompute the corner pin.
+function SunRakeForegroundCliff({
+  textureUrl,
+  z,
+  scale,
+  cornerOffsetX,
+  cornerOffsetY,
+  rockSurfaceUv,
+  sunPulseRef,
+  sunDir,
+  warmStrength,
+  anchorRef,
+}: {
+  textureUrl: string;
+  z: number;
+  scale: [number, number];
+  cornerOffsetX: number;
+  cornerOffsetY: number;
+  rockSurfaceUv: [number, number];
+  sunPulseRef: React.MutableRefObject<number>;
+  sunDir: [number, number];
+  warmStrength: number;
+  anchorRef?: React.MutableRefObject<{ x: number; y: number; z: number } | null>;
 }) {
   const tex = useTexture(textureUrl) as Texture;
   const meshRef = useRef<Mesh>(null);
-  const lerpedP = useRef(0);
-  const summit = MODULE_TIMELINE.summit;
+  const matRef = useRef<any>(null);
+  const { camera } = useThree();
 
   useEffect(() => {
     return () => {
@@ -1176,164 +1566,74 @@ function PanoramaLedge({
     };
   }, [tex]);
 
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-      const p = lerpedP.current;
-      const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
-      // Match VideoPanoramaLedge timing: fade in 0.20→0.40, hold, fade out 0.55→0.70
-      let opacity = 0;
-      if (animP < 0.2) {
-        opacity = 0;
-      } else if (animP < 0.4) {
-        opacity = Math.min(1, Math.max(0, (animP - 0.2) / 0.2));
-      } else if (animP < 0.55) {
-        opacity = 1;
-      } else {
-        opacity = 1 - Math.min(1, Math.max(0, (animP - 0.55) / 0.15));
+  useFrame(() => {
+    if (matRef.current) {
+      matRef.current.uSunPulse = sunPulseRef.current;
+      matRef.current.uSunDir.set(sunDir[0], sunDir[1]);
+      matRef.current.uWarmStrength = warmStrength;
+    }
+    if (meshRef.current && (camera as PerspectiveCamera).isPerspectiveCamera) {
+      const cam = camera as PerspectiveCamera;
+      const screenBottomY = screenBottomYAtZ(cam, z);
+      const screenRightX = screenRightXAtZ(cam, z);
+      // Pin plane right-edge to viewport right-edge, plane bottom-edge to
+      // viewport bottom-edge, with offsets for fine tune.
+      const centerX = screenRightX - scale[0] / 2 + cornerOffsetX;
+      const centerY = screenBottomY + scale[1] / 2 + cornerOffsetY;
+      meshRef.current.position.x = centerX;
+      meshRef.current.position.y = centerY;
+
+      // Publish the rock-surface anchor in world space so the flag can plant
+      // on it. UV (0,0) = bottom-left of plane, (1,1) = top-right.
+      if (anchorRef) {
+        anchorRef.current = {
+          x: centerX + (rockSurfaceUv[0] - 0.5) * scale[0],
+          y: centerY + (rockSurfaceUv[1] - 0.5) * scale[1],
+          z,
+        };
       }
-      const panP = Math.min(1, Math.max(0, (animP - 0.4) / 0.3));
-      meshRef.current.position.x = position[0] - panP * 5;
-      const mat = meshRef.current.material as MeshBasicMaterial;
-      (mat as any).__selfManagedOpacity = true;
-      mat.opacity = opacity;
     }
   });
 
   return (
-    <mesh ref={meshRef} position={position}>
+    <mesh ref={meshRef} position={[0, 0, z]} frustumCulled={false}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} opacity={0} />
+      <SilhouetteSunRakeShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
     </mesh>
   );
 }
 
-function useVideoCoverScale(
-  position: [number, number, number],
-  videoAspect = 16 / 9,
-  overscan = 1.3,
-): [number, number, number] {
-  const { viewport, camera } = useThree();
-  const posVec = useMemo(() => new Vector3(...position), [position]);
-  const [scale, setScale] = useState<[number, number, number]>(() => {
-    const cv = viewport.getCurrentViewport(camera, posVec);
-    const sa = cv.width / cv.height;
-    const w = sa > videoAspect ? cv.width : cv.height * videoAspect;
-    const h = sa > videoAspect ? cv.width / videoAspect : cv.height;
-    return [w * overscan, h * overscan, 1];
-  });
-
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout>;
-    const recalc = () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        const cv = viewport.getCurrentViewport(camera, posVec);
-        const sa = cv.width / cv.height;
-        const w = sa > videoAspect ? cv.width : cv.height * videoAspect;
-        const h = sa > videoAspect ? cv.width / videoAspect : cv.height;
-        setScale([w * overscan, h * overscan, 1]);
-      }, 150);
-    };
-    window.addEventListener('resize', recalc);
-    return () => {
-      clearTimeout(timeout);
-      window.removeEventListener('resize', recalc);
-    };
-  }, [viewport, camera, posVec, videoAspect, overscan]);
-
-  return scale;
-}
-
-function VideoPanoramaLedge({
-  videoUrl,
-  position,
-  parallaxX = 0,
-  playThreshold = 0.33,
-  scrollProgress,
-}: {
-  videoUrl: string;
-  position: [number, number, number];
-  parallaxX?: number;
-  playThreshold?: number;
-  scrollProgress: MotionValue<number>;
-}) {
-  const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
-  const meshRef = useRef<Mesh>(null);
-  const summit = MODULE_TIMELINE.summit;
-  const dynScale = useVideoCoverScale(position);
-
-  const lerpedP = useRef(0);
-
-  useEffect(() => {
-    if (!tex?.image) return;
-    const vid = tex.image as HTMLVideoElement;
-    const unsub = scrollProgress.on('change', (v: number) => {
-      const summitSpan = summit.ownEnd - summit.ownStart;
-      const globalPlay = summit.ownStart + playThreshold * summitSpan;
-      if (v > globalPlay && v <= summit.ownEnd) {
-        if (vid.paused) vid.play().catch(() => {});
-      } else {
-        if (!vid.paused) {
-          vid.pause();
-          vid.currentTime = 0;
-        }
-      }
-    });
-    return () => {
-      unsub();
-      tex.dispose();
-    };
-  }, [tex, scrollProgress, summit.ownStart, summit.ownEnd, playThreshold]);
-
-  useFrame((state, delta) => {
-    if (meshRef.current && tex.image) {
-      lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-      const p = lerpedP.current;
-      const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
-      // Fade in: animP 0.20→0.40. Hold 0.40→0.55. Fade out: 0.55→0.70.
-      let opacity = 0;
-      if (animP < 0.2) {
-        opacity = 0;
-      } else if (animP < 0.4) {
-        opacity = Math.min(1, Math.max(0, (animP - 0.2) / 0.2));
-      } else if (animP < 0.55) {
-        opacity = 1;
-      } else {
-        opacity = 1 - Math.min(1, Math.max(0, (animP - 0.55) / 0.15));
-      }
-      // Cinematic pan during hold + fade-out
-      const panP = Math.min(1, Math.max(0, (animP - 0.4) / 0.3));
-      meshRef.current.position.x = position[0] - panP * 5;
-      const mat = meshRef.current.material as MeshBasicMaterial;
-      (mat as any).__selfManagedOpacity = true;
-      mat.opacity = opacity;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={position}>
-      <planeGeometry args={dynScale} />
-      <meshBasicMaterial map={tex} transparent depthWrite={false} opacity={0} />
-    </mesh>
-  );
-}
-
-function ForegroundLedge({
+// Anchor-driven flag sprite. The pole base in flag.webp sits at roughly
+// UV (0.70, 0.05) — not bottom-center — so naively centering the plane on
+// the plant point left the flag floating well above the cliff. Instead, the
+// plane positions itself such that the (poleBaseU, poleBaseV) point on the
+// texture lands exactly on the cliff anchor (with optional fine-tune offset).
+function SunRakeFlagSprite({
   textureUrl,
   scale,
-  scrollProgress,
+  anchorOffsetX,
+  anchorOffsetY,
+  anchorOffsetZ,
+  poleBaseUv,
+  cliffAnchorRef,
+  sunPulseRef,
+  sunDir,
+  warmStrength,
 }: {
   textureUrl: string;
   scale: [number, number];
-  scrollProgress: MotionValue<number>;
+  anchorOffsetX: number;
+  anchorOffsetY: number;
+  anchorOffsetZ: number;
+  poleBaseUv: [number, number];
+  cliffAnchorRef: React.MutableRefObject<{ x: number; y: number; z: number } | null>;
+  sunPulseRef: React.MutableRefObject<number>;
+  sunDir: [number, number];
+  warmStrength: number;
 }) {
   const tex = useTexture(textureUrl) as Texture;
   const meshRef = useRef<Mesh>(null);
-  const summit = MODULE_TIMELINE.summit;
-  const lerpedP = useRef(0);
-  const fgDepthVec = useMemo(() => new Vector3(0, 0, 8), []);
-  const { viewport, camera } = useThree();
+  const matRef = useRef<any>(null);
 
   useEffect(() => {
     return () => {
@@ -1341,120 +1641,26 @@ function ForegroundLedge({
     };
   }, [tex]);
 
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-      const p = lerpedP.current;
-      const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
-      // Fade in 0.00→0.20, hold 0.20→0.55, fade out 0.55→0.70
-      let opacity = 0;
-      if (animP < 0.2) {
-        opacity = animP / 0.2;
-      } else if (animP < 0.55) {
-        opacity = 1;
-      } else if (animP < 0.7) {
-        opacity = 1 - (animP - 0.55) / 0.15;
-      }
-      const mat = meshRef.current.material as MeshBasicMaterial;
-      (mat as any).__selfManagedOpacity = true;
-      mat.opacity = opacity;
-      // Pin to bottom of viewport based on current camera position
-      const cv = viewport.getCurrentViewport(camera, fgDepthVec);
-      meshRef.current.position.y = camera.position.y - cv.height / 2 + scale[1] / 2;
+  useFrame(() => {
+    if (matRef.current) {
+      matRef.current.uSunPulse = sunPulseRef.current;
+      matRef.current.uSunDir.set(sunDir[0], sunDir[1]);
+      matRef.current.uWarmStrength = warmStrength;
+    }
+    const anchor = cliffAnchorRef.current;
+    if (meshRef.current && anchor) {
+      // Position plane center such that the pole-base UV point lands on the
+      // cliff anchor. UV (0,0)=bottom-left, (1,1)=top-right.
+      meshRef.current.position.x = anchor.x + anchorOffsetX - (poleBaseUv[0] - 0.5) * scale[0];
+      meshRef.current.position.y = anchor.y + anchorOffsetY - (poleBaseUv[1] - 0.5) * scale[1];
+      meshRef.current.position.z = anchor.z + anchorOffsetZ;
     }
   });
 
   return (
-    <mesh ref={meshRef} position={[-3, 0, 8]}>
+    <mesh ref={meshRef} frustumCulled={false}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial map={tex} transparent depthWrite={true} alphaTest={0.5} opacity={0} />
-    </mesh>
-  );
-}
-
-function OneShotAnimatedFox({
-  textureUrl,
-  startX,
-  endX,
-  startYOffset,
-  endYOffset,
-  startZ,
-  endZ,
-  scale,
-  rotation = 0,
-  frames = 8,
-  cols = 8,
-  rows = 1,
-  frameInsetPx = 6,
-  scrollStart,
-  scrollEnd,
-  cycles = 6,
-  scrollProgress,
-}: any) {
-  const tex = useTexture(textureUrl) as Texture;
-  const meshRef = useRef<Mesh>(null);
-  const summit = MODULE_TIMELINE.summit;
-
-  const clonedTex = useMemo(() => {
-    const c = configureSpriteSheetTexture(tex.clone());
-    setSpriteSheetFrame(c, { frame: 0, cols, rows, insetPx: frameInsetPx });
-    return c;
-  }, [tex, cols, rows, frameInsetPx]);
-
-  const lerpedP = useRef(0);
-
-  useEffect(() => {
-    return () => {
-      tex.dispose();
-      clonedTex.dispose();
-    };
-  }, [tex, clonedTex]);
-
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-      const p = lerpedP.current;
-      const animP = Math.min(1, Math.max(0, (p - summit.ownStart) / (summit.ownEnd - summit.ownStart)));
-      // Fox walks during animP 0.10→0.35 (after cliff is mostly in place)
-      const walkProgress = Math.min(1, Math.max(0, (animP - 0.1) / 0.25));
-      meshRef.current.position.x = MathUtils.lerp(startX, endX, walkProgress);
-
-      // Fox vertical entry also starts at 0.10
-      const flyProgress = Math.min(1, Math.max(0, (animP - 0.1) / 0.15));
-      const easeOut = 1 - Math.pow(1 - flyProgress, 3);
-      meshRef.current.position.y = MathUtils.lerp(startYOffset, endYOffset, easeOut);
-      meshRef.current.position.z = endZ;
-
-      if (walkProgress >= 1.0) {
-        const lastFrame = frames - 1;
-        setSpriteSheetFrame(clonedTex, { frame: lastFrame, cols, rows, insetPx: frameInsetPx });
-      } else if (walkProgress > 0) {
-        const totalFrames = walkProgress * cycles * frames;
-        const currentFrame = Math.floor(totalFrames) % frames;
-        setSpriteSheetFrame(clonedTex, { frame: currentFrame, cols, rows, insetPx: frameInsetPx });
-      } else {
-        setSpriteSheetFrame(clonedTex, { frame: 0, cols, rows, insetPx: frameInsetPx });
-      }
-
-      // Fade in 0.00→0.20, hold 0.20→0.55, fade out 0.55→0.70 (matches cliff)
-      let foxOpacity = 0;
-      if (animP < 0.2) {
-        foxOpacity = animP / 0.2;
-      } else if (animP < 0.55) {
-        foxOpacity = 1;
-      } else if (animP < 0.7) {
-        foxOpacity = 1 - (animP - 0.55) / 0.15;
-      }
-      const mat = meshRef.current.material as MeshBasicMaterial;
-      (mat as any).__selfManagedOpacity = true;
-      mat.opacity = foxOpacity;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={[startX, startYOffset, startZ]} rotation-z={rotation}>
-      <planeGeometry args={scale} />
-      <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} opacity={0} />
+      <SilhouetteSunRakeShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
     </mesh>
   );
 }
@@ -1462,45 +1668,188 @@ function OneShotAnimatedFox({
 function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
   const groupRef = useRef<Group>(null);
   const lerpedP = useRef(0);
+  const isActive = useRef(false);
+  const sunPulse = useRef(0);
+  // Cliff publishes its rock-surface world position here every frame so the
+  // flag sprite can anchor to it without recomputing the corner pin.
+  const cliffAnchor = useRef<{ x: number; y: number; z: number } | null>(null);
+  const summit = MODULE_TIMELINE.summit;
+
+  const controls = useControls(
+    'Home Summit',
+    {
+      // Dawn sky
+      skyZ: { value: -200, min: -260, max: -80, step: 1 },
+      skyY: { value: 125, min: 60, max: 160, step: 1 },
+      skyW: { value: 1400, min: 400, max: 2000, step: 10 },
+      skyH: { value: 700, min: 200, max: 1200, step: 10 },
+      skyFbmScale: { value: 2.4, min: 0.5, max: 8.0, step: 0.1 },
+      // Cloud sea — sliver of horizon haze between cliff foreground and ridges
+      cloudY: { value: 95, min: 0, max: 130, step: 1 },
+      cloudZ: { value: -60, min: -200, max: 30, step: 1 },
+      cloudSize: { value: 800, min: 200, max: 3000, step: 20 },
+      cloudFbmScale: { value: 1.8, min: 0.4, max: 6.0, step: 0.1 },
+      cloudDriftSpeed: { value: 0.6, min: 0, max: 4.0, step: 0.05 },
+      // Far ridge — atmospheric whisper, dissolves into sky-color
+      farX: { value: 22, min: -80, max: 80, step: 0.5 },
+      farY: { value: 118, min: 60, max: 200, step: 0.5 },
+      farZ: { value: -180, min: -300, max: -40, step: 1 },
+      farScale: { value: 200, min: 100, max: 800, step: 2 },
+      farWarm: { value: 0.0, min: 0, max: 1, step: 0.01 },
+      // Light atmospheric tint only — the asset is already a layered watercolor
+      // with built-in atmospheric perspective. High mix erases its detail.
+      farAtmosphericMix: { value: 0.25, min: 0, max: 1, step: 0.01 },
+      farAtmosphericColor: { value: '#b8c4d8' },
+      // Mid ridge — hero peak, slight off-center for compositional balance
+      midX: { value: 4, min: -60, max: 60, step: 0.5 },
+      midY: { value: 128, min: 60, max: 200, step: 0.5 },
+      midZ: { value: -110, min: -240, max: -30, step: 1 },
+      midScale: { value: 220, min: 80, max: 600, step: 2 },
+      midWarm: { value: 0.5, min: 0, max: 1, step: 0.01 },
+      // Cliff — small lower-right accent corner, anchored to viewport corner
+      cliffZ: { value: -2, min: -10, max: 6, step: 0.25 },
+      cliffW: { value: 2.0, min: 0.5, max: 8, step: 0.05 },
+      cliffH: { value: 1.1, min: 0.3, max: 6, step: 0.05 },
+      cliffCornerX: { value: 0.0, min: -3, max: 1, step: 0.05 },
+      cliffCornerY: { value: 0.0, min: -1, max: 3, step: 0.05 },
+      // Where the visible rock surface sits in the cliff texture (UV space).
+      // Asset-specific — the `cliff.webp` rock-top sits around (0.55, 0.65).
+      cliffRockUvX: { value: 0.55, min: 0, max: 1, step: 0.01 },
+      cliffRockUvY: { value: 0.65, min: 0, max: 1, step: 0.01 },
+      cliffWarm: { value: 0.55, min: 0, max: 1, step: 0.01 },
+      // Flag — closing-beat sprite anchored to the cliff's rock-surface point
+      flagScale: { value: 1.6, min: 0.2, max: 6, step: 0.05 },
+      // Where the pole base sits in the flag texture (UV space). Asset has
+      // pole base at the bottom-right cluster of rocks: ≈ (0.70, 0.05).
+      flagPoleUvX: { value: 0.7, min: 0, max: 1, step: 0.01 },
+      flagPoleUvY: { value: 0.05, min: 0, max: 1, step: 0.01 },
+      // Fine-tune offsets from the cliff anchor, in world units.
+      flagOffsetX: { value: 0.0, min: -2, max: 2, step: 0.02 },
+      flagOffsetY: { value: 0.0, min: -1, max: 1, step: 0.02 },
+      flagOffsetZ: { value: 1.0, min: -2, max: 4, step: 0.05 },
+      flagWarm: { value: 0.75, min: 0, max: 1, step: 0.01 },
+      // Sun — low-right, just-risen rake
+      sunDirX: { value: 0.85, min: -1, max: 1, step: 0.02 },
+      sunDirY: { value: 0.15, min: -1, max: 1, step: 0.02 },
+      // Visible sun glow halo — sits behind mid ridge so the peak silhouettes
+      // against the bright disc; only the broad halo bleeds around the edge.
+      sunGlowX: { value: 18, min: -60, max: 60, step: 0.5 },
+      sunGlowY: { value: 122, min: 60, max: 200, step: 0.5 },
+      sunGlowZ: { value: -150, min: -260, max: -60, step: 1 },
+      sunGlowScale: { value: 55, min: 10, max: 200, step: 1 },
+      sunGlowIntensity: { value: 1.0, min: 0, max: 2.5, step: 0.05 },
+      sunGlowColor: { value: '#fff1c2' },
+      sunGlowHaloColor: { value: '#f4b072' },
+    },
+    { collapsed: true },
+  );
 
   useFrame((state, delta) => {
+    lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
+    const p = lerpedP.current;
+    const opacity = sceneOpacity('summit', p);
+    isActive.current = opacity > 0;
+
+    // Single hero dial — uSunPulse ramps 0→1 across summit's enter window
+    // (0.86→0.92), then holds at 1. Dawn arrives and stays.
+    const span = summit.enterEnd - summit.enterStart;
+    const raw = span > 0 ? Math.min(1, Math.max(0, (p - summit.enterStart) / span)) : 1;
+    // Smoothstep so the warm-in feels eased.
+    sunPulse.current = raw * raw * (3.0 - 2.0 * raw);
+
     if (groupRef.current) {
-      lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-      const opacity = sceneOpacity('summit', lerpedP.current);
       groupRef.current.visible = opacity > 0;
       if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
     }
   });
 
+  const sunDir: [number, number] = [controls.sunDirX, controls.sunDirY];
+
   return (
     <group ref={groupRef}>
-      <group>
-        <VideoPanoramaLedge
-          videoUrl="/assets/videos/summit_video.mp4"
-          position={[0, 2, -40]}
-          parallaxX={5}
-          playThreshold={0.35}
-          scrollProgress={scrollProgress}
-        />
-        <ForegroundLedge textureUrl="/cliff_edge.webp" scale={[18, 6]} scrollProgress={scrollProgress} />
-        <OneShotAnimatedFox
-          textureUrl="/fox_sprite.webp"
-          startX={-12}
-          endX={-3.5}
-          startYOffset={-3}
-          endYOffset={-3}
-          startZ={9}
-          endZ={9}
-          scale={[3.5, 3.5]}
-          frames={16}
-          cols={4}
-          rows={4}
-          cycles={6}
-          scrollStart={0.1}
-          scrollEnd={0.35}
-          scrollProgress={scrollProgress}
-        />
-      </group>
+      {/* Painted dawn-sky backdrop — sits behind the far ridge */}
+      <DawnSky
+        isActive={isActive}
+        fbmScale={controls.skyFbmScale}
+        sunPulseRef={sunPulse}
+        position={[0, controls.skyY, controls.skyZ]}
+        scale={[controls.skyW, controls.skyH]}
+      />
+
+      {/* Visible sun halo — sits behind the mid ridge so the peak silhouettes
+          against it. Center gets occluded; halo bleeds around the edge. */}
+      <DawnSun
+        position={[controls.sunGlowX, controls.sunGlowY, controls.sunGlowZ]}
+        scale={[controls.sunGlowScale, controls.sunGlowScale]}
+        sunPulseRef={sunPulse}
+        intensity={controls.sunGlowIntensity}
+        sunColor={controls.sunGlowColor}
+        haloColor={controls.sunGlowHaloColor}
+      />
+
+      {/* Distant ridge layer — atmospheric whisper, dissolves into sky-color */}
+      <SunRakeSilhouette
+        url="/summit/ridge-far.webp"
+        position={[controls.farX, controls.farY, controls.farZ]}
+        scale={[controls.farScale, controls.farScale / 1.79]}
+        sunPulseRef={sunPulse}
+        sunDir={sunDir}
+        warmStrength={controls.farWarm}
+        atmosphericMix={controls.farAtmosphericMix}
+        atmosphericColor={controls.farAtmosphericColor}
+      />
+
+      {/* Hero ridge — single dominant peak, aspect-corrected (1.79) */}
+      <SunRakeSilhouette
+        url="/summit/ridge-mid.webp"
+        position={[controls.midX, controls.midY, controls.midZ]}
+        scale={[controls.midScale, controls.midScale / 1.79]}
+        sunPulseRef={sunPulse}
+        sunDir={sunDir}
+        warmStrength={controls.midWarm}
+      />
+
+      {/* Cloud sea — horizontal painted carpet, sun-coupled crests + horizon fog */}
+      <CloudSea
+        isActive={isActive}
+        scrollProgress={scrollProgress}
+        sunPulseRef={sunPulse}
+        position={[0, controls.cloudY, controls.cloudZ]}
+        size={controls.cloudSize}
+        fbmScale={controls.cloudFbmScale}
+        driftSpeed={controls.cloudDriftSpeed}
+        sunDir={sunDir}
+        horizonColor={controls.farAtmosphericColor}
+      />
+
+      {/* Cliff — small lower-right accent corner, anchored to viewport corner */}
+      <SunRakeForegroundCliff
+        textureUrl="/summit/cliff.webp"
+        z={controls.cliffZ}
+        scale={[controls.cliffW, controls.cliffH]}
+        cornerOffsetX={controls.cliffCornerX}
+        cornerOffsetY={controls.cliffCornerY}
+        rockSurfaceUv={[controls.cliffRockUvX, controls.cliffRockUvY]}
+        sunPulseRef={sunPulse}
+        sunDir={sunDir}
+        warmStrength={controls.cliffWarm}
+        anchorRef={cliffAnchor}
+      />
+
+      {/* Summit flag — closing-beat hero object planted on the cliff's rock
+          surface anchor (published by SunRakeForegroundCliff each frame). */}
+      <SunRakeFlagSprite
+        textureUrl="/summit/flag.webp"
+        scale={[controls.flagScale, controls.flagScale]}
+        anchorOffsetX={controls.flagOffsetX}
+        anchorOffsetY={controls.flagOffsetY}
+        anchorOffsetZ={controls.flagOffsetZ}
+        poleBaseUv={[controls.flagPoleUvX, controls.flagPoleUvY]}
+        cliffAnchorRef={cliffAnchor}
+        sunPulseRef={sunPulse}
+        sunDir={sunDir}
+        warmStrength={controls.flagWarm}
+      />
     </group>
   );
 }

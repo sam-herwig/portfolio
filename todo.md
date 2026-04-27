@@ -92,6 +92,247 @@ _(Populated after execution.)_
 
 ---
 
+# Summit Module Upgrade — Crest the Ridge + Atmospheric Depth
+
+## Context
+
+Summit (scroll 0.86–1.00) currently reads as a flat slab: one MP4 panorama panning left, a static `cliff_edge.webp` pinned to the bottom of the viewport, and a sprite-sheet fox walking onto the ledge. **The camera is hard-coded at (0, 0, 20)** with no motion across the entire 0.14-window — it is the weakest camera beat on the site.
+
+The agent ideation pass diagnosed Summit's flatness as a **camera problem more than a visuals problem**. Every other module pairs visual content with motion-coupled camera work (hero z-pull, forest sway, alpine climb). Summit doesn't. This mission fixes the camera first, then layers atmospheric depth (parallax ridges, cloud sea), then plants a closing-beat hero object opposite the fox.
+
+This mission reuses the woodblock visual language, asset pipeline, and shader infrastructure validated in the Camp Module Upgrade (silhouette parallax + custom shaders + scroll-reactive uniforms + Leva tuning).
+
+## Goal
+
+Turn Summit from "static panorama with a fox" into a true cresting-the-ridge moment with parallax depth, atmospheric scale (cloud sea, distant peaks), and a planted-flag closing beat — without breaking the existing video panorama or fox sprite.
+
+## Locked decisions (from grill-me)
+
+- **Time of day = dawn / first light.** Closes the narrative arc with Camp ("night before the climb" → "morning of"). Warm color family migrates from the campfire (`#fde68a` / `#ea580c`) to a rising sun. Cool slate-blue silhouettes inherited from the Camp ridge palette. Sun direction baked into a uniform — upper-right, so it rakes the flag (placed left) from behind/across the frame. Cloud sea palette shifts to peach-tinted top with slate-shadow bottom.
+- **Camera motion = "step onto the summit ledge," continuous from alpine.** Inherits alpine's end-pose (y≈120, z≈15, rotX≈0.15) instead of starting from the existing static `(0,0,20)`. Drifts forward `z 15→5`, holds high y (`120→125`), tilts head up `rotX 0.15→-0.05`. Forward drift gives the three ridge silhouette layers something to parallax against. **No handoff jump from alpine.** The existing static (0,0,20) pose in `UnifiedCamera` is replaced.
+- **Hero object = summit flag (not cairn).** Weathered wooden pole, plain cream banner mid-flutter, small stone cluster at base. Sun-side amber wash, shadow-side slate-blue. Foreground left of frame. Generated as a net-new Flow asset in the woodblock vocabulary.
+- **Cloud sea = heavy + scroll-coupled drift.** Bottom 40–50% of the frame, ridges peek out of the clouds at different heights for parallax payoff. Drift offset is a function of `scrollProgress` (same pattern as Camp's fire pulse) — clouds slide as the user crests, slide back as they leave. Decoupled drift would break the site-wide "scroll drives motion" contract.
+- **`VideoPanoramaLedge` is removed.** Three painted ridges + painted cloud sea + painted dawn sky fully replace the existing photoreal video panorama. Same playbook as Camp where `VideoCampLedge` was killed. Reasons: photoreal video conflicts with the woodblock vocabulary; the video's "panning left" motion is fake parallax that fights the new real parallax; keeping it as a hidden backdrop would just add draw calls without payoff.
+- **`ForegroundLedge` cliff_edge.webp is repainted in woodblock vocabulary.** Net-new Flow asset: bare summit rock slab, irregular broken edge, 3–5 scattered scree stones on the surface, at most 1–2 tiny weathered grass tufts (above-treeline = mostly bare). Sun-side amber wash from upper right, shadow-side slate-blue. 3:1 horizontal aspect to span the viewport. The flag plants on it. Same `ForegroundLedge` component, swapped texture; wired through `SilhouetteSunRakeShader` so it picks up the same dawn `uSunPulse` dial as the rest of the module.
+- **Dawn sky uses a new `DawnSkyMaterial`.** Separate file from `SumiSkyMaterial` — copies the fbm/hash21/vnoise helpers but structures around dawn's different needs: peach-to-cool vertical gradient, painterly fbm wash, no stars, no milky-way band, **no visible sun disc** (sun is implied via warm-tint on silhouettes + cloud sea + sky gradient). A visible-sun god-ray shaft stays in Tier 2 / deferred per the agent synthesis.
+- **New `SilhouetteSunRakeMaterial` for Summit silhouettes.** Separate file from `SilhouetteWarmShader` — directional lighting model (`dot(vWorldPos - meshCenter, uSunDir)`) instead of point-anchor distance falloff. Camp keeps `SilhouetteWarmShader` (fire = point source); Summit uses sun-rake (sun = directional). Same texture/alpha/opacity pipeline, just a different lighting math. Every Summit silhouette (2 ridges + flag + cliff) shares one `uSunDir` so the whole module rakes consistently.
+- **`OneShotAnimatedFox` is removed from Summit.** The fox migrates elsewhere (handled outside this mission). Summit's foreground is the flag alone — closing beat is one planted symbol against the dawn vista, no animal companion.
+- **2 ridge silhouette layers, not 3.** Far ridge (atmospheric, multiple receding ranges, value-falloff depth) at z ≈ -160; mid ridge (single heroic peak, picture's visual hero, strong warm-cool contrast on central summit) at z ≈ -110. Cliff plays the "near" role — adding a third near-ridge between cliff and mid would compete with the cliff edge. Two separate Flow prompts (each ridge has a different visual job, not just scale variants). Both painted with **faded bottoms** so they dissolve into the cloud-sea composite naturally, no hard horizon clip.
+- **Single `uSunPulse` dial drives all warm uniforms (Summit's `firePulse` analogue).** Scroll-**progress**-coupled (not velocity-coupled). Ramps `0 → 1` across summit's enter window (`enterStart` 0.86 → `enterEnd` 0.92), then **holds at 1** through the hold and exit windows — dawn arrives and stays, doesn't pulse or undo itself. One uniform feeds: dawn sky gradient saturation, sun-rake silhouette tint intensity, cliff warm-tint, flag banner warmth. Whole module warms together. Camp's `firePulse` is velocity-coupled because fires pulse with stoking; Summit's `uSunPulse` is progress-coupled because dawn progresses. Asymmetric coupling is correct — both modules are scroll-driven, but in their own physics.
+
+## Scope
+
+**In:** `SummitSceneGroup` inside `UnifiedScene.tsx`; `UnifiedCamera`'s summit zone (currently static); 3 new shader materials (`DawnSkyMaterial`, `CloudSeaMaterial`, `SilhouetteSunRakeMaterial`); 4 net-new woodblock assets (2 ridges + 1 flag + 1 repainted cliff); removal of `VideoPanoramaLedge` and `OneShotAnimatedFox`.
+
+**Explicitly out** (deferred to future missions):
+- Departing bird flock V into the vista
+- God-ray sun shaft / visible sun disc at scroll = 1.0
+- Scroll-velocity snow with motion-streak points
+- 3D→2D HTML anchoring (closing quote pinned to a foreground object)
+- Real directional sun-rake `<directionalLight>` (we fake it via shader)
+- Camera DOF / focal effects
+
+## Plan
+
+### Camera — "step onto the summit ledge"
+
+- [x] 1. Update `UnifiedCamera`'s summit zone in `UnifiedScene.tsx`: inherit alpine end-pose at zone start; drift forward `z 15→5`, hold high y (`120→125`), tilt up `rotX 0.15→-0.05` across the 0.86→1.00 window
+- [x] 2. Verify alpine→summit camera handoff has no jump (the static `(0,0,20)` is replaced)
+
+### Removals
+
+- [x] 3. Remove `VideoPanoramaLedge` from `SummitSceneGroup`
+- [x] 4. Remove `OneShotAnimatedFox` from `SummitSceneGroup` (fox migrates elsewhere — outside this mission)
+- [x] 5. Optional cleanup: delete `VideoPanoramaLedge` component definition if no other module uses it
+
+### Net-new shader materials
+
+- [x] 6. Create `web/src/components/shaders/DawnSkyMaterial.ts` — peach-to-cool vertical gradient, painterly fbm wash, no stars / no milky-way, no visible sun disc. Uniforms: `uTime`, `uSunPulse`, `uColorHorizon`, `uColorZenith`, `uColorWarm`, `uFbmScale`, `uOpacity`. Sky gradient saturation modulated by `uSunPulse`.
+- [x] 7. Create `web/src/components/shaders/CloudSeaMaterial.ts` — domain-warped fbm cloud carpet, painterly tonal planes, peach-tinted top + slate-shadow bottom. Uniforms: `uTime`, `uScrollProgress`, `uSunPulse`, `uColorCloud` (#f5ecd8), `uColorShadow` (#2a3240), `uColorWarm` (#fde68a), `uFbmScale`, `uDriftSpeed`, `uOpacity`. Drift offset = `f(uScrollProgress)` so clouds slide as the user crests.
+- [x] 8. Create `web/src/components/shaders/SilhouetteSunRakeMaterial.ts` — directional lighting analog of `SilhouetteWarmShader`. Uniforms: `uTexture`, `uSunDir` (vec2 in screen-XY, upper-right default), `uWarmColor` (#fde68a / #f6c400 family), `uCoolShadow` (#2a3240), `uWarmStrength`, `uSunPulse`, `uOpacity`. Fragment math: `dot(normalize(vWorldPos.xy - meshCenter), uSunDir)` clamped, used as warm-tint mask. Same texture/alpha/opacity pipeline as `SilhouetteWarmShader`.
+
+### Asset generation (Flow → ImageMagick → public/summit/)
+
+- [x] 9. Generate **far ridge** via Flow (prompt in appendix). Receding ranges, atmospheric perspective, low value contrast, faded bottoms. Cut: `magick input.png -fuzz 12% -transparent white -quality 90 public/summit/ridge-far.webp`
+- [x] 10. Generate **mid ridge** via Flow (prompt in appendix). Single heroic peak, strong warm-cool contrast on summit, faded bottoms. Cut: `... ridge-mid.webp`
+- [x] 11. Generate **summit flag** via Flow (prompt in appendix). Weathered pole + plain cream banner mid-flutter + stone cluster at base. Cut: `... flag.webp`
+- [x] 12. Generate **summit cliff** via Flow (prompt in appendix). Bare rock slab, irregular broken edge, sun/shadow contrast, mostly bare. Cut: `... cliff.webp` (replaces existing `cliff_edge.webp` reference)
+- [x] 13. Move all source PNGs to `web/.source-assets/summit/`
+
+### Wiring
+
+- [x] 14. Wire **far ridge** at z = -160, scale to span viewport at that depth, through `SilhouetteSunRakeShader`
+- [x] 15. Wire **mid ridge** at z = -110, scale similarly, through `SilhouetteSunRakeShader`
+- [x] 16. Wire **cloud sea** as horizontal plane (rotation.x = -PI/2) below the cliff, y ≈ -30, z spanning -10 to -130, large extents
+- [x] 17. Wire **dawn sky** as backdrop plane at z ≈ -180 (behind the far ridge), large enough to cover the viewport at that depth
+- [x] 18. Wire **cliff** as `ForegroundLedge` with the new texture, through `SilhouetteSunRakeShader`
+- [x] 19. Wire **flag** at foreground left (x ≈ -5, z ≈ -8, y on cliff surface), through `SilhouetteSunRakeShader`
+
+### Single hero dial — `uSunPulse`
+
+- [x] 20. In `SummitSceneGroup` useFrame, compute `uSunPulse = smoothstep(enterStart, enterEnd, scrollProgress)` so it ramps `0→1` across 0.86→0.92, then holds at 1 through the rest of the window
+- [x] 21. Pipe `uSunPulse` to: dawn sky gradient saturation, cloud sea warm-tint, sun-rake warm strength on all 4 silhouettes (2 ridges + cliff + flag)
+- [x] 22. Confirm the whole module warms together as the user scrolls into summit (single dial, coherent dawn arrival)
+
+### Integration + Leva
+
+- [x] 23. Wire all new pieces inside `SummitSceneGroup`'s existing `applyGroupOpacity` envelope so the module timeline contract still handles fade-in/fade-out
+- [x] 24. Add a Leva panel folder `"Home Summit"`: ridge z + scale (per-layer), flag position + scale, cliff position + scale, cloud-sea fbm scale + drift speed + horizon y, dawn sky fbm scale + horizon/zenith colors, sun direction vec2, warm strength multipliers per silhouette
+- [ ] 25. Smoke-test scroll range 0.84–1.0 — confirm no regression on Alpine→Summit handoff (browser smoke test deferred — see Review)
+
+### Guardrails + review
+
+- [x] 26. Run `cd web && npm run guardrails` (lint + typecheck + format + build)
+- [ ] 27. Start `npm run dev`, scroll through Summit in the browser, verify:
+  - Camera physically steps onto the ledge (forward drift, head tilt up — no longer pinned at (0,0,20))
+  - Two ridge layers parallax distinctly against the camera forward drift
+  - Flag plants on the cliff at foreground left, becomes the visual reward at scroll = 1.0
+  - Cloud sea reads as painted ink wash with subtle scroll-coupled drift, peach-warm at top, slate-shadow at base
+  - Dawn sky reads as painted gradient + fbm wash, no visible sun disc, no stars
+  - Sun-rake warm tint reads consistently across cliff + flag + both ridges
+  - The single `uSunPulse` ramp is perceptible — module visibly warms as user scrolls into summit
+  - No z-fighting, no flicker, no broken transparency on Alpine→Summit crossfade
+  - Existing campfire video reference (`/assets/videos/campfire.mp4`) still works for Camp (we removed it from Camp's scene group, but video file should remain in repo)
+- [x] 28. Populate the Review section below with diff summary, perf notes, and any follow-up items surfaced during implementation
+
+## Review
+
+### Diff summary
+
+- **Assets** (`web/public/summit/`): 4 new webp files cut from user-supplied
+  woodblock illustrations via `magick -fuzz 12% -transparent white -quality 90`.
+  Sources stashed in `web/.source-assets/summit/`.
+  - `flag.webp` (121 KB) — flag, pole, stones
+  - `cliff.webp` (467 KB) — repainted summit rock platform
+  - `ridge-mid.webp` (424 KB) — single hero peak
+  - `ridge-far.webp` (363 KB) — receding atmospheric ridges
+- **Shaders** (3 new): `DawnSkyMaterial.ts`, `CloudSeaMaterial.ts`,
+  `SilhouetteSunRakeMaterial.ts` in `web/src/components/shaders/`. Modeled on
+  `SumiSkyMaterial`/`SilhouetteWarmMaterial` patterns; registered in
+  `UnifiedScene.tsx` imports + the global JSX intrinsic-elements declaration.
+- **`UnifiedCamera`**: Summit zone is no longer static `(0,0,20)`. Inherits
+  alpine's end-pose `(y=120, z=15, rotX=0.15)` at zone entry, then drifts
+  `z 15→5`, `y 120→125`, `rotX 0.15→-0.05` across `0.86→1.0`. Summit-weight
+  ramp now starts at `alpine.exitStart` so the alpine→summit handoff
+  crossfades two equal poses without a frame at `(0,0,0)`.
+- **`SummitSceneGroup`**: Fully rewritten. Removed `VideoPanoramaLedge`,
+  `OneShotAnimatedFox`, the unused `PanoramaLedge` (image variant), and the
+  `useVideoCoverScale` helper. Removed `useVideoTexture` import. New layout:
+  - `DawnSky` backdrop at `z=-180` (DawnSkyShader, modulated by `uSunPulse`)
+  - `SunRakeSilhouette` far ridge at `z=-160`
+  - `SunRakeSilhouette` mid ridge at `z=-110`
+  - `CloudSea` horizontal carpet at `y=85, z=-70` (drift coupled to
+    `scrollProgress`)
+  - `SunRakeForegroundCliff` camera-pinned cliff at `z=-2`
+  - `SunRakeFlagSprite` flag camera-pinned to cliff plant-point at
+    `x=-5.5, z=-1`
+- **Single hero dial**: `sunPulse` ref in `SummitSceneGroup` ramps via
+  smoothstep across `enterStart→enterEnd` and holds at 1 through hold + exit.
+  Fed to all five summit materials each frame.
+- **Leva folder**: New `'Home Summit'` panel (collapsed by default) with
+  per-layer position/scale, ridge & flag warm-strength, sun-direction
+  vec2, dawn-sky FBM, cloud-sea FBM + drift-speed.
+
+### Guardrails
+
+`npm run typecheck` and `npm run lint` pass clean (the 2 pre-existing
+warnings in `grove/GroveScene.tsx` are untouched). `npm run build`
+succeeds. The asset-size guardrail flags 3 home-hero webps that were
+already over the 1.5 MB limit before this mission — none of the new
+summit webps exceed the limit (largest is 467 KB).
+
+### Visual smoke test
+
+Browser-side verification was deferred — the Claude-in-Chrome extension
+wasn't connected during this session. Recommended manual passes once
+dev server is running locally:
+
+- Scroll across `0.84–1.0` and confirm no jump at the alpine→summit seam
+  (the camera should glide forward, not snap).
+- Watch the `Home Summit` Leva folder while tuning ridge/cliff/flag
+  positions to taste; defaults are deliberate but conservative.
+- Confirm the whole module visibly warms in over the 0.86→0.92 enter
+  window and stays warm through the rest of the zone.
+
+### Follow-ups not addressed (deferred per scope)
+
+- Departing bird flock V into the vista
+- God-ray sun shaft / visible sun disc at `scroll = 1.0`
+- 3D→2D HTML anchoring of a closing quote
+- Real `<directionalLight>` (we still fake sun-rake purely in shader math)
+
+## Asset prompts (appendix)
+
+These are the production-ready Flow prompts locked during the grill-me. Generate, then cut with `magick input.png -fuzz 12% -transparent white -quality 90 public/summit/<name>.webp`, then move source PNGs to `web/.source-assets/summit/`.
+
+### Far ridge — `ridge-far.webp`
+
+> Japanese woodblock print illustration, John Fellows / Hokusai / Hiroshige style. **A range of distant alpine mountains seen from above** — the kind of view where you've crested a high ridge and are looking out across a sea of layered ranges fading into the dawn horizon.
+>
+> Composition: **multiple receding ridge lines** stacked from front to back, each fainter than the last. Three to five distinct silhouetted ridges, each with its own peak shapes — angular pyramids, broader rounded shoulders, sharp jagged crests. The ridges layer like waves rolling backward into the distance, with the FARTHEST ridge nearly fading into the sky. Keep the **horizon line low** in the canvas (the lower 50–60% of the image is mountain ranges; the upper 40–50% is empty white sky for compositing the dawn gradient).
+>
+> Atmospheric perspective is the picture's main visual idea: **nearest ridges are darker** (slate-blue #3d4656 with sepia-ink hatching), **middle ridges are mid-tone** (lighter slate #5a6878 with restrained linework), **farthest ridges are nearly pale** (very light slate-violet #8a92a8 with almost no carving). The eye reads depth purely from value falloff.
+>
+> Dawn light from upper right: faintest amber wash (#fde68a, very restrained — barely there) on the right-facing slopes of each ridge. Most of the warmth lives on the nearer ridges; the far ridges are too distant to catch warm light visibly. The tonal contrast is cool-dominated; warm is a whisper.
+>
+> Carving style: woodblock flat tonal planes, 5–7 tone palette, irregular organic edges, no photographic detail. **Critical: the painted area must end well above the bottom of the canvas — leave at least 25% of the canvas empty white at the bottom.** The cloud sea will be composited there in code, so the bottoms of the ridges should fade into white as if dipping into clouds (not a hard line — irregular fading transition).
+>
+> **Pure white background (#FFFFFF)** above and below the silhouettes. **No painted clouds, no painted sky, no painted foreground, no sun, no birds, no figures.** Alpha-keyable on white.
+>
+> Aspect ratio: **3:1 horizontal** panoramic. Resolution: 3072×1024 minimum.
+
+### Mid ridge — `ridge-mid.webp`
+
+> Japanese woodblock print illustration, John Fellows / Hokusai / Hiroshige style. **A single dominant alpine ridge with one heroic central peak**, painted as the visual hero of an above-the-clouds dawn vista.
+>
+> Composition: ONE prominent **glorious mountain** filling the **upper-center to upper-right of the canvas** — angular pyramid summit with a prominent shoulder dropping to the right, a sharper face dropping to the left. Adjoining lower ridges step down from the central peak on both sides, smaller and less detailed, providing scale rhythm. The hero peak's summit reaches about **70–75% up the canvas**. The ridge bases occupy the **middle vertical band**, leaving room above for sky and below for the cloud sea.
+>
+> Carving / palette: deeper tonal range than the far-ridge layer because this is the closer hero peak. Body in slate-blue / cool gray (#3d4656 to #2a3240) with **rich dark sepia-ink hatching** (#1a1410) on rock facets, gullies, and the sharp west face. Dawn light from upper right: clearly visible **warm amber wash** (#fde68a → #f6c400 gradient) on the right-facing summit slopes and right shoulder, transitioning sharply at the peak's ridgeline into the cool slate-blue shadow side. The warm-cool contrast across the central peak is the picture's single most important visual event.
+>
+> The painting should **feel grand**. The peak should read as something earned — solid, eternal, slightly intimidating. Hokusai-scale presence, not a postcard mountain. **No clouds painted around the peak, no atmospheric haze**, no compromises softening the silhouette — clean, decisive, painted with confidence.
+>
+> Carving style: woodblock flat tonal planes, 5–7 tone palette, irregular organic edges, no photographic detail or smooth gradients. **Critical: leave at least 25% of the canvas empty white at the bottom.** The cloud sea will be composited beneath, so the base of the ridge should fade into white as if disappearing into a cloud sea (irregular feathered transition, not a hard line).
+>
+> **Pure white background (#FFFFFF)** above and below the silhouettes. **No painted clouds, no painted sky, no painted foreground, no sun, no birds, no figures, no auxiliary illustrations.** Alpha-keyable on white.
+>
+> Aspect ratio: **3:1 horizontal** panoramic. Resolution: 3072×1024 minimum.
+
+### Summit flag — `flag.webp`
+
+> Japanese woodblock print illustration, John Fellows / Hokusai / Hiroshige style. A solitary **summit flag** planted at the high point of an alpine ridge, captured at first light.
+>
+> Composition: a single weathered **wooden pole / hiking staff** rising vertically from a small cluster of dark gathered stones at its base. A simple **rectangular banner** of weathered cloth tied to the upper third of the pole, **caught mid-flutter** in a dawn breeze, fabric flying toward the left of the frame with two or three soft folds and an irregular trailing edge. The fabric is plain — **no logos, letters, or insignia** — just a flag, intentionally quiet.
+>
+> Pole: weathered cedar or hand-hewn wood, slightly knotty, with visible dark sepia-ink woodgrain hatching (#3d2b1f). Subtle wear at the top where rope ties the banner. Stones at the base: 4–6 dark river-stones of varied sizes, packed loosely around the pole's base, with hatching falling away from the lit side.
+>
+> Banner: pale bone / weathered cream fabric (#f5ecd8 base) with restrained linework defining the folds. **Sun-side of the fabric warmed with a soft amber wash** (#fde68a → #f6c400 gradient, applied gently on the right edge / upper face of the banner where dawn light strikes). Cool slate-blue shadow tones (#3d4656) on the left / leeward side. Tonal contrast between sun-side and shadow-side is the picture's primary visual event.
+>
+> Sky / horizon implied, not painted. **No background landscape, no clouds, no horizon line, no ground beyond the immediate stones at the pole's base.** The flag must read as an isolated subject so it can be composited in front of a separate cloud-sea + ridge backdrop.
+>
+> Carving style consistent with the existing Camp assets: flat tonal planes, 5–7 tone palette, irregular organic edges, no photographic detail or realistic shading. Quiet, contemplative, earned — not triumphant. **No spotlight beams, no rays, no glow effects.** The dawn light is implied through the warm-cool fabric contrast only.
+>
+> **Pure white background (#FFFFFF)** everywhere except inside the flag/pole/stones shapes. No vignette, no cast shadow, no atmospheric wash. Alpha-keyable on white.
+>
+> Aspect ratio: **square (1:1)**, vertical-leaning composition (pole + flag occupy the central vertical third). Resolution: 2048×2048 minimum.
+
+### Summit cliff — `cliff.webp`
+
+> Japanese woodblock print illustration, John Fellows / Hokusai / Hiroshige style. A **foreground summit rock platform** — the slab of weathered granite where a hiker would plant a flag or a fox would curl up. Viewed from a slightly raised angle so both the **top surface** and the **broken cliff edge** are visible.
+>
+> Composition: a **wide horizontal slab of stone** filling the lower half of the frame, with an **irregular broken edge** breaking across it — fractured rock, jagged in places, smoother in others. The edge is not a clean horizontal line; it has variation and bite. Beyond the edge, **empty white space** (this is where the cloud sea will be composited in code — do not paint clouds here). The slab is **bare stone**, no soil, no moss carpet — this is above treeline.
+>
+> Surface detail: **3–5 small scattered stones** of varied sizes resting on the platform (loose scree). **One or at most two tiny tufts of weathered alpine grass** (small wispy clumps, not bushes, no flowers) — only if they don't visually compete; if uncertain, leave the surface bare. **No trees, no krummholz, no shrubs.**
+>
+> Palette: pale bone / warm cream base (#f5ecd8) for the lit faces of the stone, with dark sepia-ink hatching (#3d2b1f) for rock facets, fissures, and texture. **Dawn sun raking from upper right** — the **right-facing surfaces and rim of the slab** receive a soft warm amber wash (#fde68a → #f6c400 gradient, restrained). **Left-facing surfaces and the underside of the broken edge** sit in cool slate-blue shadow (#2a3240 → #3d4656). The warm-side / cool-side contrast is the picture's primary visual event — flat tonal planes, no smooth gradients.
+>
+> Carving style: matches the existing camp tent/branch/fire/ridge assets — flat tonal planes, 5–7 tone palette, irregular organic edges, no photographic detail or realistic shading. **No spotlight beams, no rays, no glow effects.** Dawn light implied through the warm-cool tonal split only.
+>
+> **Pure white background (#FFFFFF)** everywhere except inside the slab and surface stones. **No sky, no clouds, no horizon line, no distant mountains, no atmospheric wash above or behind the slab.** Alpha-keyable on white. The cloud sea, ridges, and sky are all separate composited layers — this asset must be the cliff and only the cliff.
+>
+> Aspect ratio: **3:1 horizontal** (panoramic, like the ridge asset). The slab and broken edge occupy the lower 60% of the canvas; the upper 40% is pure white. Resolution: 3072×1024 minimum.
+
+---
+
 ## Shhhh Asset Prompting Plan
 
 - [x] 1. Read the `shhhh` route, grove scene, and existing cairn/monogram assets to lock the visual constraints.
@@ -1309,3 +1550,173 @@ payoff. `/grill-me` session resolved the design tree below.
 ## Review
 
 - Pending.
+
+# Camp Diorama Ground Pass
+
+## Plan
+
+- [x] Generate two transparent camp assets: a shallow top-down floor plate and a foreground underbrush frame.
+- [x] Add the generated ground/underbrush, existing canopy, and existing moon to the active `CampSceneGroup`.
+- [x] Keep the campfire lighting shader-driven by routing new foreground assets through the existing warm silhouette material.
+- [x] Add small Leva controls for placement without changing the module timeline or scene architecture.
+- [x] Run lint/typecheck/build and browser-check the camp zone.
+
+## Review
+
+- Generated `web/public/camp/generated/ground-plate.png` and `web/public/camp/generated/underbrush-frame.png` from a single chroma-key source image, then removed the green key locally into alpha PNGs.
+- Wired the generated floor/underbrush layers, existing `/camp/canopy.webp`, and existing `/camp_moon.webp` into `CampSceneGroup`.
+- Kept firelight mostly shader-driven by routing the new floor, underbrush, and canopy through `SilhouetteWarmMaterial`; moon remains a cool simple billboard.
+- Added Leva controls for moon, canopy, floor plate, and underbrush placement/opacity.
+- `npm run lint`, `npm run typecheck`, and `npm run build` pass. Lint still reports two pre-existing warnings in `GroveScene.tsx`.
+- Follow-up: guarded the postprocessing stack against a lost/null WebGL context, removed the procedural `GroundMaterial` floor from the active camp scene, removed the top canopy/overbrush layer from the active scene, and increased the generated floor/underbrush defaults so those assets carry the ground.
+
+# Forest + Alpine Backdrop Upgrade — Pass 3 of trail-backdrop work
+
+## Context
+
+After Camp + Summit shipped craft-parity painterly-shader backdrops (`SumiSky`, `DawnSky`, `CloudSea`, `SunRakeSilhouette`), Forest and Alpine became the visibly weakest modules. Both still use a single tiled woodcut wallpaper texture (`forest_wall.webp`, `alpine_wall.webp`) auto-panning horizontally on a clock — completely uncoupled from camera direction. Forest camera walks z -28→-90; Alpine camera climbs y -60→120. Auto-pan motion fights both narratives.
+
+## Decisions (locked via /grill-me)
+
+1. **Motion**: backdrop motion fully coupled to camera direction (no clock-based auto-pan anywhere)
+2. **Vocabulary**: hybrid — painterly shader sky/mist behind woodblock mid-distance silhouette layer (à la Summit's far ridge)
+3. **Forest mood**: misty quietude — cool fog veils, indistinct depth, hushed
+4. **Alpine mood**: cloud sea below, ridges above — foreshadows Summit, cloud carpet starts forming during alpine climb
+5. **Asset budget**: generate woodblock mid-distance silhouettes (2 forest + 2 alpine)
+6. **Shader budget**: 1 new shader per module (1 forest mist + 1 alpine haze); CloudSeaMaterial gets a `uCoverage` uniform addition (no new file)
+7. **Research**: 3 parallel agents — reference scout, technical patterns, codebase scout
+
+## Plan
+
+### New shaders (2 files)
+
+- [ ] `web/src/components/shaders/ForestMistMaterial.ts`
+- [ ] `web/src/components/shaders/AlpineHazeMaterial.ts`
+
+### Existing material modification
+
+- [ ] `CloudSeaMaterial` — add `uCoverage` uniform. Existing Summit usage defaults to 1.0; alpine couples 0→0.6→1.0 across alpine→summit transition.
+
+### Asset generation (Flow → ImageMagick → public/<module>/)
+
+- [ ] `/forest/canopy-mid.webp`
+- [ ] `/forest/canopy-far.webp`
+- [ ] `/alpine/ridge-mid.webp`
+- [ ] `/alpine/ridge-far.webp`
+
+(Prompts in appendix below.)
+
+### Component edits
+
+- [ ] `DeepForest.tsx` — delete `ForestWall` (lines 147-180); add `ForestMist` + 2 canopy `SunRakeSilhouette` instances.
+- [ ] `UnifiedScene.tsx` — delete `AlpineWall` (lines 1061-1092); add `AlpineHaze` + 2 ridge silhouettes + scroll-coupled `CloudSea` instance in `AlpineSceneGroup`.
+
+### Cleanup
+
+- [ ] Delete `forest_wall.webp`, `alpine_wall.webp`, `alpine_birds.webp`, `alpine_fog.webp` from `web/public/`.
+
+### Preserve untouched
+
+- Forest: `ForestSceneGroup` wind sway, `ForestTree` parallax, `AnimatedSprite` stag, `shieldMatRef` darkening overlay
+- Alpine: 4 `SyncedRockLedge` instances, `AlpineAnimatedSprite` birds, climb sway, MODULE_TIMELINE timing
+- Hero, Camp, Summit modules
+
+## Review
+
+- 2 new shader files: `ForestMistMaterial.ts` and `AlpineHazeMaterial.ts`. Each follows the Camp/Summit recipe (hash21 → vnoise → 3-octave fbm → tonal blend) with one hero dial each (`uMistDensity`, `uAltitudePulse`).
+- `CloudSeaMaterial` gained one `uCoverage` uniform (defaults to 1.0 so existing Summit usage is unchanged).
+- `CloudSea` component gained an optional `coverageRef` prop — Summit doesn't pass it; Alpine does, scroll-coupled.
+- `DeepForest.tsx`: deleted `ForestWall` (auto-panning wallpaper); added local `ForestMist` (scroll-coupled density) + `CanopyLayer` (meshBasicMaterial passthrough for the cool-painted assets); rendered far + mid canopy silhouettes at z=-160/-120.
+- `UnifiedScene.tsx`: deleted `AlpineWall`; rewrote `AlpineSceneGroup` with painterly `AlpineHaze` (z=-300), 2 ridge silhouettes via `SunRakeSilhouette` (z=-260, z=-200, both `warmStrength=0` since alpine is pre-dawn), and a distant scroll-coupled `CloudSea` (z=-180, coverage 0→0.6→1.0 across alpine→summit handoff).
+- 4 orphan backdrop assets deleted: `forest_wall.webp`, `alpine_wall.webp`, `alpine_birds.webp`, `alpine_fog.webp`. (`AlpineModule.tsx` still references `alpine_wall.webp` but it's orphan dead code — same status as `SummitModule.tsx`.)
+- 4 new assets stashed in `web/.source-assets/{forest,alpine}/`; alpha-keyed webps in `web/public/{forest,alpine}/`. Ridge-mid was `-chop`'d 180px from the bottom to remove the "ALPENREISE: PRE-DAWN ASCENT" branding text Flow added.
+- `typecheck` clean; `lint` only flags 2 pre-existing GroveScene warnings (unrelated).
+- All backdrop motion now scroll-coupled — no more `clock.elapsedTime`-driven horizontal pan. Forest mist thickens with depth-walk; alpine clouds condense with altitude.
+
+## Asset prompts (appendix)
+
+Each prompt produces a 2752×1536 PNG with white background. Cut with `magick input.png -fuzz 12% -transparent white -quality 90 web/public/<dir>/<name>.webp`, then move source PNGs to `web/.source-assets/<dir>/`.
+
+### Forest canopy mid — `forest/canopy-mid.webp`
+
+> Japanese woodblock print illustration, John Fellows / Hokusai / Hiroshige style. **A row of mid-distance forest trees seen from a hushed, foggy forest floor** — the kind of view you'd get walking deeper into a tall conifer/birch forest where the middle-ground trees stand between you and a receding mist veil.
+>
+> Composition: a horizontal row of 6–10 partially overlapping tree silhouettes spanning the full width of the canvas. Mix of conifer (spruce, pine — narrow vertical pyramids) and bare deciduous (birch, aspen — slim trunks with sparse upper branches). The tree row sits in the **lower 50–60% of the canvas**; **upper 40–50% is empty white sky for compositing the mist shader behind**. Each tree has a visible trunk with sparse mid-tone hatching for bark texture, but limited foliage/needle detail — the eye should read the shapes as forest depth markers, not portrait trees.
+>
+> Atmospheric perspective: ALL trees are mid-distance pale, no foreground silhouettes. Color palette: slate-blue dominant (#4a5566), mid-tone (#5a6878), wash highlights (#7a8696), with sepia-ink hatching for bark. **No warm tones, no greens, no light beams** — purely cool, hushed, foggy-forest mood. Trees should look like they're being seen through a slight mist haze (some edge softness, restrained linework).
+>
+> Carving style: woodblock flat tonal planes, 4–5 tone palette, irregular organic edges, no photographic detail. Use value falloff for depth — leftmost and rightmost trees should be slightly paler than central ones.
+>
+> **Critical: trunks and lower branches must end well above the bottom of the canvas — leave at least 25% empty white at the bottom.** The mist shader will composite there in code, so trunks should fade into white as if standing in low fog (irregular fading transition, not a hard line).
+>
+> Output: white background, 2752×1536 aspect, no signature, no text.
+
+### Forest canopy far — `forest/canopy-far.webp`
+
+> Japanese woodblock print illustration, John Fellows / Hokusai / Hiroshige style. **A barely-suggested layer of distant trees disappearing into deep mist** — the fainter row that sits BEHIND the mid-canopy layer. Almost ghostly, atmospheric perspective taken to its extreme.
+>
+> Composition: a horizontal wash of barely-visible tree shapes. Indistinct vertical streaks suggesting trunks; minimal foliage detail; trees blur together into one tonal band rather than reading as individual portraits. The wash sits in the **lower 40–50% of the canvas**, even lower than canopy-mid; **upper 50–60% is empty white sky**.
+>
+> Atmospheric perspective is the entire point: this layer should look 2–3 value-steps paler than canopy-mid. Color palette: very pale slate, deepest #7a8696, mid #9aa6b6, highlights #b8c2d0, with whisper-thin hatching only where absolutely needed. **No warm tones. No detail. No focus.** Like looking through a vellum sheet at distant trees.
+>
+> Carving style: deliberately undercarved — flat tonal planes with very irregular soft edges, 3 tones max. The hand should feel hesitant.
+>
+> **Critical: leave at least 30% empty white at the bottom, with very soft fading transition into white.**
+>
+> Output: white background, 2752×1536 aspect, no signature, no text.
+
+### Alpine ridge mid — `alpine/ridge-mid.webp`
+
+> Japanese woodblock print illustration, John Fellows / Hokusai / Hiroshige style. **A range of mid-distance alpine ridges seen from a climber's perspective** — the kind of view you get partway up an ascent, with serrated peaks rising in the middle distance against a pre-dawn cool sky.
+>
+> Composition: 2–3 distinct ridge lines with sharp jagged crests, angular pyramid peaks, and broader rounded shoulders. The ridges layer like waves rolling backward. Keep the **horizon line low** — the lower 55–65% of the image is mountain ranges; the upper 35–45% is empty white sky for compositing the alpine haze shader behind.
+>
+> Atmospheric perspective: nearer ridges darker, farther ridges paler. Color palette: cool-dominated slate-blues — nearest ridge #3d4656 with sepia-ink hatching, middle ridge #5a6878 with restrained linework, farthest ridge #8a92a8 nearly fading. **No dawn warmth, no amber, no sun-rake glow** — this is pre-dawn. The mood is "altitude before sunrise."
+>
+> Carving style: woodblock flat tonal planes, 5–7 tone palette, irregular organic edges, no photographic detail.
+>
+> **Critical: the painted area must end well above the bottom of the canvas — leave at least 25% empty white at the bottom.** The cloud sea (already shipping in Summit) starts forming visually during alpine, so the bottoms of the ridges should fade into white as if dipping into clouds (irregular fading transition, not a hard line).
+>
+> Output: white background, 2752×1536 aspect, no signature, no text.
+
+### Alpine ridge far — `alpine/ridge-far.webp`
+
+> Japanese woodblock print illustration, John Fellows / Hokusai / Hiroshige style. **The most distant atmospheric ridge layer for the alpine module** — a barely-there wash of receding peaks at the absolute back of the alpine vista, almost dissolved into haze.
+>
+> Composition: 3–5 very faint, low-amplitude ridge silhouettes stacked closely together, almost merging into a single horizontal band of pale tonal washes. Peak shapes are softer, less jagged than the mid-ridges — atmospheric distance smooths edges. The wash sits in the **lower 30–40% of the canvas**; **upper 60–70% is empty white sky**.
+>
+> Atmospheric perspective: extreme. Color palette: very pale cool slate-violet — deepest #9aa4b8, mid #b6bfd0, highlights #d2dae6. Almost no linework. No carving. No detail. Pure tonal washes. **No warm tones whatsoever.**
+>
+> Carving style: barely visible — three flat tonal planes, very soft irregular edges. Suggest peaks rather than draw them.
+>
+> **Critical: leave at least 35% empty white at the bottom, with very soft fading into white.**
+>
+> Output: white background, 2752×1536 aspect, no signature, no text.
+
+# Summit Module Pass 2 — Composition fix
+
+## Diagnosis
+
+After Pass 1 only the mid-ridge silhouette was visible in browser. All four assets loaded fine; the bug was compositional:
+
+- **Far ridge invisible** — at scale 360×180 + same axis as mid-ridge, the mid-ridge silhouette occluded its full shape.
+- **Cliff invisible** — plane was 26×9 (aspect 2.89) vs. source PNG aspect 1.79, warping the linework. Worse, the y-formula was correct but the plane was sized so the visible window of artwork was outside the rock band.
+- **Cloud sea invisible** — horizontal plane at y=85 with camera looking nearly horizontal made it edge-on (≈0px tall on screen).
+- **Camera arc too subtle** — 120→125 y, 15→5 z, didn't physically read as "stepping onto the ledge."
+
+## Plan
+
+- [x] Camera arc widened to 120→128 y, 15→2 z, 0.15→-0.18 rotX (still inherits alpine end-pose at start, so no handoff snap).
+- [x] Far ridge moved off-axis (x=22, y=112, z=-180), shrunk to scale 200, warm dropped to 0.10 — reads as a horizon sliver behind the hero peak's shoulder.
+- [x] Mid ridge tightened (scale 220, x=4) and aspect locked to 1.79.
+- [x] Cliff plane sized 22×12.3 (aspect 1.79) with yOffset=-1 to seat the rock band lower in the frame.
+- [x] Cloud sea raised (y=95, z=-60, size 800) so it reads as a horizon haze sliver between cliff and ridges.
+- [x] Sky plane scaled up (1400×700) and pushed back (z=-200) to fully envelop the ridges as backdrop.
+- [x] Ridge plane aspect ratios in JSX changed from `s*0.5` to `s/1.79`.
+
+## Review
+
+- One file touched: `web/src/components/UnifiedScene.tsx`. No new files, no new shaders.
+- Camera weighting is unchanged — only the summit-zone end pose moved further. Start pose still equals alpine end-pose.
+- Leva `'Home Summit'` defaults updated; ranges left intact for runtime tuning.
+- No new assets, no asset pipeline changes.

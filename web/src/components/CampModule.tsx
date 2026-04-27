@@ -1,21 +1,25 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Suspense, useRef, useMemo, useEffect } from 'react';
+import { Suspense, useRef, useMemo } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import {
   Points as THREEPoints,
   BufferGeometry,
   PointsMaterial,
   Mesh,
-  MeshBasicMaterial,
   Group,
   AmbientLight,
   Color,
   MathUtils,
 } from 'three';
-import { useVideoTexture, PointMaterial, Points } from '@react-three/drei';
+import { PointMaterial, Points } from '@react-three/drei';
+import { NightAtmosphereMaterial } from './shaders/NightAtmosphereMaterial';
+import type { ShaderMaterial } from 'three';
 import PostProcessingStack from './PostProcessingStack';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const NightAtmosphereShader = 'nightAtmosphereMaterial' as any;
 
 type Vec3 = [number, number, number];
 type Vec2 = [number, number];
@@ -65,67 +69,42 @@ function Starfield() {
   );
 }
 
-function VideoCampLedge({
-  videoUrl,
+function ProceduralAtmosphere({
   position,
   scale,
   scrollProgress,
 }: {
-  videoUrl: string;
   position: Vec3;
   scale: Vec2;
   scrollProgress: MotionValue<number>;
 }) {
-  const tex = useVideoTexture(videoUrl, { start: false, muted: true, crossOrigin: 'Anonymous' });
   const meshRef = useRef<Mesh>(null);
+  const matRef = useRef<ShaderMaterial>(null);
   const lerpedProgress = useRef(0);
 
-  // Video Lifecycle Guard (Outside of rendering loop)
-  useEffect(() => {
-    if (!tex?.image) return;
-    const videoElem = tex.image as HTMLVideoElement;
-
-    const unsubscribe = scrollProgress.on('change', (v: number) => {
-      // Pre-warm campfire immediately before entering bounds [0.44 - 0.71]
-      if (v > 0.44 && v < 0.71) {
-        if (videoElem.paused) videoElem.play().catch(() => {});
-      } else {
-        if (!videoElem.paused) {
-          videoElem.pause();
-          videoElem.currentTime = 0; // Hardware memory flush
-        }
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      // Strict WebGL Garbage Collection
-      tex.dispose();
-    };
-  }, [tex, scrollProgress]);
-
   useFrame((state, delta) => {
-    if (meshRef.current && tex.image) {
+    if (matRef.current) {
+      // Update uniform uTime for animated shader effects
+      matRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+    }
+
+    if (meshRef.current) {
       lerpedProgress.current = MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
       const progress = lerpedProgress.current;
 
       // Map global scroll [0.45 -> 0.55] to a fadeIn progress 0.0 -> 1.0
       const animProgress = Math.min(1, Math.max(0, (progress - 0.45) / 0.1));
-      (meshRef.current.material as MeshBasicMaterial).opacity = animProgress;
+
+      if (matRef.current) {
+        matRef.current.uniforms.uOpacity.value = animProgress;
+      }
     }
   });
 
   return (
     <mesh ref={meshRef} position={position}>
-      {/* The video texture needs to be perfectly mapped, use 16:9 scale relative sizing */}
       <planeGeometry args={scale} />
-      <meshBasicMaterial
-        map={tex}
-        transparent
-        depthWrite={true}
-        alphaTest={0.5}
-        opacity={0} // Start invisible until the sequence triggers
-      />
+      <NightAtmosphereShader ref={matRef} key={NightAtmosphereMaterial.key} transparent depthWrite={true} />
     </mesh>
   );
 }
@@ -179,11 +158,10 @@ function NightCampScene({ scrollProgress }: { scrollProgress: MotionValue<number
       {/* The Procedural Night Sky */}
       <Starfield />
 
-      {/* Inverted Stylized Campfire Video Background */}
-      <VideoCampLedge
-        videoUrl="/assets/videos/campfire.mp4"
+      {/* Procedural Atmospheric Background */}
+      <ProceduralAtmosphere
         position={[0, 0, -250]}
-        scale={[400, 225]} // 16:9 Massive plane pushed deep in Z-space
+        scale={[600, 300]} // Wide plane pushed deep in Z-space
         scrollProgress={scrollProgress}
       />
     </group>
