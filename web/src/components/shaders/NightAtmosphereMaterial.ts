@@ -17,6 +17,7 @@ const NightAtmosphereMaterial = shaderMaterial(
     uOpacity: 1.0,
     uFogSpeed: 0.05,
     uFogScale: 2.0,
+    uFogDensity: 1.0,
   },
   // ── Vertex ─────────────────────────────────────────────────────────────
   `
@@ -38,6 +39,7 @@ const NightAtmosphereMaterial = shaderMaterial(
     uniform float uOpacity;
     uniform float uFogSpeed;
     uniform float uFogScale;
+    uniform float uFogDensity;
 
     // Hash without Sine
     float hash12(vec2 p) {
@@ -72,10 +74,6 @@ const NightAtmosphereMaterial = shaderMaterial(
     }
 
     void main() {
-      // Base vertical gradient
-      float gradient = smoothstep(0.0, 1.0, vUv.y);
-      vec3 color = mix(uColorBase * 0.5, uColorBase, gradient);
-
       // Procedural slow-moving fog / mist
       vec2 fogUv = vUv * uFogScale;
       // Domain warping for fluid look
@@ -85,8 +83,12 @@ const NightAtmosphereMaterial = shaderMaterial(
       );
       float fogMask = fbm(fogUv + 4.0 * q + vec2(uTime * uFogSpeed * 0.5));
       
-      // Add mist/fog
-      color = mix(color, uColorFog, fogMask * 0.6);
+      // Modulate fog height by density: when density is 0, fog hugs the ground.
+      // When density is 1, it fills the screen.
+      float heightFalloff = smoothstep(1.0, 0.0, vUv.y);
+      float effectiveDensity = mix(fogMask * heightFalloff, fogMask, clamp(uFogDensity, 0.0, 1.0));
+
+      vec3 color = uColorFog;
 
       // Fire light bleeding from the bottom
       // Stronger near uv.y = 0, fading out upwards, modulated by noise for a flickering effect
@@ -105,7 +107,10 @@ const NightAtmosphereMaterial = shaderMaterial(
       float grain = (hash12(vUv * 500.0) - 0.5) * 0.03;
       color += grain;
 
-      gl_FragColor = vec4(color, uOpacity);
+      // Calculate alpha so that non-foggy areas are transparent, allowing SumiSky to show through
+      float alpha = clamp(effectiveDensity * 1.5 + (fireBase * 0.5 + glowSpread * 0.7), 0.0, 1.0);
+
+      gl_FragColor = vec4(color, alpha * uOpacity);
     }
   `,
 );

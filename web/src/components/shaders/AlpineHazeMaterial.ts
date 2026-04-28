@@ -22,7 +22,10 @@ const AlpineHazeShaderMaterial = shaderMaterial(
     uColorHazeBase: new Color('#5a6878'), // mid slate — heavy haze near base
     uColorHazeHigh: new Color('#a4b0c4'), // pale slate-violet — thin air at altitude
     uColorHorizon: new Color('#6a7888'), // cool horizon line
+    uColorFog: new Color('#7f8f9f'), // cool rolling mist color
     uFbmScale: 2.0,
+    uFogSpeed: 0.04,
+    uFogScale: 3.0,
     uGrainAmount: 0.025,
     uOpacity: 1.0,
   },
@@ -44,7 +47,10 @@ const AlpineHazeShaderMaterial = shaderMaterial(
     uniform vec3 uColorHazeBase;
     uniform vec3 uColorHazeHigh;
     uniform vec3 uColorHorizon;
+    uniform vec3 uColorFog;
     uniform float uFbmScale;
+    uniform float uFogSpeed;
+    uniform float uFogScale;
     uniform float uGrainAmount;
     uniform float uOpacity;
 
@@ -86,19 +92,32 @@ const AlpineHazeShaderMaterial = shaderMaterial(
       float horizonBand = pow(1.0 - g, 3.0);
       sky = mix(sky, uColorHorizon, horizonBand * 0.35);
 
-      // Painterly unevenness via domain-warped fbm.
-      vec2 q = vec2(
+      // Painterly unevenness via domain-warped fbm for the sky base
+      vec2 sq = vec2(
         fbm(vUv * uFbmScale + vec2(0.0, uTime * 0.011)),
         fbm(vUv * uFbmScale + vec2(4.7, 2.1))
       );
-      float wash = fbm(vUv * uFbmScale + 2.0 * q);
+      float wash = fbm(vUv * uFbmScale + 2.0 * sq);
       sky = mix(sky, sky * 1.10, wash * 0.35);
 
-      // Altitude lift — uAltitudePulse 0→1 brightens the upper sky and
-      // pulls everything slightly toward uColorHazeHigh, simulating the
-      // visual lift of climbing out of dense air. NO warm tones; that's
-      // Summit's job.
+      // Procedural slow-moving rolling mist / fog carried over from Camp
+      vec2 fogUv = vUv * uFogScale;
+      vec2 fq = vec2(
+        fbm(fogUv + vec2(0.0, uTime * uFogSpeed)),
+        fbm(fogUv + vec2(5.2, 1.3 - uTime * uFogSpeed * 0.8))
+      );
+      float fogMask = fbm(fogUv + 4.0 * fq + vec2(uTime * uFogSpeed * 0.5));
+      
+      // Fog density drops off sharply as uAltitudePulse goes from 0 -> 1
+      // It also hugs the ground (vUv.y -> 0)
       float pulse = clamp(uAltitudePulse, 0.0, 1.0);
+      float fogHeightFalloff = pow(1.0 - g, 1.5);
+      float fogDensity = fogMask * fogHeightFalloff * (1.0 - pulse);
+      
+      sky = mix(sky, uColorFog, clamp(fogDensity * 1.2, 0.0, 1.0));
+
+      // Altitude lift — uAltitudePulse 0→1 brightens the upper sky and
+      // pulls everything slightly toward uColorHazeHigh.
       sky = mix(sky, uColorHazeHigh, g * 0.20 * pulse);
 
       // Paper fiber grain — keeps the gradient from reading digital.

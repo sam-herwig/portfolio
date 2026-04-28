@@ -565,14 +565,40 @@ function SumiSky({ isActive, fbmScale }: { isActive: React.MutableRefObject<bool
   );
 }
 
-function NightAtmosphere({ isActive }: { isActive: React.MutableRefObject<boolean> }) {
+function NightAtmosphere({
+  isActive,
+  scrollProgress,
+}: {
+  isActive: React.MutableRefObject<boolean>;
+  scrollProgress: MotionValue<number>;
+}) {
   const matRef = useRef<any>(null);
-  useFrame((state) => {
+  const lerpedP = useRef(0);
+  const camp = MODULE_TIMELINE.camp;
+
+  useFrame((state, delta) => {
     if (!isActive.current) return;
+    lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
+
     if (matRef.current) {
       matRef.current.uTime = state.clock.elapsedTime;
+
+      // Calculate fog density based on scroll progress.
+      // At enterStart (coming from forest), fog is thick (1.0).
+      // By ownStart (settled at camp), fog thins out to reveal stars (0.1).
+      const enterSpan = camp.ownStart - camp.enterStart;
+      let density = 0.1;
+
+      if (enterSpan > 0) {
+        const raw = Math.min(1, Math.max(0, (lerpedP.current - camp.enterStart) / enterSpan));
+        // Inverse lerp: 0 -> 1.0 (thick), 1 -> 0.1 (thin)
+        density = MathUtils.lerp(1.0, 0.1, raw);
+      }
+
+      matRef.current.uFogDensity = density;
     }
   });
+
   // Placed slightly in front of SumiSky so it layers the fog over the stars.
   return (
     <mesh position={[0, 20, -170]} frustumCulled={false}>
@@ -901,7 +927,7 @@ function CampSceneGroup({
       <SumiSky isActive={isActive} fbmScale={controls.skyFbmScale} />
 
       {/* Volumetric fog layer */}
-      <NightAtmosphere isActive={isActive} />
+      <NightAtmosphere isActive={isActive} scrollProgress={scrollProgress} />
 
       {/* Moon anchor — an asset billboard, kept cool so the fire remains the warm focal point */}
       <CampBillboard
@@ -1754,8 +1780,9 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
     // (0.86→0.92), then holds at 1. Dawn arrives and stays.
     const span = summit.enterEnd - summit.enterStart;
     const raw = span > 0 ? Math.min(1, Math.max(0, (p - summit.enterStart) / span)) : 1;
-    // Smoothstep so the warm-in feels eased.
-    sunPulse.current = raw * raw * (3.0 - 2.0 * raw);
+
+    // Luxurious Ease-In-Out (Cubic) for a very smooth dawn transition
+    sunPulse.current = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
 
     if (groupRef.current) {
       groupRef.current.visible = opacity > 0;
