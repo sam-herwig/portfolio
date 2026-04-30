@@ -50,7 +50,7 @@ function luminanceUnderPoint(x: number, y: number): number {
 
 export default function CustomCursor() {
   const pathname = usePathname();
-  const offTrail = pathname === '/shhhh';
+  const offTrail = pathname === '/off-trail';
 
   const [isTouchDevice] = useState(() => typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches);
   const [reducedMotion] = useState(

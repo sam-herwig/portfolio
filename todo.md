@@ -1,3 +1,301 @@
+# Alpine Controls + Presets Pass
+
+## Context
+
+Alpine (scroll 0.64–0.86) is the case-study showcase — the cards are the protagonist, not the atmosphere. Today the entire scene is hardcoded: there is **no Leva folder for Alpine at all**, and no preset system. We are not adding a new wow shader gesture (the cards already carry the wow). Instead we mirror Summit's preset pattern so multiple distinct atmospheric *looks* can be hot-swapped from one dropdown, with the current baked-in look preserved exactly as the default.
+
+## Locked Decisions
+
+- Default look stays exactly as today — `Crisp Crest` preset captures the current values.
+- No new shader file. Reuse `AlpineHazeMaterial`, `CloudSeaMaterial`, `SilhouetteSunRakeMaterial` (with `warmStrength=0`) — just expose every uniform to Leva.
+- No warm tones — locked Pass-3 rule. Every preset stays inside the cool slate / pre-dawn palette. Warmth is reserved for Hero + Summit.
+- Mirror Summit's preset pattern: `ALPINE_PRESETS` constant, default-seeded `useControls('Home Alpine', () => …)`, sibling `useControls('Home Alpine Presets', { preset: { onChange: setAlpineControls } })`. Selecting a preset hot-swaps the full control set; individual sliders remain editable after.
+- Six presets covering distinct registers: `Crisp Crest` (default), `Vast Cold`, `Held Breath`, `Wind-Carved`, `Thin Air`, `Storm Brewing`.
+- Visibility toggles for haze / ridges / cloud sea / ledges / bird live in the same panel but are NOT in the preset object — they're meta dials that don't get reset by preset selection.
+- Preserve `MODULE_TIMELINE.alpine` window, `sceneOpacity('alpine')` ownership, the camera arc, and the Alpine→Summit cloud-coverage hand-off (preset can override the alpine-side peak; the seam ramp to Summit's full carpet still works).
+
+## Plan
+
+- [x] 1. Extend the `AlpineHaze` wrapper in `UnifiedScene.tsx` to accept color/uniform overrides (haze base/high/horizon/fog colors, fbm scale, fog speed, fog scale, grain amount, altitude pulse override) so presets can hot-swap atmospherics.
+- [x] 2. Define `ALPINE_PRESET_DEFAULT = 'Crisp Crest'` and `ALPINE_PRESETS` at module scope with six full preset objects covering haze / ridges / cloud sea / ledges fields.
+- [x] 3. Add `useControls('Home Alpine', () => …)` in `AlpineSceneGroup` with sub-folders: `scene · visibility`, `sky · placement`, `sky · haze`, `sky · color`, `ridge · far`, `ridge · mid`, `cloud sea`, `ledges`. Seed every controlled value from the default preset.
+- [x] 4. Add `useControls('Home Alpine Presets', …)` dropdown that hot-swaps the full control set via `setAlpineControls`.
+- [x] 5. Replace every hardcoded value in `AlpineSceneGroup` with `controls.X`. Conditionally render haze / ridges / cloud sea / ledges / bird based on visibility toggles.
+- [x] 6. Extend `SyncedRockLedge` with an optional `opacityMul` prop so the ledge cohort can fade together via preset.
+- [x] 7. Update the cloud-coverage curve to use `controls.cloudCoverageMax` instead of the hardcoded 0.6, while preserving the Alpine→Summit hand-off ramp.
+- [x] 8. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+
+## Review
+
+### Diff summary
+
+- Added `AlpineHaze` wrapper props for color and atmospheric uniforms (`baseColor`, `highColor`, `horizonColor`, `fogColor`, `fogScale`, `fogSpeed`, `grainAmount`, `altitudePulseOverride`); wrapper now pushes everything to the shader per-frame and falls back to the existing scroll-coupled `altitudePulseRef` when override is `< 0`.
+- Added `ALPINE_PRESET_DEFAULT` + `ALPINE_PRESETS` (6 presets) at module scope of `UnifiedScene.tsx`. Each preset is a complete object covering ~32 fields.
+- Added `Home Alpine` Leva panel in `AlpineSceneGroup` with sub-folders for visibility / sky placement / sky haze / sky color / ridge far / ridge mid / cloud sea / ledges, all seeded from the default preset.
+- Added `Home Alpine Presets` dropdown that hot-swaps the full control set via `setAlpineControls(ALPINE_PRESETS[name])`.
+- Replaced every hardcoded value in `AlpineSceneGroup` with the corresponding control. Visibility toggles gate haze / ridges / cloud sea / ledges (block) / bird.
+- Extended `SyncedRockLedge` with optional `opacityMul` so the ledge cohort can fade together per preset.
+- Cloud-coverage curve now uses the preset-driven `cloudCoverageMax` for the alpine-side peak; the seam ramp to Summit's full 1.0 carpet is preserved.
+
+### Verification
+
+- `cd web && npm run typecheck` passes.
+- `cd web && npm run lint` passes (only the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings).
+- Default visual output unchanged because `Crisp Crest` captures the previous baked values exactly.
+
+### Preset register intent
+
+- `Crisp Crest` — current baked look. Cool slate, balanced, scroll-coupled altitude pulse.
+- `Vast Cold` — heavier atmospheric perspective, ridges dissolve harder, lower altitude pulse, palette pushed cooler/darker.
+- `Held Breath` — frozen quietude, fog drift near zero, denser mist, mid altitude pulse.
+- `Wind-Carved` — kinetic atmosphere, fast cloud drift, stretched fbm.
+- `Thin Air` — clear high-altitude palette, sharper ridges, lighter haze.
+- `Storm Brewing` — darker slate, heavier coverage, low altitude, ominous.
+
+### Notes
+
+- No new shader file needed — Alpine's wow is now the *combinatorial range* of presets, not a single iconic gesture. Forest got the single-gesture treatment because Forest had no card competition; Alpine defers to the case studies.
+- If we later want an iconic shader gesture for Alpine, this controls scaffolding is the right substrate to build on (a new shader's uniforms can be added to the preset object and dialed per look).
+
+---
+
+# Forest Atmosphere Shader Pass
+
+## Context
+
+Forest (scroll 0.16–0.42) currently has the painterly background half — `ForestMistMaterial` cool-fog wash on backdrop and floor, painted canopy silhouettes, 11 watercolor-bleed trees, a transient stag sprite. It is missing what Camp's pass landed: a foreground atmospheric depth shader, a persistent focal anchor, and any volumetric depth cue. The wow today is tree parallax, not a hero shader moment.
+
+Camp's parallel pattern was: realistic atmosphere, sky as the hero, two-shader sandwich (`SumiSkyMaterial` + `CampDustMaterial`), authored anchor (campsite/fire). Forest deliberately does not copy that pattern — it differentiates on register and rhetorical shape.
+
+## Locked Decisions
+
+- Emotional register is **Living medium** — the air itself is the hero, not awe (Camp) and not intimacy (presence-in-fog) and not micro-scale.
+- Stylistic register is **painterly**, not realistic. Differentiates Forest from Camp's realism, doubles down on the existing watercolor/woodcut voice, harder to copy than realistic god-rays.
+- Rhetorical shape is a **single iconic gesture**, not a Camp-style atmospheric stack. One shaft is the headline; supporting cast is allowed but demoted.
+- Subject of the shaft is a **floor clearing pool of light, no subject character**. The shaft + its painterly interaction with the ground mist is the entire image. The stag stays as is, decoupled.
+- Cinematography is **approach and enter** — shaft sits at `z ≈ -90` (deep end of the Forest camera walk). Distant glow at Forest enter, builds with scroll, camera ends *inside* the shaft at Forest exit. Hand-off to Camp is "stepping out of the light back into night."
+- Light source is an **ambiguous column**, not an implied sunbeam. No alignment with canopy silhouettes. Paint logic over physical logic.
+- No warm tones (locked Pass-3 rule — warmth is reserved for Hero / Summit dawn). Shaft palette is cool blue-white wash on cool slate fog.
+- Preserve `MODULE_TIMELINE.forest` window and `sceneOpacity('forest')` ownership. No timing changes.
+
+## Plan
+
+- [x] 1. Add a new `ForestShaftMaterial` shader in `web/src/components/shaders/` driving a vertical cone+pool gesture: brushstroke grain inside the volume, splotchy variable density along the shaft (not smooth), wet-edge ink-pool bleed where the shaft meets the ground mist, slow brush-grain animation, slight ambient breathing on intensity.
+- [x] 2. Painterly behaviors over physical: paint-grain noise, not Henyey-Greenstein scattering; ink-pool falloff at the floor interface, not log-density attenuation; cool blue-white wash referenced against the existing `#7a8696 / #3a4350` `ForestMistMaterial` palette.
+- [x] 3. Mount the shaft in `DeepForest.tsx` at world `z ≈ -90`, vertical, no implied sun source, sized so it reads at multiple distances as the camera approaches.
+- [x] 4. Distance-coupled detail: at far range a soft glow with low brushstroke detail; mid range the brush grain and pool edge emerge; near range the wet-edge bleed and pool ink-pooling dominate. Coupled to camera-to-shaft distance, not to scroll progress directly.
+- [x] 5. Add a quieter painterly foreground motes layer (ink spatter / spore flecks, cool palette) parallaxing close to camera as the supporting depth cue. Demoted; the shaft is the protagonist.
+- [x] 6. Wire scroll-velocity into the shaft as a subtle intensity push (shaft strengthens slightly as the user pushes forward, settles when still) — supports "living medium" without theatrical reveals.
+- [x] 7. Expose Leva controls under a new `Home Forest` folder: shaft world position, shaft radius, shaft height, brush-grain scale, brush-grain speed, density splotch amount, wet-edge bleed strength, breath rate, breath amplitude, motes density, motes parallax depth.
+- [ ] 8. Verify the Forest → Camp transition still reads cleanly: ending Forest inside the shaft should hand off to Camp's night atmosphere without a hard break. _(needs manual visual review)_
+- [x] 9. Preserve `ForestMistMaterial`, the canopy silhouettes, the 11 woodcut trees, and the stag sprite as is. No removals; the shaft is additive.
+- [ ] 10. Browser-check Forest in the existing dev server across Hero → Forest → Camp. _(manual — Chrome MCP not connected this session)_
+- [x] 11. Run focused verification from `web/`: lint and typecheck; build if the shader touches shared render code.
+
+## Review
+
+### Diff summary
+
+- Added `web/src/components/shaders/ForestShaftMaterial.ts` — painterly cone-of-light shader. Behaviors: animated brush-grain noise, splotchy variable density, wet-edge bleed at the base (the implicit pool), slow ambient breathing, scroll-velocity push, camera-proximity-coupled detail (smooth glow at distance, brushstroke detail up close). Cool palette (`#d4ddea` default). Additive blending, `depthWrite=false`.
+- Added `web/src/components/shaders/ForestMotesMaterial.ts` — painterly foreground motes. Sparse hashed flecks with sub-cell soft round-off, slow drift, edge fade. Cool palette (`#aebbcc` default). Additive blending.
+- Added `ForestShaft` component to `DeepForest.tsx` rendering a vertical frustum cone (radius top 1.5, radius bottom 14, height 38) at world `[0, -1, -90]` — at the deep end of the camera arc. Tracks camera proximity and scroll velocity per-frame.
+- Added `ForestMotes` component to `DeepForest.tsx` rendering a camera-relative plane that sits 8 units in front of the camera throughout the Forest walk. Intensity envelope coupled to forest scroll progress so motes don't bleed into Hero or Camp through the additive blend.
+- Updated `DeepForest` signature to accept optional `scrollVelocity` and `controls`; preserved the legacy `ForestModule.tsx` callsite by making both optional.
+- Added `Home Forest` Leva folder in `ForestSceneGroup` (`UnifiedScene.tsx`) with `shaft`, `shaft · placement`, and `motes` sub-folders covering all tunable uniforms + placement.
+- Preserved `MODULE_TIMELINE.forest` window, `sceneOpacity('forest')` ownership, `ForestMistMaterial` backdrop + floor, canopy silhouettes, the 11 woodcut trees, and the stag sprite. Shaft + motes are additive on top of the existing scene.
+
+### Verification
+
+- `cd web && npm run typecheck` passes.
+- `cd web && npm run lint` passes (only the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings).
+- Existing dev server at `http://localhost:3000` is up; in-CLI browser smoke skipped because the Chrome extension isn't connected for this session — manual visual review is the next step (Hero → Forest enter → Forest exit → Camp).
+
+### Notes / locked design decisions in code
+
+- The shaft is a single iconic gesture, not a stack — one cone, one mounting point. Differentiated from Camp's two-shader sandwich on purpose.
+- The "pool" is implicit in the cone's base bleed (UV `y < 0.42` boost, scaled by camera proximity) rather than a separate floor disc. Keeps the shader count low and lets the additive blend brighten the existing `ForestMistMaterial` floor naturally.
+- No implied sun source — the shaft has a soft top fade (`smoothstep(1.0, 0.55, uv.y)`) so it dissolves before reaching the canopy plane and reads as "paint suspended in fog," not "light from above."
+- Brush-grain frequency and bleed strength are camera-distance-coupled, not scroll-coupled — the shader does more work at every position because of where the camera *is*, not where you are in the scroll. Fits the "approach and enter" cinematography.
+- Scroll-velocity push is wired but capped at +50% intensity — subtle enough to feel like the air responding, not theatrical.
+
+### Follow-up: scene-level tuning controls
+
+Added scene-wide dials to `Home Forest` so the busyness of the entire Forest can be tuned without code edits:
+
+- **`scene · visibility`** (open by default) — toggle each layer on/off: shaft, motes, stag, canopy far/mid, background trees (3), midground trees (2), foreground tree (1). Use to triage what's competing for attention.
+- **`scene · global`** — `tree opacity` (multiplier on all 11 trees' `uOpacity`), `tree wash mul` (multiplies the per-tree watercolor bleed for softer/sharper edges), `canopy far/mid opacity`, `mist override` (set ≥ 0 to pin mist density manually; -1 keeps the scroll-coupled ramp), `floor mist density`.
+- **`scene · color`** — `mist cool` and `mist shadow` palette pickers feed the `ForestMistMaterial` uniforms on both the backdrop and the floor.
+
+Also extracted a small `ForestFloor` component that reuses the `ForestMist` shader on the rotated horizontal plane, so backdrop and floor share the same controls and stay coherent.
+
+---
+
+# Off-Trail Detour + Trail Fork
+
+## Context
+
+The lake scene is strong enough to become an explicit optional detour instead of a hidden-only easter egg. The chosen direction is a brief, non-blocking Trail Fork section after Camp, where users can either go `Off trail` to the lake scene or `Keep climbing` into Alpine. The off-trail scene remains a separate route so the homepage timeline does not have to absorb the full lake WebGL experience.
+
+## Locked Decisions
+
+- The detour is optional, not part of the canonical scroll for everyone.
+- Rename `/shhhh` to `/off-trail`; no redirect needed because the site is not live.
+- Add a brief Trail Fork section immediately after Camp.
+- Shorten Camp to make room; preserve Alpine's current start timing.
+- Trail Fork should flow back to the light/white theme before Alpine.
+- Trail Fork uses a literal signpost asset with the copy `Off trail` / `Keep climbing`.
+- `/off-trail` should remain scenic only, with no title overlay.
+- Returning from `/off-trail` should send users forward to Alpine / Selected Work.
+
+## Plan
+
+- [x] 1. Rename route `web/src/app/shhhh/page.tsx` to `web/src/app/off-trail/page.tsx` and update all links/navigation references from `/shhhh` to `/off-trail`.
+- [x] 2. Add the selected low-fi signpost asset at `web/public/trail-fork/signpost.png`.
+- [x] 3. Add a brief `trailFork` timeline window between Camp and Alpine, taking time from Camp while keeping Alpine at `0.64`.
+- [x] 4. Update homepage-derived ranges so Camp, Trail Fork, Alpine, and Summit remain synchronized with the shared timeline contract.
+- [x] 5. Add a Trail Fork section in `HomeClient.tsx` after Camp with the signpost asset, accessible click targets for `Off trail` and `Keep climbing`, and normal scroll-past behavior.
+- [x] 6. Make `Off trail` save an Alpine return target, trigger the existing ink transition, and navigate to `/off-trail`.
+- [x] 7. Make `Keep climbing` smoothly scroll to Alpine / `#selected-work`.
+- [x] 8. Keep the off-trail page scenic only, with no extra title/content overlay.
+- [x] 9. Update the off-trail back marker so it returns to Alpine / Selected Work instead of the top of the homepage.
+- [x] 10. Update timeline-adjacent UI as needed, especially `ElevationBar`, `timelineDebug`, and audio mix assumptions if the new `trailFork` module affects them.
+- [x] 11. Run `cd web && npm run lint` and `cd web && npm run typecheck`; run broader guardrails if the timeline changes touch enough surface area.
+- [x] 12. Browser-smoke the flow: scroll Camp → Trail Fork → Alpine, click `Off trail`, verify `/off-trail`, then return to Alpine.
+
+## Review
+
+### Diff summary
+
+- Renamed the route from `/shhhh` to `/off-trail` with no redirect.
+- Added `web/public/trail-fork/signpost.png` as the selected low-fi John Fellows-style signpost asset.
+- Added `trailFork` to `MODULE_TIMELINE` at `0.55–0.64`, shortened Camp to `0.42–0.55`, and kept Alpine entering at `0.64`.
+- Added a brief Trail Fork section after Camp in `HomeClient.tsx`, with invisible accessible click targets over the generated signpost.
+- Wired `Off trail` to save a `selected-work` return anchor and navigate through the existing ink transition.
+- Wired `Keep climbing` to smooth-scroll to Alpine / Selected Work.
+- Kept `/off-trail` scenic-only and made the back marker return to Alpine.
+- Updated route references, cursor off-trail detection, `ElevationBar`, timeline debug module order, and the unified camera bridge through the Trail Fork window.
+
+### Verification
+
+- `cd web && npm run lint` passes with the two existing `GroveScene.tsx` `no-explicit-any` warnings.
+- `cd web && npm run typecheck` passes after clearing stale generated `.next/types` for the old route.
+- `cd web && npm run build` passes and lists `/off-trail`; `/shhhh` is gone from the route table.
+- Existing dev server on `http://localhost:3000` verified:
+  - `/` returns 200.
+  - `/off-trail` returns 200.
+  - `/shhhh` returns 404.
+  - `Keep climbing` lands on `#selected-work`.
+  - `/off-trail` renders cleanly without a title overlay.
+  - Back marker returns to `#selected-work`.
+
+### Notes
+
+- `npm run format:check` still flags `src/components/CredentialStrip.tsx`, which was already unrelated to this change and was not edited here.
+- A separate existing Next dev server is running on port 3000; starting a second one failed because the `.next/dev` lock was already held.
+
+---
+
+# Camp Atmosphere Shader Pass
+
+## Context
+
+After browser review, Camp is not failing because it needs a full redesign. It is failing because the sky, ridge, tent, fire, and foreground read like separate visual systems. The Milky Way should be atmosphere, not the focal point; the campfire and campsite remain the section anchor.
+
+## Locked Decisions
+
+- Work one module at a time, starting with Camp.
+- Keep the current Camp layout and scroll timing intact.
+- Do not make the Milky Way the hero. Use it as a subtle atmospheric layer.
+- Push the Milky Way toward a more realistic sky atmosphere with faint natural color and subtle motion.
+- Keep the campfire as an authored asset, not a separate active fire/ember shader system.
+- Keep the John Fellows / low-fidelity carved-paper direction.
+- Make the asset system more comprehensive, but avoid a full module redesign.
+- Prefer a small coherent Camp asset family over isolated one-off props.
+
+## Plan
+
+- [x] 1. Replace the active Camp sky treatment with a restrained atmospheric night shader: ink-paper gradient, subtle grain, faint Milky Way band, sparse stars.
+- [x] 2. Keep the fire as the visual anchor as part of the authored campsite asset, while moving shader complexity into the sky.
+- [x] 3. Remove or bypass unused Camp sky plumbing so `SumiSky`/`NightAtmosphere` are not competing concepts.
+- [x] 4. Generate or replace a small coherent Camp asset family from one art direction: distant ridge/treeline, middle camp plate, foreground ground/trail plate, and foreground branch/underbrush frame.
+- [x] 5. Remove the active fire halo/ember treatment from Camp so the baked campfire asset carries the fire read.
+- [x] 6. Replace mismatched square ground/underbrush framing with wider transparent assets that are composed for the viewport.
+- [x] 7. Decide whether the moon stays; if it stays, make it smaller/subtler or replace it with a low-contrast carved moon that supports the night atmosphere.
+- [x] 8. Tune existing Camp asset opacity/tint only where needed for cohesion: ridge, campsite, and foreground.
+- [x] 9. Preserve `MODULE_TIMELINE` behavior and `sceneOpacity('camp')` ownership; no timing changes.
+- [x] 10. Browser-check Camp in the existing dev server across Forest → Camp → Trail Fork.
+- [x] 11. Run focused verification from `web/`: lint and typecheck; build if shader changes touch shared render code enough to justify it.
+
+## Review
+
+### Diff summary
+
+- Generated a coherent Camp asset family from one art direction:
+  - `web/public/camp/atmosphere/ridge.png`
+  - `web/public/camp/atmosphere/campsite.png`
+  - `web/public/camp/atmosphere/foreground.png`
+- Saved the generated source images under `web/.source-assets/camp/atmosphere/`.
+- Reworked `SumiSkyMaterial` into a more realistic night atmosphere shader with sparse stars, dust lanes, faint color, subtle drift, and a stronger Milky Way band.
+- Made `SumiSky` the active Camp background and removed the active `NightAtmosphere` fog layer.
+- Replaced the active Camp stack's mismatched moon, old ridge, separate tent/fire props, square ground plate, and square underbrush with the new coherent ridge/campsite/foreground layers.
+- Removed the active `FireHalo` and ember layers from Camp so the fire reads as part of the authored campsite asset.
+- Removed the now-unused Camp fire halo, ember cluster, warm silhouette, and ground shader helpers from `UnifiedScene.tsx`.
+- Updated the `Home Camp` Leva folder to remove fire/ember controls and add Milky Way controls: galaxy intensity, core width, dust lanes, faint color, star sparsity, grain scale, and slow drift.
+- Moved the sky plane behind the camp asset stack and disabled homepage depth-of-field/chromatic aberration for this pass so the new sky stays crisp and color-stable.
+- Preserved the existing Camp timeline window and `sceneOpacity('camp')` ownership.
+
+### Verification
+
+- Browser-checked the existing dev server at `http://localhost:3000/#skills` and scrolled through Camp toward Trail Fork.
+- Browser DOM check confirmed the old fire/ember labels are absent; Leva itself was not present in the DOM snapshot after reload, so visual tuning should still be checked in the open panel.
+- `cd web && npm run lint` passes with the two existing `GroveScene.tsx` `no-explicit-any` warnings.
+- `cd web && npm run typecheck` passes.
+- `cd web && npm run build` passes.
+
+### Notes
+
+- The moon is removed from the active Camp stack for now because it competed with the Milky Way-as-atmosphere direction.
+- Follow-up corrective pass:
+  - Disabled depth-of-field for the unified homepage post stack because it was smearing flat painterly sky planes into cloudy bokeh.
+  - Strengthened the Camp sky into a visible diagonal Milky Way dust/star band instead of a generic gray wash.
+  - Raised and brightened the distant ridge so the first generated asset reads in the scene.
+  - Removed the separate fire warmth/ember shader pass and shifted that attention into the Milky Way shader.
+
+---
+
+# Summit Foreground Bug Fix + Pop Pass
+
+## Context
+
+The Summit foreground is currently failing in two visible ways: the cliff/flag foreground barely reads, and the cliff enters from the bottom-right even though the desired composition is bottom-left. Research confirmed this is source-level behavior, not just tuning: `SunRakeForegroundCliff` is explicitly built as a lower-right corner pin, and the defaults make the cliff a tiny accent.
+
+## Plan
+
+- [x] 1. Change Summit cliff pinning from bottom-right to bottom-left by adding a left-edge screen projection helper and anchoring the cliff's left edge to the viewport.
+- [x] 2. Scale the foreground up substantially so the cliff/flag read as the closing reward, not a corner detail.
+- [x] 3. Update `Home Summit` Leva defaults/ranges so the new bottom-left composition is tunable without fighting right-side assumptions.
+- [x] 4. Keep the existing Summit assets and shader stack for this pass; avoid net-new assets until the corrected composition is visible.
+- [x] 5. Slightly strengthen Summit dawn/readability through simple defaults only if needed: cloud placement, sun glow, ridge warmth, or foreground warm tint.
+- [x] 6. Re-check the footer/elevation overlap near the final scroll position; only adjust timeline/UI fade if the foreground still gets visually flattened after the pin/scale fix.
+- [x] 7. Run focused verification from `web/`: lint, typecheck, build, and browser smoke the Summit final frame.
+
+## Review
+
+- Replaced the hardwired lower-right Summit cliff pin with a lower-left edge projection.
+- Scaled the Summit cliff/flag defaults up so the foreground reads as the closing reward.
+- Added richer cloud controls to `Home Summit`: main opacity, coverage, contrast, rim strength, shadow strength, cloud height, foreground cloud height, foreground coverage, and foreground opacity.
+- Added optional `CloudSea` plane scale/rotation support so Summit can render screen-facing cloud-bank layers while Alpine can keep the existing horizontal carpet behavior.
+- Extended `CloudSeaMaterial` with contrast, rim strength, and shadow strength uniforms, plus eroded alpha edges to avoid the previous straight sheet cutoff.
+- Browser-smoked the Summit final frame. The foreground now pins bottom-left and the straight cloud-plane cutoff is gone. The cloud pass is stronger/tunable but still intentionally soft; a more dramatic "wow" may need a dedicated painted cloud asset or a deeper shader pass.
+- Follow-up alignment tweak: moved the default cliff offset farther left (`cliffCornerX: -0.8`) and expanded its Leva range so the ledge can clip against the viewport edge instead of floating inward.
+- Defaults pass: applied the agent-recommended `Cinematic Cloud Reveal` baseline, with stronger cloud contrast/rim light, larger sky wash, warmer sun glow, slightly larger ridges/foreground, and a harder left-cropped cliff (`cliffCornerX: -1.35`).
+- Also widened the most useful cloud tuning ranges so future Leva edits can explore lower/closer cloud banks, larger foreground clouds, stronger rim light, and higher contrast without code changes.
+- Preset pass: added a `Home Summit Presets` Leva dropdown with `Cinematic Cloud Reveal`, `Cloud Sea Wow`, and `Crisp Summit`. Selecting a preset hot-swaps the full Summit control set, then leaves all individual controls editable.
+- Default preset follow-up: changed the source default preset to `Crisp Summit`.
+- Verification: `cd web && npm run lint`, `cd web && npm run typecheck`, and `cd web && npm run build` pass. Lint still reports the existing `GroveScene.tsx` `no-explicit-any` warnings.
+
+---
+
 # Camp Module Upgrade — Night Scene Depth + Illumination
 
 ## Context
@@ -1720,3 +2018,116 @@ After Pass 1 only the mid-ridge silhouette was visible in browser. All four asse
 - Camera weighting is unchanged — only the summit-zone end pose moved further. Start pose still equals alpine end-pose.
 - Leva `'Home Summit'` defaults updated; ranges left intact for runtime tuning.
 - No new assets, no asset pipeline changes.
+
+---
+
+# Summit Cloud Asset Pass
+
+## Context
+
+The large Summit mountain image was overpowering the scene after the cliff/flag fix. The next direction is to remove that dominant mountain/ridge image stack and try a generated sea-of-clouds asset instead, keeping the cliff and flag as the foreground reward.
+
+## Plan
+
+- [x] 1. Generate a low-fidelity John Fellows-style cloud-bank asset with a removable key background.
+- [x] 2. Cut the generated source to transparent PNG/WebP assets under `web/public/summit/`.
+- [x] 3. Remove the active Summit far-ridge and mid-ridge image layers from `UnifiedScene.tsx`.
+- [x] 4. Add generated cloud image layers behind the cliff/flag, with Leva controls and preset values.
+- [x] 5. Remove dead far/mid ridge Leva controls so the Summit panel only exposes active scene controls.
+- [x] 6. Browser-check `#contact` and run focused verification.
+
+## Review
+
+- Generated `web/.source-assets/summit/cloud-sea-generated.png` and cut it to `web/public/summit/cloud-sea.png` / `web/public/summit/cloud-sea.webp`.
+- Added `SummitCloudImage` as a simple transparent texture billboard for generated cloud plates.
+- Removed the active `/summit/ridge-far.webp` and `/summit/ridge-mid.webp` render layers from Summit.
+- Replaced the dead ridge controls with `cloudImage*` and `cloudImageNear*` controls in the `Home Summit` Leva folder.
+- Updated all Summit presets so `Crisp Summit` remains the default while the cloud plates render larger, higher, and more opaque than the first browser pass.
+- Browser screenshot pass confirmed the mountain image was removed and the cloud/flag/cliff composition rendered; a later screenshot retry timed out after reloading, so final visual tuning should continue in the open Leva panel.
+
+## Follow-up Review
+
+- The first cloud-only pass overcorrected and left Summit without a mountain anchor.
+- Generated a new custom background plate with a smaller distant peak emerging from clouds:
+  - `web/.source-assets/summit/cloud-peak-generated.png`
+  - `web/public/summit/cloud-peak.png`
+  - `web/public/summit/cloud-peak.webp`
+- Swapped the main Summit cloud image layer to `cloud-peak.webp`.
+- Kept the previous `cloud-sea.webp` as the nearer cloud lip.
+- Updated the Summit preset defaults so the new peak plate sits higher and reads as distant atmosphere, not a full-screen ridge.
+- Verification: `cd web && npm run typecheck`, `cd web && npm run lint`, and `cd web && npm run build` pass. Lint still reports the existing two `GroveScene.tsx` warnings.
+
+## Cloud Thickness Follow-up
+
+- Reduced the procedural Summit cloud shader planes so they act as haze instead of a full-screen cloud sheet.
+- Lowered procedural cloud heights, coverage, opacity, rim, and shadow values across all Summit presets.
+- Lowered the generated near-cloud lip opacity so it no longer blankets the generated peak plate.
+- Moved the generated peak left so it stays visible with the Leva panel open.
+- Raised the generated peak plate in render order while keeping the cliff/flag above it.
+- Added a one-shot Summit default preset application on mount so Leva does not keep stale thick-cloud values after refresh.
+- Verification: `cd web && npm run typecheck`, `cd web && npm run lint`, and `cd web && npm run build` pass. Lint still reports the existing two `GroveScene.tsx` warnings.
+
+---
+
+# Alpine Cloud Veil Pass
+
+## Context
+
+The Alpine section already has procedural cloud sea coverage near the lower scene, but it reads too subtle behind the case-study cards. The direction is to add an Alpine-only atmospheric cloud layer rather than changing Summit or the global module timeline.
+
+## Plan
+
+- [x] 1. Add a second Alpine-only `CloudSea` layer as a screen-facing cold veil behind the ridge/ledge stack.
+- [x] 2. Give the veil its own coverage curve so it ramps inside Alpine without touching Summit timing.
+- [x] 3. Expose the veil in `Home Alpine` Leva controls: enabled, placement, size, coverage, contrast, shadow, drift, and opacity.
+- [x] 4. Add veil defaults to every Alpine preset so preset hot-swapping stays complete.
+- [x] 5. Verify typecheck/lint/build and reload the local browser tab.
+
+## Review
+
+- Added optional `renderOrder` support to `CloudSea` so Alpine can place the new veil behind ridges while preserving the existing main cloud sea.
+- Added `cloudVeilCoverage` and an Alpine-only ramp that peaks during Alpine and only gets a small handoff lift before Summit.
+- Added `cloudVeil*` preset defaults for `Crisp Crest`, `Vast Cold`, `Held Breath`, `Wind-Carved`, `Thin Air`, and `Storm Brewing`.
+- Added a `cloud veil` Leva folder under `Home Alpine`.
+- Rendered the veil immediately after `AlpineHaze` and before the ridge/ledge stack.
+- Verification: `cd web && npm run typecheck`, `cd web && npm run lint`, and `cd web && npm run build` pass. Lint still reports the existing two `GroveScene.tsx` warnings.
+
+---
+
+# Camp Ground Seam Fix
+
+## Context
+
+Right before Camp hands off to Trail Fork, the dark ground treatment could expose a hard horizontal rectangle edge beneath the ridge/treeline.
+
+## Plan
+
+- [x] 1. Replace the solid horizontal Camp ground wash plane with a soft gradient wash.
+- [x] 2. Keep Camp, Trail Fork, and timeline ranges unchanged.
+- [x] 3. Verify typecheck, lint, build, and browser reload.
+
+## Review
+
+- Added `CampGroundWash`, a small transparent shader plane with top/bottom/side alpha falloff and subtle grain.
+- Replaced the previous rotated `meshBasicMaterial` ground rectangle so there is no hard geometric top edge to reveal during handoff.
+- Browser reload at `#skills` showed no console errors.
+- Verification: `cd web && npm run typecheck`, `cd web && npm run lint`, and `cd web && npm run build` pass. Lint still reports the existing two `GroveScene.tsx` warnings.
+
+---
+
+# Forest Sky/Fog Cleanup Pass
+
+## Context
+
+The Forest scene currently reads too spotty and dirty in the sky/fog. The ugly field is coming primarily from the camera-relative mote plane, with extra speckle from global postprocessing noise and some splotchy shaft/mist settings.
+
+## Plan
+
+- [x] 1. Disable Forest motes by default so the sky/fog returns to a cleaner paper-wash read.
+- [x] 2. Fix the Forest mote shader falloff so the layer behaves correctly if manually re-enabled in Leva.
+- [x] 3. Reduce high-frequency Forest mist grain and shift the fog toward broader, softer wash bands.
+- [x] 4. Lower global postprocessing noise during the Forest window without changing the rest of the unified scene timing.
+- [x] 5. Guard the shared Woodcut shader against zero-radius cursor wetness so Forest tree layers cannot produce ring artifacts.
+- [x] 6. Remove the extra foreground/mid density tree layers from the default Forest preset and tighten Woodcut alpha discard to reduce stray dark texture dots.
+- [x] 7. Add a Forest tree ink color control and soften the default tree ink/wash so remaining asset artifacts are less visually harsh.
+- [ ] 8. Run focused verification from `web/`.

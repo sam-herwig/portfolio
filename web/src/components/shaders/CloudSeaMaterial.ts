@@ -32,6 +32,9 @@ const CloudSeaShaderMaterial = shaderMaterial(
     uSunDir: new Vector2(0.85, 0.15),
     uFbmScale: 1.8,
     uDriftSpeed: 0.6,
+    uContrast: 1.0,
+    uRimStrength: 1.0,
+    uShadowStrength: 1.0,
     uOpacity: 1.0,
   },
   // ── Vertex ─────────────────────────────────────────────────────────────
@@ -59,6 +62,9 @@ const CloudSeaShaderMaterial = shaderMaterial(
     uniform vec2 uSunDir;
     uniform float uFbmScale;
     uniform float uDriftSpeed;
+    uniform float uContrast;
+    uniform float uRimStrength;
+    uniform float uShadowStrength;
     uniform float uOpacity;
 
     float hash21(vec2 p) {
@@ -124,21 +130,23 @@ const CloudSeaShaderMaterial = shaderMaterial(
       // Vertical falloff — vUv.y from horizon (1.0, far) to viewer (0.0, near).
       float horizonBias = smoothstep(0.0, 0.65, vUv.y);
       float carpet = clamp(cloud * 0.85 + horizonBias * 0.25, 0.0, 1.0);
+      carpet = clamp((carpet - 0.5) * uContrast + 0.5, 0.0, 1.0);
 
       // Tonal base: deep cool valleys → cloud body.
-      vec3 col = mix(uColorShadow, uColorCloud, carpet);
+      vec3 shadowColor = mix(uColorCloud * 0.72, uColorShadow, uShadowStrength);
+      vec3 col = mix(shadowColor, uColorCloud, carpet);
 
       float pulse = clamp(uSunPulse, 0.0, 1.0);
 
       // Pink/mauve scattering transition — Mie at sunrise pools pink in the
       // band where light grazes cloud-tops sideways. Sits below the warm crest.
       float scatterBand = smoothstep(0.4, 0.7, cloud) * (1.0 - smoothstep(0.7, 0.9, cloud));
-      col = mix(col, uColorScatter, scatterBand * 0.45 * pulse * sunSide);
+      col = mix(col, uColorScatter, scatterBand * 0.45 * pulse * sunSide * uRimStrength);
 
       // Warm peach crests — strong highlight on the brightest cloud-tops,
       // pooled toward the sun direction.
       float crest = smoothstep(0.7, 0.92, cloud);
-      col = mix(col, uColorWarm, crest * 0.65 * pulse * sunSide);
+      col = mix(col, uColorWarm, crest * 0.65 * pulse * sunSide * uRimStrength);
 
       // Distance fog — clouds desaturate toward sky-color near the horizon,
       // unifying with the atmospheric far ridge so the horizon reads as a
@@ -146,14 +154,17 @@ const CloudSeaShaderMaterial = shaderMaterial(
       float distanceFog = smoothstep(0.55, 0.95, vUv.y);
       col = mix(col, uHorizonColor, distanceFog * 0.45);
 
-      // Soft alpha — pulled the bottom falloff in (was 0→0.35) so cloud
-      // structure is visible across the carpet, not just near the horizon.
-      float alpha = smoothstep(0.0, 0.15, vUv.y) * uOpacity;
-
       // Coverage gate — clouds *condense* in the noise field rather than
       // scaling geometrically. uCoverage = 1 (Summit default) → full carpet.
       float coverage = clamp(uCoverage, 0.0, 1.0);
       float coverageMask = smoothstep(1.0 - coverage - 0.1, 1.0 - coverage + 0.1, cloud);
+      
+      // Soft alpha with an eroded far edge. Without the far fade the plane's
+      // top boundary reads as a straight 2D sheet across the mountain.
+      float nearFade = smoothstep(0.0, 0.12, vUv.y);
+      float farFade = 1.0 - smoothstep(0.76, 1.0, vUv.y);
+      float edgeErosion = smoothstep(0.2, 0.82, cloud + fbm(vUv * uFbmScale * 4.0 + drift) * 0.22);
+      float alpha = nearFade * farFade * edgeErosion * uOpacity;
       alpha *= coverageMask;
 
       gl_FragColor = vec4(col, alpha);

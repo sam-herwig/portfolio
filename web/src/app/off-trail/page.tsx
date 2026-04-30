@@ -11,7 +11,7 @@ import { useAppStore } from '@/store/useAppStore';
 // Full 3D scene — illustration planes at depth + water shader plane.
 const GroveScene = dynamic(() => import('@/components/grove/GroveScene'), { ssr: false });
 
-export default function ShhhhPage() {
+export default function OffTrailPage() {
   const router = useRouter();
 
   useEffect(() => {
@@ -20,8 +20,9 @@ export default function ShhhhPage() {
 
   const handleBack = (e: React.MouseEvent) => {
     e.preventDefault();
-    useAppStore.getState().startTransition({ x: e.clientX, y: e.clientY }, '#18181b', '/');
-    window.setTimeout(() => router.push('/'), 500);
+    window.sessionStorage.setItem('sh-return-anchor', 'selected-work');
+    useAppStore.getState().startTransition({ x: e.clientX, y: e.clientY }, '#f9fafb', '/');
+    window.setTimeout(() => router.push('/', { scroll: false }), 500);
   };
 
   return (

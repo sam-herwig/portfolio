@@ -22,7 +22,9 @@ const ForestMistShaderMaterial = shaderMaterial(
     uColorMistCool: new Color('#7a8696'),
     uColorMistShadow: new Color('#3a4350'),
     uFbmScale: 1.8,
-    uGrainAmount: 0.025,
+    uWashAmount: 0.12,
+    uBandStrength: 0.1,
+    uGrainAmount: 0.01,
     uOpacity: 1.0,
     uFogSpeed: 0.05,
   },
@@ -44,6 +46,8 @@ const ForestMistShaderMaterial = shaderMaterial(
     uniform vec3 uColorMistCool;
     uniform vec3 uColorMistShadow;
     uniform float uFbmScale;
+    uniform float uWashAmount;
+    uniform float uBandStrength;
     uniform float uGrainAmount;
     uniform float uOpacity;
     uniform float uFogSpeed;
@@ -95,8 +99,15 @@ const ForestMistShaderMaterial = shaderMaterial(
       // High density: wash collapses, everything pulls toward a cool
       // midtone — the visual signature of "thicker fog."
       float density = clamp(uMistDensity, 0.0, 1.0);
-      vec3 mist = base + (wash - 0.5) * 0.22 * (1.0 - density);
+      vec3 mist = base + (wash - 0.5) * uWashAmount * (1.0 - density);
       mist = mix(mist, uColorMistCool * 0.88, density * 0.35);
+
+      // Broad, quiet wash bands: enough movement to avoid a flat card,
+      // but low-frequency so the sky does not read as spotted dirt.
+      vec2 bandUv = vec2(vUv.x * 0.55 + vUv.y * 0.2, vUv.y * 2.6);
+      float band = fbm(bandUv + vec2(uTime * uFogSpeed * 0.08, -uTime * uFogSpeed * 0.12));
+      float veil = smoothstep(0.48, 0.86, band) * (1.0 - smoothstep(0.78, 1.0, vUv.y));
+      mist = mix(mist, uColorMistCool * 0.94, veil * uBandStrength * (0.5 + density * 0.5));
 
       // Paper fiber grain — keeps the gradient from reading digital.
       float fiber = vnoise(vUv * 90.0);

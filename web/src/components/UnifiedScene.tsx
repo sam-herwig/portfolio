@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-namespace, react-hooks/immutability, react-hooks/purity, @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-namespace, react-hooks/immutability, @next/next/no-img-element */
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
-import { useTexture, Points, PointMaterial } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import { useRef, useEffect, Suspense, useMemo, useState } from 'react';
 import React from 'react';
 import { MotionValue } from 'framer-motion';
@@ -15,31 +15,26 @@ import {
   Points as THREEPoints,
   Texture,
   Vector2,
-  Vector3,
   MeshBasicMaterial,
-  PointsMaterial,
-  BufferAttribute,
-  AmbientLight,
   Color,
   MirroredRepeatWrapping,
+  ClampToEdgeWrapping,
+  LinearFilter,
   MathUtils,
-  AdditiveBlending,
   PerspectiveCamera,
+  ShaderMaterial,
 } from 'three';
 import PostProcessingStack from './PostProcessingStack';
 import QualityMonitor from './QualityMonitor';
 import { useQualityStore, qualityPresets } from '@/lib/quality';
 import './shaders/WoodcutMaterial';
-import './shaders/FireHaloMaterial';
-import './shaders/SilhouetteWarmMaterial';
 import './shaders/SilhouetteSunRakeMaterial';
 import './shaders/SumiSkyMaterial';
+import './shaders/CampDustMaterial';
 import './shaders/DawnSkyMaterial';
 import './shaders/DawnSunMaterial';
 import './shaders/CloudSeaMaterial';
 import './shaders/AlpineHazeMaterial';
-import './shaders/GroundMaterial';
-import './shaders/NightAtmosphereMaterial';
 import DeepForest from './DeepForest';
 import { MODULE_TIMELINE, sceneVisible, sceneOpacity, sceneChildRanges } from '@/lib/moduleTimeline';
 import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
@@ -77,38 +72,32 @@ function applyGroupOpacity(group: Group, envelope: number): void {
 }
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
-const FireHaloShader = 'fireHaloShaderMaterial' as any;
-const SilhouetteWarmShader = 'silhouetteWarmShaderMaterial' as any;
 const SilhouetteSunRakeShader = 'silhouetteSunRakeShaderMaterial' as any;
 const SumiSkyShader = 'sumiSkyShaderMaterial' as any;
+const CampDustShader = 'campDustShaderMaterial' as any;
 const DawnSkyShader = 'dawnSkyShaderMaterial' as any;
 const CloudSeaShader = 'cloudSeaShaderMaterial' as any;
 const AlpineHazeShader = 'alpineHazeShaderMaterial' as any;
 const DawnSunShader = 'dawnSunShaderMaterial' as any;
-const GroundShader = 'groundShaderMaterial' as any;
-const NightAtmosphereShader = 'nightAtmosphereMaterial' as any;
 const DEFAULT_WATERCOLOR_WASH = '#38aeea';
 const DEFAULT_WATERCOLOR_WARM = '#ffcc00';
 declare global {
   namespace JSX {
     interface IntrinsicElements {
       woodcutShaderMaterial: any;
-      fireHaloShaderMaterial: any;
-      silhouetteWarmShaderMaterial: any;
       silhouetteSunRakeShaderMaterial: any;
       sumiSkyShaderMaterial: any;
+      campDustShaderMaterial: any;
       dawnSkyShaderMaterial: any;
       dawnSunShaderMaterial: any;
       cloudSeaShaderMaterial: any;
-      groundShaderMaterial: any;
-      nightAtmosphereMaterial: any;
     }
   }
 }
 
 // =============================================================================
 // UNIFIED CAMERA
-// Single camera controller blending all 5 zone behaviours.
+// Single camera controller blending all zone behaviours.
 // Uses MODULE_TIMELINE boundaries for zone transitions.
 // =============================================================================
 
@@ -123,6 +112,7 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
     const hero = MODULE_TIMELINE.hero;
     const forest = MODULE_TIMELINE.forest;
     const camp = MODULE_TIMELINE.camp;
+    const trailFork = MODULE_TIMELINE.trailFork;
     const alpine = MODULE_TIMELINE.alpine;
     const summit = MODULE_TIMELINE.summit;
 
@@ -133,11 +123,11 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
     const heroZ = MathUtils.lerp(20, -28, heroP);
     const heroRX = MathUtils.lerp(0, 0.15, heroP);
 
-    // Forest zone: z -28->-90 (starts where hero ends), walk sway on X/Y, rotX=0.1
+    // Forest zone: z -28->-90 (starts where hero ends), no bob — held steady, rotX=0.1
     const forestSpan = forest.ownEnd - forest.ownStart;
     const forestP = Math.min(1, Math.max(0, (p - forest.ownStart) / forestSpan));
-    const forestX = Math.sin(forestP * Math.PI * 10) * 0.5;
-    const forestY = Math.abs(Math.sin(forestP * Math.PI * 10)) * 0.5;
+    const forestX = 0;
+    const forestY = 0;
     const forestZ = MathUtils.lerp(-28, -90, forestP);
     const forestRX = 0.1;
 
@@ -148,6 +138,14 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
     const campY = MathUtils.lerp(-10, 15, campP);
     const campZ = MathUtils.lerp(30, -10, campP);
     const campRX = 0;
+
+    // Trail Fork zone: no 3D scene group, just a camera bridge from camp to alpine.
+    const trailForkSpan = trailFork.ownEnd - trailFork.ownStart;
+    const trailForkP = Math.min(1, Math.max(0, (p - trailFork.ownStart) / trailForkSpan));
+    const trailForkX = MathUtils.lerp(0, 0, trailForkP);
+    const trailForkY = MathUtils.lerp(15, -60, trailForkP);
+    const trailForkZ = MathUtils.lerp(-10, 15, trailForkP);
+    const trailForkRX = MathUtils.lerp(0, 0.15, trailForkP);
 
     // Alpine zone: z=15 fixed, y -60->120 (start below lowest cliff so cliffs rise from below), climb sway, rotX=0.15
     const alpineSpan = alpine.ownEnd - alpine.ownStart;
@@ -197,6 +195,19 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
               : 1 - (p - camp.exitStart) / (camp.ownEnd - camp.exitStart),
       ),
     );
+    const tw = Math.max(
+      0,
+      Math.min(
+        1,
+        p < trailFork.ownStart
+          ? 0
+          : p < trailFork.enterEnd
+            ? (p - trailFork.ownStart) / (trailFork.enterEnd - trailFork.ownStart)
+            : p < trailFork.exitStart
+              ? 1
+              : 1 - (p - trailFork.exitStart) / (trailFork.ownEnd - trailFork.exitStart),
+      ),
+    );
     const aw = Math.max(
       0,
       Math.min(
@@ -218,13 +229,14 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
       Math.min(1, p < alpine.exitStart ? 0 : (p - alpine.exitStart) / (summit.ownStart - alpine.exitStart)),
     );
 
-    const tot = hw + fw + cw + aw + sw || 1;
+    const tot = hw + fw + cw + tw + aw + sw || 1;
     const inv = 1 / tot;
 
-    camera.position.x = (heroX * hw + forestX * fw + campX * cw + alpineX * aw + summitX * sw) * inv;
-    camera.position.y = (heroY * hw + forestY * fw + campY * cw + alpineY * aw + summitY * sw) * inv;
-    camera.position.z = (heroZ * hw + forestZ * fw + campZ * cw + alpineZ * aw + summitZ * sw) * inv;
-    camera.rotation.x = (heroRX * hw + forestRX * fw + campRX * cw + alpineRX * aw + summitRX * sw) * inv;
+    camera.position.x = (heroX * hw + forestX * fw + campX * cw + trailForkX * tw + alpineX * aw + summitX * sw) * inv;
+    camera.position.y = (heroY * hw + forestY * fw + campY * cw + trailForkY * tw + alpineY * aw + summitY * sw) * inv;
+    camera.position.z = (heroZ * hw + forestZ * fw + campZ * cw + trailForkZ * tw + alpineZ * aw + summitZ * sw) * inv;
+    camera.rotation.x =
+      (heroRX * hw + forestRX * fw + campRX * cw + trailForkRX * tw + alpineRX * aw + summitRX * sw) * inv;
   });
 
   return null;
@@ -239,23 +251,40 @@ function UnifiedPostProcessing({ scrollProgress }: { scrollProgress: MotionValue
   // Throttled setState: only fires ~10-15 times during a scroll through camp,
   // not every frame. Acceptable per r3f perf guidance.
   const [bloomIntensity, setBloomIntensity] = useState(0);
+  const [noiseOpacity, setNoiseOpacity] = useState(0.06);
   const lerpedP = useRef(0);
   const lerpedBloom = useRef(0);
+  const lerpedNoise = useRef(0.06);
   const lastSnap = useRef(0);
+  const lastNoiseSnap = useRef(0.06);
 
   useFrame((state, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
     const p = lerpedP.current;
-    const camp = MODULE_TIMELINE.camp;
-    const targetBloom = p > camp.ownStart && p < camp.ownEnd ? 1.5 : 0;
+    const campOpacity = sceneOpacity('camp', p);
+    const forestOpacity = sceneOpacity('forest', p);
+    const targetBloom = campOpacity > 0.05 ? 1.2 : 0;
+    const targetNoise = MathUtils.lerp(0.06, 0.015, forestOpacity);
     lerpedBloom.current = MathUtils.damp(lerpedBloom.current, targetBloom, 3, delta);
+    lerpedNoise.current = MathUtils.damp(lerpedNoise.current, targetNoise, 4, delta);
     if (Math.abs(lerpedBloom.current - lastSnap.current) > 0.1) {
       lastSnap.current = lerpedBloom.current;
       setBloomIntensity(lerpedBloom.current);
     }
+    if (Math.abs(lerpedNoise.current - lastNoiseSnap.current) > 0.005) {
+      lastNoiseSnap.current = lerpedNoise.current;
+      setNoiseOpacity(lerpedNoise.current);
+    }
   });
 
-  return <PostProcessingStack bloomIntensity={bloomIntensity} />;
+  return (
+    <PostProcessingStack
+      bloomIntensity={bloomIntensity}
+      disableDepthOfField
+      disableChromaticAberration
+      noiseOpacity={noiseOpacity}
+    />
+  );
 }
 
 // =============================================================================
@@ -509,6 +538,274 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
 // FOREST SCENE GROUP
 // =============================================================================
 
+const FOREST_PRESET_DEFAULT = 'Open Glade';
+
+// Six dramatically different forest looks. Visibility flags
+// (shaft/motes/canopy/tree layers) are part of each preset so
+// switching can spread the scene out, not just retint it.
+const FOREST_PRESETS = {
+  // Open Glade — airy default; off-axis shaft slipped back to z=-110 reads as a hint of light, not a god-ray; deep canopy stripped so the named trees breathe.
+  'Open Glade': {
+    shaftEnabled: true,
+    motesEnabled: false,
+    stagEnabled: true,
+    canopyFarEnabled: false,
+    canopyMidEnabled: true,
+    bgTreesEnabled: false,
+    midTreesEnabled: false,
+    fgTreesEnabled: false,
+    treeOpacity: 0.78,
+    treeWashIntensity: 0.15,
+    canopyFarOpacity: 1.0,
+    canopyMidOpacity: 0.85,
+    mistDensityOverride: 0.35,
+    floorMistDensity: 0.5,
+    mistCoolColor: '#8a98a8',
+    mistShadowColor: '#4a5360',
+    treeInkColor: '#3a4652',
+    shaftColor: '#e8eef6',
+    shaftIntensity: 0.32,
+    shaftBrushScale: 3.0,
+    shaftBrushSpeed: 0.05,
+    shaftSplotchAmount: 0.18,
+    shaftBleedStrength: 0.55,
+    shaftBreathRate: 0.25,
+    shaftBreathAmplitude: 0.08,
+    shaftX: 6,
+    shaftCenterY: -1,
+    shaftZ: -110,
+    shaftHeight: 36,
+    shaftRadiusTop: 0.6,
+    shaftRadiusBottom: 5,
+    motesColor: '#c5d0de',
+    motesIntensity: 0.08,
+    motesScale: 110,
+    motesThreshold: 0.95,
+    motesSoftness: 0.4,
+    motesDriftSpeed: 0.01,
+    motesOffset: 10,
+    motesWidth: 24,
+    motesHeight: 14,
+  },
+  // Hollow Air — pure negative-space study; shaft + motes off entirely, only the four named woodcut trees against a near-clear cool wash.
+  'Hollow Air': {
+    shaftEnabled: false,
+    motesEnabled: false,
+    stagEnabled: true,
+    canopyFarEnabled: false,
+    canopyMidEnabled: true,
+    bgTreesEnabled: false,
+    midTreesEnabled: false,
+    fgTreesEnabled: false,
+    treeOpacity: 1.0,
+    treeWashIntensity: 0.4,
+    canopyFarOpacity: 1.0,
+    canopyMidOpacity: 0.7,
+    mistDensityOverride: 0.2,
+    floorMistDensity: 0.4,
+    mistCoolColor: '#95a3b3',
+    mistShadowColor: '#525c68',
+    treeInkColor: '#465360',
+    shaftColor: '#e8eef6',
+    shaftIntensity: 0.25,
+    shaftBrushScale: 3.0,
+    shaftBrushSpeed: 0.05,
+    shaftSplotchAmount: 0.4,
+    shaftBleedStrength: 0.6,
+    shaftBreathRate: 0.25,
+    shaftBreathAmplitude: 0.08,
+    shaftX: 0,
+    shaftCenterY: -1,
+    shaftZ: -100,
+    shaftHeight: 32,
+    shaftRadiusTop: 0.6,
+    shaftRadiusBottom: 5,
+    motesColor: '#c5d0de',
+    motesIntensity: 0.2,
+    motesScale: 120,
+    motesThreshold: 0.96,
+    motesSoftness: 0.4,
+    motesDriftSpeed: 0.008,
+    motesOffset: 10,
+    motesWidth: 24,
+    motesHeight: 14,
+  },
+  // Twilight Hush — blue-hour dusk; depth comes from violet fog and silhouette fade, with motes opt-in only.
+  'Twilight Hush': {
+    shaftEnabled: false,
+    motesEnabled: false,
+    stagEnabled: true,
+    canopyFarEnabled: false,
+    canopyMidEnabled: true,
+    bgTreesEnabled: false,
+    midTreesEnabled: true,
+    fgTreesEnabled: true,
+    treeOpacity: 0.7,
+    treeWashIntensity: 1.6,
+    canopyFarOpacity: 0.6,
+    canopyMidOpacity: 0.85,
+    mistDensityOverride: 0.85,
+    floorMistDensity: 1.05,
+    mistCoolColor: '#5a5d7a',
+    mistShadowColor: '#2a2840',
+    treeInkColor: '#323747',
+    shaftColor: '#9e9bb8',
+    shaftIntensity: 0.0,
+    shaftBrushScale: 4.0,
+    shaftBrushSpeed: 0.05,
+    shaftSplotchAmount: 0.5,
+    shaftBleedStrength: 0.0,
+    shaftBreathRate: 0.3,
+    shaftBreathAmplitude: 0.1,
+    shaftX: 0,
+    shaftCenterY: -1,
+    shaftZ: -90,
+    shaftHeight: 30,
+    shaftRadiusTop: 1.5,
+    shaftRadiusBottom: 10,
+    motesColor: '#9c98b8',
+    motesIntensity: 0.12,
+    motesScale: 70,
+    motesThreshold: 0.85,
+    motesSoftness: 0.5,
+    motesDriftSpeed: 0.022,
+    motesOffset: 7,
+    motesWidth: 26,
+    motesHeight: 18,
+  },
+  // Stormwall — cold overcast gloom; shaft survives only as a thin off-center glimpse cutting through dense slate mist.
+  Stormwall: {
+    shaftEnabled: true,
+    motesEnabled: false,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    canopyMidEnabled: true,
+    bgTreesEnabled: true,
+    midTreesEnabled: true,
+    fgTreesEnabled: true,
+    treeOpacity: 0.78,
+    treeWashIntensity: 2.0,
+    canopyFarOpacity: 0.55,
+    canopyMidOpacity: 0.7,
+    mistDensityOverride: 0.95,
+    floorMistDensity: 1.1,
+    mistCoolColor: '#5a6470',
+    mistShadowColor: '#2a3038',
+    treeInkColor: '#2f3842',
+    shaftColor: '#a8b0bc',
+    shaftIntensity: 0.25,
+    shaftBrushScale: 5.5,
+    shaftBrushSpeed: 0.1,
+    shaftSplotchAmount: 0.6,
+    shaftBleedStrength: 0.6,
+    shaftBreathRate: 0.4,
+    shaftBreathAmplitude: 0.15,
+    shaftX: -12,
+    shaftCenterY: -1,
+    shaftZ: -90,
+    shaftHeight: 32,
+    shaftRadiusTop: 1.0,
+    shaftRadiusBottom: 4,
+    motesColor: '#8a929c',
+    motesIntensity: 0.1,
+    motesScale: 75,
+    motesThreshold: 0.88,
+    motesSoftness: 0.45,
+    motesDriftSpeed: 0.018,
+    motesOffset: 8,
+    motesWidth: 24,
+    motesHeight: 16,
+  },
+  // Lone Ray — a single tight column found off to the right deep in the fog; the camera passes near it, never through it, so the shaft reads as a chosen feature rather than a wall of light.
+  'Lone Ray': {
+    shaftEnabled: true,
+    motesEnabled: false,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    canopyMidEnabled: true,
+    bgTreesEnabled: false,
+    midTreesEnabled: true,
+    fgTreesEnabled: true,
+    treeOpacity: 1.0,
+    treeWashIntensity: 0.85,
+    canopyFarOpacity: 0.85,
+    canopyMidOpacity: 1.0,
+    mistDensityOverride: 0.3,
+    floorMistDensity: 0.5,
+    mistCoolColor: '#8a96a6',
+    mistShadowColor: '#3a4554',
+    treeInkColor: '#2f3c49',
+    shaftColor: '#f0f4fa',
+    shaftIntensity: 1.3,
+    shaftBrushScale: 5.5,
+    shaftBrushSpeed: 0.07,
+    shaftSplotchAmount: 0.4,
+    shaftBleedStrength: 0.9,
+    shaftBreathRate: 0.32,
+    shaftBreathAmplitude: 0.1,
+    shaftX: 6,
+    shaftCenterY: -1,
+    shaftZ: -115,
+    shaftHeight: 42,
+    shaftRadiusTop: 0.4,
+    shaftRadiusBottom: 4,
+    motesColor: '#bcc7d6',
+    motesIntensity: 0.08,
+    motesScale: 110,
+    motesThreshold: 0.95,
+    motesSoftness: 0.4,
+    motesDriftSpeed: 0.01,
+    motesOffset: 9,
+    motesWidth: 20,
+    motesHeight: 12,
+  },
+  // Cathedral Hour — a clean pearl column over a wet pool, framed by a cleared focal area: bg trees and far canopy off so the shaft owns the stage, deep cool mist behind, low splotch keeps the column architectural.
+  'Cathedral Hour': {
+    shaftEnabled: true,
+    motesEnabled: false,
+    stagEnabled: true,
+    canopyFarEnabled: false,
+    canopyMidEnabled: true,
+    bgTreesEnabled: false,
+    midTreesEnabled: true,
+    fgTreesEnabled: true,
+    treeOpacity: 0.92,
+    treeWashIntensity: 1.1,
+    canopyFarOpacity: 0.0,
+    canopyMidOpacity: 0.95,
+    mistDensityOverride: 0.55,
+    floorMistDensity: 0.7,
+    mistCoolColor: '#5e6a7a',
+    mistShadowColor: '#252e38',
+    treeInkColor: '#2f3742',
+    shaftColor: '#e6e8ec',
+    shaftIntensity: 1.15,
+    shaftBrushScale: 4.0,
+    shaftBrushSpeed: 0.05,
+    shaftSplotchAmount: 0.25,
+    shaftBleedStrength: 1.1,
+    shaftBreathRate: 0.22,
+    shaftBreathAmplitude: 0.08,
+    shaftX: 0,
+    shaftCenterY: -1,
+    shaftZ: -100,
+    shaftHeight: 44,
+    shaftRadiusTop: 0.8,
+    shaftRadiusBottom: 7,
+    motesColor: '#c4cfdc',
+    motesIntensity: 0.1,
+    motesScale: 75,
+    motesThreshold: 0.9,
+    motesSoftness: 0.42,
+    motesDriftSpeed: 0.013,
+    motesOffset: 8,
+    motesWidth: 22,
+    motesHeight: 14,
+  },
+} as const;
+
+type ForestPresetName = keyof typeof FOREST_PRESETS;
+
 function ForestSceneGroup({
   scrollProgress,
   scrollVelocity,
@@ -519,7 +816,198 @@ function ForestSceneGroup({
   const groupRef = useRef<Group>(null);
   const lerpedP = useRef(0);
 
-  useFrame((state, delta) => {
+  const defaultForestPreset = FOREST_PRESETS[FOREST_PRESET_DEFAULT];
+  const [controls, setForestControls] = useControls(
+    'Home Forest',
+    () => ({
+      'scene · visibility': folder(
+        {
+          shaftEnabled: { label: 'shaft', value: defaultForestPreset.shaftEnabled },
+          motesEnabled: { label: 'motes', value: defaultForestPreset.motesEnabled },
+          stagEnabled: { label: 'stag', value: defaultForestPreset.stagEnabled },
+          canopyFarEnabled: { label: 'canopy far', value: defaultForestPreset.canopyFarEnabled },
+          canopyMidEnabled: { label: 'canopy mid', value: defaultForestPreset.canopyMidEnabled },
+          bgTreesEnabled: { label: 'bg trees', value: defaultForestPreset.bgTreesEnabled },
+          midTreesEnabled: { label: 'mid trees', value: defaultForestPreset.midTreesEnabled },
+          fgTreesEnabled: { label: 'fg trees', value: defaultForestPreset.fgTreesEnabled },
+        },
+        { collapsed: false },
+      ),
+      'scene · global': folder(
+        {
+          treeOpacity: { label: 'tree opacity', value: defaultForestPreset.treeOpacity, min: 0, max: 1, step: 0.01 },
+          treeWashIntensity: {
+            label: 'tree wash mul',
+            value: defaultForestPreset.treeWashIntensity,
+            min: 0,
+            max: 2.5,
+            step: 0.02,
+          },
+          canopyFarOpacity: {
+            label: 'canopy far opacity',
+            value: defaultForestPreset.canopyFarOpacity,
+            min: 0,
+            max: 1,
+            step: 0.01,
+          },
+          canopyMidOpacity: {
+            label: 'canopy mid opacity',
+            value: defaultForestPreset.canopyMidOpacity,
+            min: 0,
+            max: 1,
+            step: 0.01,
+          },
+          mistDensityOverride: {
+            label: 'mist override (-1 = auto)',
+            value: defaultForestPreset.mistDensityOverride,
+            min: -1,
+            max: 1,
+            step: 0.01,
+          },
+          floorMistDensity: {
+            label: 'floor mist density',
+            value: defaultForestPreset.floorMistDensity,
+            min: 0,
+            max: 1.2,
+            step: 0.01,
+          },
+        },
+        { collapsed: false },
+      ),
+      'scene · color': folder(
+        {
+          mistCoolColor: { value: defaultForestPreset.mistCoolColor, label: 'mist cool' },
+          mistShadowColor: { value: defaultForestPreset.mistShadowColor, label: 'mist shadow' },
+          treeInkColor: { value: defaultForestPreset.treeInkColor, label: 'tree ink' },
+        },
+        { collapsed: true },
+      ),
+      shaft: folder(
+        {
+          shaftColor: { value: defaultForestPreset.shaftColor, label: 'shaft color' },
+          shaftIntensity: {
+            label: 'intensity',
+            value: defaultForestPreset.shaftIntensity,
+            min: 0,
+            max: 2.5,
+            step: 0.02,
+          },
+          shaftBrushScale: {
+            label: 'brush scale',
+            value: defaultForestPreset.shaftBrushScale,
+            min: 1,
+            max: 12,
+            step: 0.1,
+          },
+          shaftBrushSpeed: {
+            label: 'brush speed',
+            value: defaultForestPreset.shaftBrushSpeed,
+            min: 0,
+            max: 0.6,
+            step: 0.005,
+          },
+          shaftSplotchAmount: {
+            label: 'splotch amount',
+            value: defaultForestPreset.shaftSplotchAmount,
+            min: 0,
+            max: 1,
+            step: 0.01,
+          },
+          shaftBleedStrength: {
+            label: 'base bleed',
+            value: defaultForestPreset.shaftBleedStrength,
+            min: 0,
+            max: 3,
+            step: 0.05,
+          },
+          shaftBreathRate: {
+            label: 'breath rate',
+            value: defaultForestPreset.shaftBreathRate,
+            min: 0,
+            max: 2,
+            step: 0.01,
+          },
+          shaftBreathAmplitude: {
+            label: 'breath amount',
+            value: defaultForestPreset.shaftBreathAmplitude,
+            min: 0,
+            max: 0.5,
+            step: 0.01,
+          },
+        },
+        { collapsed: true },
+      ),
+      'shaft · placement': folder(
+        {
+          shaftX: { label: 'x', value: defaultForestPreset.shaftX, min: -40, max: 40, step: 0.5 },
+          shaftCenterY: { label: 'center y', value: defaultForestPreset.shaftCenterY, min: -20, max: 10, step: 0.25 },
+          shaftZ: { label: 'z', value: defaultForestPreset.shaftZ, min: -160, max: -30, step: 1 },
+          shaftHeight: { label: 'height', value: defaultForestPreset.shaftHeight, min: 10, max: 80, step: 0.5 },
+          shaftRadiusTop: {
+            label: 'radius top',
+            value: defaultForestPreset.shaftRadiusTop,
+            min: 0.2,
+            max: 12,
+            step: 0.1,
+          },
+          shaftRadiusBottom: {
+            label: 'radius bottom',
+            value: defaultForestPreset.shaftRadiusBottom,
+            min: 1,
+            max: 40,
+            step: 0.25,
+          },
+        },
+        { collapsed: true },
+      ),
+      motes: folder(
+        {
+          motesColor: { value: defaultForestPreset.motesColor, label: 'motes color' },
+          motesIntensity: { label: 'intensity', value: defaultForestPreset.motesIntensity, min: 0, max: 2, step: 0.02 },
+          motesScale: { label: 'cell scale', value: defaultForestPreset.motesScale, min: 20, max: 240, step: 1 },
+          motesThreshold: {
+            label: 'sparsity',
+            value: defaultForestPreset.motesThreshold,
+            min: 0.7,
+            max: 0.999,
+            step: 0.001,
+          },
+          motesSoftness: {
+            label: 'fleck softness',
+            value: defaultForestPreset.motesSoftness,
+            min: 0.05,
+            max: 0.5,
+            step: 0.005,
+          },
+          motesDriftSpeed: {
+            label: 'drift speed',
+            value: defaultForestPreset.motesDriftSpeed,
+            min: 0,
+            max: 0.1,
+            step: 0.001,
+          },
+          motesOffset: { label: 'camera offset', value: defaultForestPreset.motesOffset, min: 2, max: 20, step: 0.25 },
+          motesWidth: { label: 'plane width', value: defaultForestPreset.motesWidth, min: 6, max: 60, step: 0.5 },
+          motesHeight: { label: 'plane height', value: defaultForestPreset.motesHeight, min: 4, max: 40, step: 0.5 },
+        },
+        { collapsed: true },
+      ),
+    }),
+    { collapsed: true },
+  );
+
+  useControls('Home Forest Presets', {
+    preset: {
+      options: Object.keys(FOREST_PRESETS),
+      value: FOREST_PRESET_DEFAULT,
+      onChange: (value: string) => {
+        const preset = FOREST_PRESETS[value as ForestPresetName];
+        if (preset) setForestControls(preset);
+      },
+    },
+  });
+
+  useFrame((_state, delta) => {
     if (groupRef.current) {
       lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
       const opacity = sceneOpacity('forest', lerpedP.current);
@@ -527,16 +1015,13 @@ function ForestSceneGroup({
 
       if (groupRef.current.visible) {
         applyGroupOpacity(groupRef.current, opacity);
-        const vel = Math.min(scrollVelocity.current * 30, 1.5);
-        const wind = Math.sin(state.clock.elapsedTime * 2) * vel * 0.02;
-        groupRef.current.rotation.x = MathUtils.damp(groupRef.current.rotation.x, wind, 4, delta);
       }
     }
   });
 
   return (
     <group ref={groupRef}>
-      <DeepForest scrollProgress={scrollProgress} />
+      <DeepForest scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} controls={controls} />
     </group>
   );
 }
@@ -545,222 +1030,98 @@ function ForestSceneGroup({
 // CAMP SCENE GROUP
 // =============================================================================
 
-function SumiSky({ isActive, fbmScale }: { isActive: React.MutableRefObject<boolean>; fbmScale: number }) {
+function SumiSky({
+  isActive,
+  campProgress,
+  lutTexture,
+  controls,
+}: {
+  isActive: React.MutableRefObject<boolean>;
+  campProgress: React.MutableRefObject<number>;
+  lutTexture: Texture;
+  controls: any;
+}) {
   const matRef = useRef<any>(null);
   useFrame((state) => {
     if (!isActive.current) return;
-    if (matRef.current) {
-      matRef.current.uTime = state.clock.elapsedTime;
-      matRef.current.uFbmScale = fbmScale;
-    }
+    const m = matRef.current;
+    if (!m) return;
+    m.uTime = state.clock.elapsedTime;
+    m.uColorHorizon.set(controls.horizonColor);
+    m.uColorZenith.set(controls.zenithColor);
+    m.uColorDust.set(controls.bandDustColor);
+    m.uColorStar.set(controls.starColor);
+    m.uColorStarCool.set(controls.starColorCool);
+    m.uColorStarWarm.set(controls.starColorWarm);
+    m.uBandAngle = (controls.bandAngleDeg * Math.PI) / 180;
+    m.uBandWidth = controls.bandWidth;
+    m.uMilkyStrength = controls.bandIntensity;
+    m.uCoreWidth = controls.coreWidth;
+    m.uColorStrength = controls.colorStrength;
+    m.uDustLaneStrength = controls.dustLaneStrength;
+    m.uAnimationSpeed = controls.driftSpeed;
+    m.uStarDensity = controls.starDensity;
+    m.uStarGrid = controls.starGrid;
+    m.uStarFalloff = controls.starFalloff;
+    m.uStarSizeBase = controls.starSizeBase;
+    m.uStarSizeRange = controls.starSizeRange;
+    m.uStarTwinkle = controls.twinkle;
+    m.uStarTrim = controls.starTrim;
+    m.uCoolMix = controls.coolMix;
+    m.uWarmMix = controls.warmMix;
+    m.uHeroThreshold = controls.heroThreshold;
+    m.uHeroHalo = controls.heroHalo;
+    m.uHeroHaloRadius = controls.heroHaloRadius;
+    m.uHeroBoost = controls.heroBoost;
+    m.uHorizonFadeStart = controls.horizonFadeStart;
+    m.uHorizonFadeEnd = controls.horizonFadeEnd;
+    m.uHazeAltitude = controls.hazeAltitude;
+    m.uHazeStrength = controls.hazeStrength;
+    m.uGrainAmount = controls.grain;
+    m.uScrollFloor = controls.scrollFloor;
+    m.uScrollProgress = campProgress.current;
   });
-  // Large plane covering the camp sky. z=-180 sits behind everything else in
-  // the module (video ledge is at z=-250 but the sky should read as the
-  // backdrop against the silhouettes at z=-40..+5).
+
   return (
-    <mesh position={[0, 20, -180]} frustumCulled={false}>
-      <planeGeometry args={[800, 400]} />
-      <SumiSkyShader ref={matRef} transparent={false} depthWrite={true} />
+    <mesh position={[0, 30, -260]} renderOrder={-20} frustumCulled={false}>
+      <planeGeometry args={[1000, 500]} />
+      <SumiSkyShader ref={matRef} uLUT={lutTexture} transparent={false} depthWrite={false} />
     </mesh>
   );
 }
 
-function NightAtmosphere({
+function CampDustPlane({
   isActive,
-  scrollProgress,
+  campProgress,
+  controls,
 }: {
   isActive: React.MutableRefObject<boolean>;
-  scrollProgress: MotionValue<number>;
+  campProgress: React.MutableRefObject<number>;
+  controls: any;
 }) {
   const matRef = useRef<any>(null);
-  const lerpedP = useRef(0);
-  const camp = MODULE_TIMELINE.camp;
-
-  useFrame((state, delta) => {
-    if (!isActive.current) return;
-    lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-
-    if (matRef.current) {
-      matRef.current.uTime = state.clock.elapsedTime;
-
-      // Calculate fog density based on scroll progress.
-      // At enterStart (coming from forest), fog is thick (1.0).
-      // By ownStart (settled at camp), fog thins out to reveal stars (0.1).
-      const enterSpan = camp.ownStart - camp.enterStart;
-      let density = 0.1;
-
-      if (enterSpan > 0) {
-        const raw = Math.min(1, Math.max(0, (lerpedP.current - camp.enterStart) / enterSpan));
-        // Inverse lerp: 0 -> 1.0 (thick), 1 -> 0.1 (thin)
-        density = MathUtils.lerp(1.0, 0.1, raw);
-      }
-
-      matRef.current.uFogDensity = density;
-    }
-  });
-
-  // Placed slightly in front of SumiSky so it layers the fog over the stars.
-  return (
-    <mesh position={[0, 20, -170]} frustumCulled={false}>
-      <planeGeometry args={[800, 400]} />
-      <NightAtmosphereShader ref={matRef} transparent={true} depthWrite={false} uOpacity={0.8} />
-    </mesh>
-  );
-}
-
-function CampsiteGround({
-  isActive,
-  firePulse,
-  fireAnchor,
-  position,
-  scale,
-}: {
-  isActive: React.MutableRefObject<boolean>;
-  firePulse: React.MutableRefObject<number>;
-  fireAnchor: [number, number, number];
-  position: [number, number, number];
-  scale: [number, number];
-}) {
-  const matRef = useRef<any>(null);
-  const vecAnchor = useMemo(() => new Vector3(), []);
-
   useFrame((state) => {
     if (!isActive.current) return;
-    if (matRef.current) {
-      matRef.current.uTime = state.clock.elapsedTime;
-      matRef.current.uFirePulse = firePulse.current;
-      matRef.current.uFireAnchor = vecAnchor.set(...fireAnchor);
-    }
+    const m = matRef.current;
+    if (!m) return;
+    m.uTime = state.clock.elapsedTime;
+    m.uColorDust.set(controls.fgDustColor);
+    m.uIntensity = controls.dustIntensity;
+    m.uAlphaCap = controls.dustAlphaCap;
+    m.uAnisotropyY = controls.dustAnisotropy;
+    m.uDriftSpeed = controls.dustDriftSpeed;
+    m.uThresholdLo = controls.dustThresholdLo;
+    m.uThresholdHi = controls.dustThresholdHi;
+    m.uAltitudeLo = controls.dustAltitudeLo;
+    m.uAltitudeHi = controls.dustAltitudeHi;
+    m.uScrollFloor = controls.scrollFloor;
+    m.uScrollProgress = campProgress.current;
   });
 
   return (
-    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={false}>
-      <planeGeometry args={scale} />
-      <GroundShader
-        ref={matRef}
-        transparent={true}
-        depthWrite={true}
-        uInfluenceRadius={12.0}
-        uWarmStrength={0.85}
-        uHorizonFade={0.8}
-      />
-    </mesh>
-  );
-}
-
-type EmberClusterProps = {
-  count: number;
-  color: string;
-  size: number;
-  opacity: number;
-  life: number; // seconds to rise from base to top
-  riseSpeed: number;
-  spread: number; // horizontal drift radius
-  coneWidth: number; // initial spawn radius
-  scrollVelocity: React.MutableRefObject<number>;
-  isActive: React.MutableRefObject<boolean>;
-};
-
-function EmberCluster({
-  count,
-  color,
-  size,
-  opacity,
-  life,
-  riseSpeed,
-  spread,
-  coneWidth,
-  scrollVelocity,
-  isActive,
-}: EmberClusterProps) {
-  const meshRef = useRef<THREEPoints>(null);
-
-  const [positions, velocities] = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const vel = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * coneWidth;
-      pos[i * 3 + 1] = -3 + Math.random() * 0.5;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * coneWidth;
-      vel[i * 3] = (Math.random() - 0.5) * spread;
-      vel[i * 3 + 1] = riseSpeed * (0.7 + Math.random() * 0.6);
-      vel[i * 3 + 2] = (Math.random() - 0.5) * spread;
-    }
-    return [pos, vel];
-  }, [count, coneWidth, spread, riseSpeed]);
-
-  useFrame((state, delta) => {
-    if (!isActive.current) return;
-    if (!meshRef.current) return;
-    const geo = meshRef.current.geometry;
-    const posAttr = geo.attributes.position as BufferAttribute;
-    const vel2 = Math.min(scrollVelocity.current * 30, 2);
-    const emissionRate = 1 + vel2 * 2;
-
-    const arr = posAttr.array as Float32Array;
-    // Top-of-life y, derived from vertical speed × life — keeps the two
-    // clusters visually distinct (hot = quick burst, cool = long drift).
-    const topY = -3 + riseSpeed * life;
-
-    for (let i = 0; i < count; i++) {
-      arr[i * 3] += velocities[i * 3] * delta * emissionRate;
-      arr[i * 3 + 1] += velocities[i * 3 + 1] * delta * emissionRate;
-      arr[i * 3 + 2] += velocities[i * 3 + 2] * delta * emissionRate;
-
-      if (arr[i * 3 + 1] > topY) {
-        arr[i * 3] = (Math.random() - 0.5) * coneWidth;
-        arr[i * 3 + 1] = -3;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * coneWidth;
-      }
-    }
-    posAttr.needsUpdate = true;
-  });
-
-  return (
-    <points ref={meshRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial size={size} color={color} transparent opacity={opacity} sizeAttenuation depthWrite={false} />
-    </points>
-  );
-}
-
-function CampSilhouette({
-  url,
-  position,
-  scale,
-  firePulse,
-  fireAnchor,
-  influenceRadius,
-  warmStrength,
-  opacity = 1,
-}: {
-  url: string;
-  position: [number, number, number];
-  scale: [number, number];
-  firePulse: React.MutableRefObject<number>;
-  fireAnchor: [number, number, number];
-  influenceRadius: number;
-  warmStrength: number;
-  opacity?: number;
-}) {
-  const tex = useTexture(url);
-  const matRef = useRef<any>(null);
-
-  useFrame(() => {
-    if (!matRef.current) return;
-    matRef.current.uFirePulse = firePulse.current;
-    matRef.current.uFireAnchor.set(fireAnchor[0], fireAnchor[1], fireAnchor[2]);
-    matRef.current.uInfluenceRadius = influenceRadius;
-    matRef.current.uWarmStrength = warmStrength;
-    matRef.current.uOpacity = opacity;
-  });
-
-  return (
-    <mesh position={position} frustumCulled={false}>
-      <planeGeometry args={scale} />
-      <SilhouetteWarmShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
+    <mesh position={[0, 18, -80]} renderOrder={-15} frustumCulled={false}>
+      <planeGeometry args={[300, 200]} />
+      <CampDustShader ref={matRef} transparent depthWrite={false} />
     </mesh>
   );
 }
@@ -770,11 +1131,13 @@ function CampBillboard({
   position,
   scale,
   opacity = 1,
+  depthWrite = true,
 }: {
   url: string;
   position: [number, number, number];
   scale: [number, number];
   opacity?: number;
+  depthWrite?: boolean;
 }) {
   const tex = useTexture(url);
   const material = useMemo(
@@ -782,10 +1145,10 @@ function CampBillboard({
       new MeshBasicMaterial({
         map: tex,
         transparent: true,
-        depthWrite: false,
+        depthWrite,
         opacity,
       }),
-    [tex, opacity],
+    [tex, opacity, depthWrite],
   );
 
   return (
@@ -795,36 +1158,68 @@ function CampBillboard({
   );
 }
 
-function FireHalo({
+function CampGroundWash({
   position,
   scale,
-  firePulse,
-  radius,
-  fbmScale,
-  intensity,
+  opacity,
 }: {
   position: [number, number, number];
   scale: [number, number];
-  firePulse: React.MutableRefObject<number>;
-  radius: number;
-  fbmScale: number;
-  intensity: number;
+  opacity: number;
 }) {
-  const matRef = useRef<any>(null);
+  const color = useMemo(() => new Color('#030407'), []);
+  const material = useMemo(
+    () =>
+      new ShaderMaterial({
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        uniforms: {
+          uColor: { value: color },
+          uOpacity: { value: opacity },
+        },
+        vertexShader: `
+          varying vec2 vUv;
 
-  useFrame((state) => {
-    if (!matRef.current) return;
-    matRef.current.uTime = state.clock.elapsedTime;
-    matRef.current.uEmberPulse = firePulse.current;
-    matRef.current.uRadius = radius;
-    matRef.current.uFbmScale = fbmScale;
-    matRef.current.uIntensity = intensity;
-  });
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          precision highp float;
+
+          varying vec2 vUv;
+          uniform vec3 uColor;
+          uniform float uOpacity;
+
+          float hash21(vec2 p) {
+            p = fract(p * vec2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+          }
+
+          void main() {
+            float topFade = 1.0 - smoothstep(0.48, 0.96, vUv.y);
+            float bottomFade = smoothstep(0.0, 0.12, vUv.y);
+            float sideFade = smoothstep(0.0, 0.08, vUv.x) * (1.0 - smoothstep(0.92, 1.0, vUv.x));
+            float grain = hash21(gl_FragCoord.xy) * 0.08;
+            float alpha = uOpacity * topFade * bottomFade * mix(0.72, 1.0, sideFade);
+            gl_FragColor = vec4(uColor + grain, alpha);
+          }
+        `,
+      }),
+    [color, opacity],
+  );
+
+  useEffect(() => {
+    material.uniforms.uOpacity.value = opacity;
+    return () => material.dispose();
+  }, [material, opacity]);
 
   return (
-    <mesh position={position} frustumCulled={false}>
+    <mesh position={position} material={material} renderOrder={-1} frustumCulled={false}>
       <planeGeometry args={scale} />
-      <FireHaloShader ref={matRef} transparent depthWrite={false} blending={AdditiveBlending} />
     </mesh>
   );
 }
@@ -837,56 +1232,123 @@ function CampSceneGroup({
   scrollVelocity: React.MutableRefObject<number>;
 }) {
   const groupRef = useRef<Group>(null);
-  const lightRef = useRef<AmbientLight>(null);
   const lerpedP = useRef(0);
   const isActive = useRef(false);
-  const firePulse = useRef(0);
-  const colorNight = useMemo(() => new Color('#020617'), []);
-  const colorFire = useMemo(() => new Color('#ea580c'), []);
-  const camp = MODULE_TIMELINE.camp;
+  const campProgress = useRef(0);
+
+  const skyLUT = useTexture('/camp/sumi-sky-lut.png');
+  useEffect(() => {
+    skyLUT.minFilter = LinearFilter;
+    skyLUT.magFilter = LinearFilter;
+    skyLUT.wrapS = ClampToEdgeWrapping;
+    skyLUT.wrapT = ClampToEdgeWrapping;
+    skyLUT.generateMipmaps = false;
+    skyLUT.needsUpdate = true;
+  }, [skyLUT]);
 
   const controls = useControls(
     'Home Camp',
     {
-      tentX: { value: -11.0, min: -20, max: 20, step: 0.25 },
-      tentY: { value: -2.75, min: -10, max: 10, step: 0.25 },
-      tentZ: { value: -15, min: -40, max: 0, step: 1 },
-      tentScale: { value: 20, min: 8, max: 80, step: 1 },
-      branchX: { value: -22.5, min: -40, max: 40, step: 0.5 },
-      branchY: { value: 9.0, min: -10, max: 20, step: 0.5 },
-      branchZ: { value: 0.0, min: -20, max: 20, step: 0.5 },
-      branchScale: { value: 43, min: 10, max: 120, step: 1 },
-      ridgeY: { value: 20.0, min: -20, max: 20, step: 0.25 },
-      ridgeZ: { value: -102, min: -200, max: -20, step: 1 },
-      ridgeScale: { value: 250, min: 60, max: 600, step: 2 },
-      moonX: { value: 60.0, min: -60, max: 60, step: 0.5 },
-      moonY: { value: 40.0, min: 0, max: 40, step: 0.5 },
-      moonZ: { value: -166, min: -220, max: -30, step: 1 },
-      moonScale: { value: 41.0, min: 4, max: 60, step: 0.5 },
-      moonOpacity: { value: 0.69, min: 0, max: 1, step: 0.01 },
-      fireX: { value: 1.0, min: -20, max: 20, step: 0.25 },
-      fireY: { value: -3.75, min: -10, max: 10, step: 0.25 },
-      fireZ: { value: -17.5, min: -30, max: 0, step: 0.5 },
-      fireScale: { value: 12.5, min: 2, max: 40, step: 0.5 },
-      haloIntensity: { value: 2.2, min: 0.2, max: 3.0, step: 0.05 },
-      haloRadius: { value: 0.48, min: 0.1, max: 0.5, step: 0.01 },
-      haloFbmScale: { value: 3.4, min: 0.5, max: 8.0, step: 0.1 },
-      haloScale: { value: 14, min: 2, max: 40, step: 0.5 },
-      warmInfluence: { value: 28.0, min: 2.0, max: 80.0, step: 0.5 },
-      warmStrength: { value: 0.35, min: 0.0, max: 1.0, step: 0.01 },
-      groundPlateX: { value: -11.0, min: -30, max: 30, step: 0.5 },
-      groundPlateY: { value: -11.0, min: -25, max: 5, step: 0.5 },
-      groundPlateZ: { value: -60, min: -60, max: 5, step: 1 },
-      groundPlateScale: { value: 65, min: 20, max: 180, step: 1 },
-      groundPlateOpacity: { value: 0.28, min: 0, max: 1, step: 0.01 },
-      underbrushX: { value: 6.0, min: -30, max: 30, step: 0.5 },
-      underbrushY: { value: -10.5, min: -25, max: 5, step: 0.5 },
-      underbrushZ: { value: 5, min: -30, max: 15, step: 1 },
-      underbrushScale: { value: 96, min: 20, max: 200, step: 1 },
-      underbrushOpacity: { value: 1, min: 0, max: 1, step: 0.01 },
-      skyFbmScale: { value: 2.7, min: 0.5, max: 8.0, step: 0.1 },
-      hotCount: { value: 72, min: 0, max: 120, step: 2 },
-      coolCount: { value: 30, min: 0, max: 120, step: 2 },
+      'sky · gradient': folder(
+        {
+          horizonColor: { value: '#01030a', label: 'horizon color' },
+          zenithColor: { value: '#061126', label: 'zenith color' },
+          hazeAltitude: { label: 'haze altitude', value: 0.3, min: 0, max: 0.6, step: 0.01 },
+          hazeStrength: { label: 'haze strength', value: 0.15, min: 0, max: 0.5, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      'sky · band': folder(
+        {
+          bandIntensity: { label: 'band intensity', value: 0.55, min: 0, max: 1.5, step: 0.01 },
+          bandAngleDeg: { label: 'band angle (deg)', value: -15, min: -45, max: 45, step: 0.5 },
+          bandWidth: { label: 'band width', value: 1.9, min: 0.8, max: 3.5, step: 0.05 },
+          coreWidth: { label: 'core width', value: 0.14, min: 0, max: 0.4, step: 0.005 },
+          colorStrength: { label: 'color saturation', value: 0.32, min: 0, max: 1, step: 0.01 },
+          dustLaneStrength: { label: 'dust lane depth', value: 0.72, min: 0, max: 1.5, step: 0.01 },
+          bandDustColor: { value: '#050818', label: 'dust ink color' },
+          driftSpeed: { label: 'drift speed', value: 0.06, min: 0, max: 0.3, step: 0.005 },
+        },
+        { collapsed: false },
+      ),
+      'sky · stars': folder(
+        {
+          starDensity: { label: 'star sparsity', value: 0.988, min: 0.95, max: 0.999, step: 0.0005 },
+          starGrid: { label: 'star grid', value: 600, min: 200, max: 1200, step: 10 },
+          starFalloff: { label: 'brightness power', value: 8.0, min: 2, max: 16, step: 0.25 },
+          starSizeBase: { label: 'star size base', value: 0.18, min: 0.05, max: 0.4, step: 0.005 },
+          starSizeRange: { label: 'star size range', value: 0.2, min: 0, max: 0.5, step: 0.005 },
+          twinkle: { label: 'twinkle rate', value: 0.7, min: 0, max: 3, step: 0.05 },
+          starTrim: { label: 'star trim', value: 0.85, min: 0, max: 1.5, step: 0.01 },
+          heroThreshold: { label: 'hero rarity', value: 0.99, min: 0.95, max: 0.999, step: 0.001 },
+          heroHalo: { label: 'hero halo', value: 0.55, min: 0, max: 1.5, step: 0.02 },
+          heroHaloRadius: { label: 'hero halo radius', value: 0.5, min: 0.1, max: 1.5, step: 0.02 },
+          heroBoost: { label: 'hero bloom kick', value: 1.8, min: 0, max: 4, step: 0.05 },
+          horizonFadeStart: { label: 'horizon fade start', value: 0.15, min: 0, max: 0.8, step: 0.01 },
+          horizonFadeEnd: { label: 'horizon fade end', value: 0.5, min: 0, max: 0.8, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      'sky · stars color': folder(
+        {
+          starColor: { value: '#f4e8cd', label: 'star (cream)' },
+          starColorCool: { value: '#c8dcff', label: 'star (cool)' },
+          starColorWarm: { value: '#ffc8a0', label: 'star (warm)' },
+          coolMix: { label: 'cool ratio', value: 0.18, min: 0, max: 0.5, step: 0.01 },
+          warmMix: { label: 'warm ratio', value: 0.15, min: 0, max: 0.5, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      'sky · finish': folder(
+        {
+          grain: { label: 'paper grain', value: 0.022, min: 0, max: 0.1, step: 0.001 },
+          scrollFloor: { label: 'scroll coupling floor', value: 0.4, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      dust: folder(
+        {
+          fgDustColor: { value: '#2a3a55', label: 'dust color' },
+          dustIntensity: { label: 'dust intensity', value: 0.85, min: 0, max: 2, step: 0.02 },
+          dustAlphaCap: { label: 'dust max alpha', value: 0.28, min: 0, max: 1, step: 0.01 },
+          dustAnisotropy: { label: 'streak stretch', value: 7.5, min: 1, max: 16, step: 0.1 },
+          dustDriftSpeed: { label: 'dust drift', value: 0.015, min: 0, max: 0.1, step: 0.001 },
+          dustThresholdLo: { label: 'wisp threshold lo', value: 0.32, min: 0, max: 1, step: 0.01 },
+          dustThresholdHi: { label: 'wisp threshold hi', value: 0.68, min: 0, max: 1, step: 0.01 },
+          dustAltitudeLo: { label: 'dust altitude lo', value: 0.15, min: 0, max: 1.2, step: 0.01 },
+          dustAltitudeHi: { label: 'dust altitude hi', value: 1.05, min: 0, max: 1.2, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      ridge: folder(
+        {
+          ridgeY: { label: 'y', value: 30.0, min: 0, max: 50, step: 0.25 },
+          ridgeZ: { label: 'z', value: -163, min: -200, max: -20, step: 1 },
+          ridgeScale: { label: 'scale', value: 260, min: 80, max: 600, step: 2 },
+          ridgeOpacity: { label: 'opacity', value: 0.7, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      campsite: folder(
+        {
+          campsiteX: { label: 'x', value: -1.0, min: -30, max: 30, step: 0.25 },
+          campsiteY: { label: 'y', value: -0.5, min: -18, max: 8, step: 0.25 },
+          campsiteZ: { label: 'z', value: -22, min: -60, max: 5, step: 1 },
+          campsiteScale: { label: 'scale', value: 50, min: 20, max: 140, step: 1 },
+          campsiteOpacity: { label: 'opacity', value: 0.9, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      foreground: folder(
+        {
+          foregroundX: { label: 'x', value: 1.0, min: -40, max: 40, step: 0.5 },
+          foregroundY: { label: 'y', value: 5, min: 0, max: 10, step: 0.25 },
+          foregroundZ: { label: 'z', value: -20, min: -30, max: 15, step: 1 },
+          foregroundScale: { label: 'scale', value: 105, min: 40, max: 220, step: 1 },
+          foregroundOpacity: { label: 'opacity', value: 0.86, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
     },
     { collapsed: true },
   );
@@ -897,152 +1359,56 @@ function CampSceneGroup({
     const opacity = sceneOpacity('camp', p);
     isActive.current = opacity > 0;
 
-    // Damp the velocity-derived fire pulse; scroll bursts → halo + warm
-    // tint breathe briefly, then settle.
-    const rawPulse = Math.min(1, scrollVelocity.current * 30);
-    firePulse.current = MathUtils.damp(firePulse.current, rawPulse, 6, delta);
+    const w = MODULE_TIMELINE.camp;
+    campProgress.current = MathUtils.clamp((p - w.ownStart) / (w.ownEnd - w.ownStart), 0, 1);
 
     if (groupRef.current) {
       groupRef.current.visible = opacity > 0;
       if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
     }
-    if (lightRef.current) {
-      const mix = Math.min(1, Math.max(0, (p - camp.ownStart) / (camp.enterEnd - camp.ownStart)));
-      lightRef.current.color.lerpColors(colorNight, colorFire, mix);
-      lightRef.current.intensity = (0.2 + mix * 1.5) * opacity;
-    }
   });
 
-  const fireAnchor: [number, number, number] = [controls.fireX, controls.fireY, controls.fireZ];
-  const tentPos: [number, number, number] = [controls.tentX, controls.tentY, controls.tentZ];
-  // Halo sits just behind the fire silhouette so the painted flames stay crisp
-  // while the additive glow pools around them.
-  const haloPos: [number, number, number] = [controls.fireX, controls.fireY, controls.fireZ - 2];
+  const campsiteAspect = 1774 / 887;
+  const ridgeAspect = 1998 / 787;
+  const foregroundAspect = 1881 / 836;
 
   return (
     <group ref={groupRef}>
-      <ambientLight ref={lightRef} intensity={0.2} color="#020617" />
+      <SumiSky isActive={isActive} campProgress={campProgress} lutTexture={skyLUT} controls={controls} />
 
-      {/* Painted ink-wash sky */}
-      <SumiSky isActive={isActive} fbmScale={controls.skyFbmScale} />
+      {/* Foreground atmospheric dust — parallaxes against the sky for depth. */}
+      <CampDustPlane isActive={isActive} campProgress={campProgress} controls={controls} />
 
-      {/* Volumetric fog layer */}
-      <NightAtmosphere isActive={isActive} scrollProgress={scrollProgress} />
-
-      {/* Moon anchor — an asset billboard, kept cool so the fire remains the warm focal point */}
+      {/* Distant ridge + treeline, generated as part of the Camp atmosphere family. */}
       <CampBillboard
-        url="/camp_moon.webp"
-        position={[controls.moonX, controls.moonY, controls.moonZ]}
-        scale={[controls.moonScale, controls.moonScale]}
-        opacity={controls.moonOpacity}
-      />
-
-      {/* Distant treeline + peak shoulder — cold, no fire warm tint */}
-      <CampSilhouette
-        url="/camp/ridge.webp"
+        url="/camp/atmosphere/ridge.png"
         position={[0, controls.ridgeY, controls.ridgeZ]}
-        scale={[controls.ridgeScale, controls.ridgeScale * 0.375]}
-        firePulse={firePulse}
-        fireAnchor={fireAnchor}
-        influenceRadius={1.0}
-        warmStrength={0.0}
+        scale={[controls.ridgeScale, controls.ridgeScale / ridgeAspect]}
+        opacity={controls.ridgeOpacity}
       />
 
-      {/* Authored campsite floor plate — procedural shader with pulsing fire light pool */}
-      <CampsiteGround
-        isActive={isActive}
-        firePulse={firePulse}
-        fireAnchor={fireAnchor}
-        position={[controls.groundPlateX, controls.groundPlateY, controls.groundPlateZ]}
-        scale={[controls.groundPlateScale, controls.groundPlateScale * 1.13]}
+      {/* Ink ground wash behind the campsite, softened so it cannot expose a rectangular edge during handoff. */}
+      <CampGroundWash
+        position={[0, controls.foregroundY - 35, controls.campsiteZ - 34]}
+        scale={[260, 120]}
+        opacity={0.82}
       />
 
-      {/* Foreground side-tree — repurposed branch asset, left edge of frame */}
-      <CampSilhouette
-        url="/camp/branch.webp"
-        position={[controls.branchX, controls.branchY, controls.branchZ]}
-        scale={[controls.branchScale, controls.branchScale * 0.56]}
-        firePulse={firePulse}
-        fireAnchor={fireAnchor}
-        influenceRadius={controls.warmInfluence * 0.6}
-        warmStrength={controls.warmStrength * 0.8}
+      {/* New composed campsite image. This replaces the old standalone campfire layer. */}
+      <CampBillboard
+        url="/camp/atmosphere/campsite.png"
+        position={[controls.campsiteX, controls.campsiteY, controls.campsiteZ]}
+        scale={[controls.campsiteScale, controls.campsiteScale / campsiteAspect]}
+        opacity={controls.campsiteOpacity}
       />
 
-      {/* Tent (mid-ground, nestled beside the fire) */}
-      <CampSilhouette
-        url="/camp/tent.webp"
-        position={tentPos}
-        scale={[controls.tentScale, controls.tentScale]}
-        firePulse={firePulse}
-        fireAnchor={fireAnchor}
-        influenceRadius={controls.warmInfluence}
-        warmStrength={controls.warmStrength}
+      {/* Foreground frame: trail, rocks, and underbrush generated in the same style as the campsite. */}
+      <CampBillboard
+        url="/camp/atmosphere/foreground.png"
+        position={[controls.foregroundX, controls.foregroundY, controls.foregroundZ]}
+        scale={[controls.foregroundScale, controls.foregroundScale / foregroundAspect]}
+        opacity={controls.foregroundOpacity}
       />
-
-      {/* Fire-glow halo billboard — sits behind the painted campfire */}
-      <FireHalo
-        position={haloPos}
-        scale={[controls.haloScale, controls.haloScale]}
-        firePulse={firePulse}
-        radius={controls.haloRadius}
-        fbmScale={controls.haloFbmScale}
-        intensity={controls.haloIntensity}
-      />
-
-      {/* Campfire silhouette — painted flames with baked-in amber glow */}
-      <CampSilhouette
-        url="/camp/fire.webp"
-        position={fireAnchor}
-        scale={[controls.fireScale, controls.fireScale]}
-        firePulse={firePulse}
-        fireAnchor={fireAnchor}
-        influenceRadius={controls.warmInfluence * 1.2}
-        warmStrength={controls.warmStrength * 1.2}
-      />
-
-      {/* Foreground underbrush — closest parallax frame, leaving an open path into camp */}
-      <CampSilhouette
-        url="/camp/generated/underbrush-frame.png"
-        position={[controls.underbrushX, controls.underbrushY, controls.underbrushZ]}
-        scale={[controls.underbrushScale, controls.underbrushScale * 1.13]}
-        firePulse={firePulse}
-        fireAnchor={fireAnchor}
-        influenceRadius={controls.warmInfluence * 0.9}
-        warmStrength={controls.warmStrength * 0.9}
-        opacity={controls.underbrushOpacity}
-      />
-
-      {/* Embers rise from the fire anchor. Parent group handles translation so
-          EmberCluster keeps its simple origin-relative motion math. */}
-      <group position={fireAnchor}>
-        {/* Hot-fast embers — short life, tight cone, bright core */}
-        <EmberCluster
-          count={controls.hotCount}
-          color="#fde68a"
-          size={0.09}
-          opacity={0.85}
-          life={1.5}
-          riseSpeed={1.6}
-          spread={0.25}
-          coneWidth={1.2}
-          scrollVelocity={scrollVelocity}
-          isActive={isActive}
-        />
-
-        {/* Cool-slow embers — long drift, warm amber, wider cone */}
-        <EmberCluster
-          count={controls.coolCount}
-          color="#ea580c"
-          size={0.07}
-          opacity={0.55}
-          life={3.5}
-          riseSpeed={0.9}
-          spread={0.45}
-          coneWidth={2.2}
-          scrollVelocity={scrollVelocity}
-          isActive={isActive}
-        />
-      </group>
     </group>
   );
 }
@@ -1165,19 +1531,46 @@ function AlpineHaze({
   position,
   scale,
   fbmScale,
+  fogScale,
+  fogSpeed,
+  grainAmount,
+  baseColor,
+  highColor,
+  horizonColor,
+  fogColor,
+  altitudePulseOverride,
 }: {
   isActive: React.MutableRefObject<boolean>;
   altitudePulseRef: React.MutableRefObject<number>;
   position: [number, number, number];
   scale: [number, number];
   fbmScale: number;
+  fogScale?: number;
+  fogSpeed?: number;
+  grainAmount?: number;
+  baseColor?: string;
+  highColor?: string;
+  horizonColor?: string;
+  fogColor?: string;
+  altitudePulseOverride?: number;
 }) {
   const matRef = useRef<any>(null);
   useFrame((state) => {
     if (!isActive.current) return;
-    if (matRef.current) {
-      matRef.current.uTime = state.clock.elapsedTime;
-      matRef.current.uFbmScale = fbmScale;
+    if (!matRef.current) return;
+    matRef.current.uTime = state.clock.elapsedTime;
+    matRef.current.uFbmScale = fbmScale;
+    if (typeof fogScale === 'number') matRef.current.uFogScale = fogScale;
+    if (typeof fogSpeed === 'number') matRef.current.uFogSpeed = fogSpeed;
+    if (typeof grainAmount === 'number') matRef.current.uGrainAmount = grainAmount;
+    if (baseColor) matRef.current.uColorHazeBase.set(baseColor);
+    if (highColor) matRef.current.uColorHazeHigh.set(highColor);
+    if (horizonColor) matRef.current.uColorHorizon.set(horizonColor);
+    if (fogColor) matRef.current.uColorFog.set(fogColor);
+
+    if (typeof altitudePulseOverride === 'number' && altitudePulseOverride >= 0) {
+      matRef.current.uAltitudePulse = altitudePulseOverride;
+    } else {
       matRef.current.uAltitudePulse = altitudePulseRef.current;
     }
   });
@@ -1195,12 +1588,14 @@ function SyncedRockLedge({
   scale,
   range,
   lerpedP,
+  opacityMul = 1,
 }: {
   textureUrl: string;
   position: [number, number, number];
   scale: [number, number];
   range: readonly [number, number, number, number];
   lerpedP: React.RefObject<number>;
+  opacityMul?: number;
 }) {
   const groupRef = useRef<Group>(null);
 
@@ -1212,6 +1607,7 @@ function SyncedRockLedge({
     else if (p < range[1]) opacity = (p - range[0]) / (range[1] - range[0]);
     else if (p > range[2]) opacity = (range[3] - p) / (range[3] - range[2]);
     else opacity = 1;
+    opacity *= opacityMul;
     groupRef.current.visible = opacity > 0;
     if (groupRef.current.visible) applyGroupOpacity(groupRef.current, opacity);
   });
@@ -1223,16 +1619,427 @@ function SyncedRockLedge({
   );
 }
 
+const ALPINE_PRESET_DEFAULT = 'Crisp Crest';
+
+const ALPINE_PRESETS = {
+  // Current baked-in look — captured exactly so default is unchanged.
+  'Crisp Crest': {
+    skyY: 60,
+    skyZ: -300,
+    skyW: 1000,
+    skyH: 500,
+    skyFbmScale: 2.0,
+    skyFogScale: 3.0,
+    skyFogSpeed: 0.04,
+    skyGrainAmount: 0.025,
+    skyBaseColor: '#5a6878',
+    skyHighColor: '#a4b0c4',
+    skyHorizonColor: '#6a7888',
+    skyFogColor: '#7f8f9f',
+    altitudePulseOverride: -1, // -1 = use scroll-coupled computed value
+    ridgeFarY: 88,
+    ridgeFarZ: -260,
+    ridgeFarW: 320,
+    ridgeFarH: 179,
+    ridgeFarOpacity: 1.0,
+    ridgeMidY: 100,
+    ridgeMidZ: -200,
+    ridgeMidW: 360,
+    ridgeMidH: 201,
+    ridgeMidOpacity: 1.0,
+    cloudY: 60,
+    cloudZ: -180,
+    cloudSize: 800,
+    cloudFbmScale: 1.6,
+    cloudDriftSpeed: 0.4,
+    cloudCoverageMax: 0.6,
+    cloudContrast: 1.0,
+    cloudRimStrength: 1.0,
+    cloudShadowStrength: 1.0,
+    cloudOpacity: 1.0,
+    cloudVeilY: 84,
+    cloudVeilZ: -235,
+    cloudVeilW: 1220,
+    cloudVeilH: 270,
+    cloudVeilFbmScale: 1.05,
+    cloudVeilDriftSpeed: 0.18,
+    cloudVeilCoverageMax: 0.58,
+    cloudVeilContrast: 0.78,
+    cloudVeilShadowStrength: 0.55,
+    cloudVeilOpacity: 0.34,
+    ledgeOpacityMul: 1.0,
+  },
+  // Heavier atmospheric perspective — ridges dissolve harder, low altitude pulse.
+  'Vast Cold': {
+    skyY: 60,
+    skyZ: -300,
+    skyW: 1000,
+    skyH: 500,
+    skyFbmScale: 1.7,
+    skyFogScale: 2.3,
+    skyFogSpeed: 0.03,
+    skyGrainAmount: 0.03,
+    skyBaseColor: '#4a5666',
+    skyHighColor: '#8a98ad',
+    skyHorizonColor: '#5a6878',
+    skyFogColor: '#6f7e90',
+    altitudePulseOverride: 0.15,
+    ridgeFarY: 88,
+    ridgeFarZ: -260,
+    ridgeFarW: 320,
+    ridgeFarH: 179,
+    ridgeFarOpacity: 0.45,
+    ridgeMidY: 100,
+    ridgeMidZ: -200,
+    ridgeMidW: 360,
+    ridgeMidH: 201,
+    ridgeMidOpacity: 0.7,
+    cloudY: 55,
+    cloudZ: -180,
+    cloudSize: 900,
+    cloudFbmScale: 1.4,
+    cloudDriftSpeed: 0.2,
+    cloudCoverageMax: 0.85,
+    cloudContrast: 0.85,
+    cloudRimStrength: 0.6,
+    cloudShadowStrength: 1.2,
+    cloudOpacity: 1.0,
+    cloudVeilY: 82,
+    cloudVeilZ: -240,
+    cloudVeilW: 1320,
+    cloudVeilH: 300,
+    cloudVeilFbmScale: 0.95,
+    cloudVeilDriftSpeed: 0.12,
+    cloudVeilCoverageMax: 0.76,
+    cloudVeilContrast: 0.7,
+    cloudVeilShadowStrength: 0.82,
+    cloudVeilOpacity: 0.48,
+    ledgeOpacityMul: 0.85,
+  },
+  // Frozen-quiet — fog still, no drift, dense mist.
+  'Held Breath': {
+    skyY: 60,
+    skyZ: -300,
+    skyW: 1000,
+    skyH: 500,
+    skyFbmScale: 2.4,
+    skyFogScale: 3.6,
+    skyFogSpeed: 0.005,
+    skyGrainAmount: 0.022,
+    skyBaseColor: '#5e6c7e',
+    skyHighColor: '#b6c0cf',
+    skyHorizonColor: '#717f90',
+    skyFogColor: '#8a99ab',
+    altitudePulseOverride: 0.4,
+    ridgeFarY: 88,
+    ridgeFarZ: -260,
+    ridgeFarW: 320,
+    ridgeFarH: 179,
+    ridgeFarOpacity: 0.7,
+    ridgeMidY: 100,
+    ridgeMidZ: -200,
+    ridgeMidW: 360,
+    ridgeMidH: 201,
+    ridgeMidOpacity: 0.95,
+    cloudY: 60,
+    cloudZ: -180,
+    cloudSize: 800,
+    cloudFbmScale: 1.8,
+    cloudDriftSpeed: 0.05,
+    cloudCoverageMax: 0.7,
+    cloudContrast: 1.05,
+    cloudRimStrength: 0.85,
+    cloudShadowStrength: 0.95,
+    cloudOpacity: 1.0,
+    cloudVeilY: 84,
+    cloudVeilZ: -235,
+    cloudVeilW: 1260,
+    cloudVeilH: 290,
+    cloudVeilFbmScale: 1.15,
+    cloudVeilDriftSpeed: 0.02,
+    cloudVeilCoverageMax: 0.68,
+    cloudVeilContrast: 0.76,
+    cloudVeilShadowStrength: 0.65,
+    cloudVeilOpacity: 0.42,
+    ledgeOpacityMul: 1.0,
+  },
+  // Wind-shaped — stretched fbm, fast cloud drift, kinetic atmosphere.
+  'Wind-Carved': {
+    skyY: 60,
+    skyZ: -300,
+    skyW: 1000,
+    skyH: 500,
+    skyFbmScale: 2.4,
+    skyFogScale: 4.5,
+    skyFogSpeed: 0.12,
+    skyGrainAmount: 0.025,
+    skyBaseColor: '#586676',
+    skyHighColor: '#a8b6c8',
+    skyHorizonColor: '#697787',
+    skyFogColor: '#85949f',
+    altitudePulseOverride: -1,
+    ridgeFarY: 88,
+    ridgeFarZ: -260,
+    ridgeFarW: 320,
+    ridgeFarH: 179,
+    ridgeFarOpacity: 0.85,
+    ridgeMidY: 100,
+    ridgeMidZ: -200,
+    ridgeMidW: 360,
+    ridgeMidH: 201,
+    ridgeMidOpacity: 1.0,
+    cloudY: 60,
+    cloudZ: -180,
+    cloudSize: 850,
+    cloudFbmScale: 2.2,
+    cloudDriftSpeed: 1.6,
+    cloudCoverageMax: 0.55,
+    cloudContrast: 1.25,
+    cloudRimStrength: 1.35,
+    cloudShadowStrength: 0.85,
+    cloudOpacity: 1.0,
+    cloudVeilY: 86,
+    cloudVeilZ: -230,
+    cloudVeilW: 1260,
+    cloudVeilH: 250,
+    cloudVeilFbmScale: 1.65,
+    cloudVeilDriftSpeed: 0.9,
+    cloudVeilCoverageMax: 0.48,
+    cloudVeilContrast: 0.92,
+    cloudVeilShadowStrength: 0.5,
+    cloudVeilOpacity: 0.34,
+    ledgeOpacityMul: 1.0,
+  },
+  // Clear high-altitude — sharp ridges, light haze, paler palette.
+  'Thin Air': {
+    skyY: 60,
+    skyZ: -300,
+    skyW: 1000,
+    skyH: 500,
+    skyFbmScale: 2.0,
+    skyFogScale: 3.0,
+    skyFogSpeed: 0.04,
+    skyGrainAmount: 0.02,
+    skyBaseColor: '#7d8a9d',
+    skyHighColor: '#cad4e0',
+    skyHorizonColor: '#92a0b1',
+    skyFogColor: '#a3b1c1',
+    altitudePulseOverride: 0.95,
+    ridgeFarY: 88,
+    ridgeFarZ: -260,
+    ridgeFarW: 320,
+    ridgeFarH: 179,
+    ridgeFarOpacity: 1.0,
+    ridgeMidY: 100,
+    ridgeMidZ: -200,
+    ridgeMidW: 360,
+    ridgeMidH: 201,
+    ridgeMidOpacity: 1.0,
+    cloudY: 60,
+    cloudZ: -180,
+    cloudSize: 800,
+    cloudFbmScale: 1.4,
+    cloudDriftSpeed: 0.3,
+    cloudCoverageMax: 0.35,
+    cloudContrast: 1.4,
+    cloudRimStrength: 1.5,
+    cloudShadowStrength: 0.55,
+    cloudOpacity: 1.0,
+    cloudVeilY: 88,
+    cloudVeilZ: -240,
+    cloudVeilW: 1100,
+    cloudVeilH: 220,
+    cloudVeilFbmScale: 1.0,
+    cloudVeilDriftSpeed: 0.12,
+    cloudVeilCoverageMax: 0.32,
+    cloudVeilContrast: 0.88,
+    cloudVeilShadowStrength: 0.35,
+    cloudVeilOpacity: 0.18,
+    ledgeOpacityMul: 1.0,
+  },
+  // Ominous — darker slate, heavier coverage, low atmosphere.
+  'Storm Brewing': {
+    skyY: 60,
+    skyZ: -300,
+    skyW: 1000,
+    skyH: 500,
+    skyFbmScale: 1.6,
+    skyFogScale: 2.6,
+    skyFogSpeed: 0.06,
+    skyGrainAmount: 0.035,
+    skyBaseColor: '#3a4452',
+    skyHighColor: '#677484',
+    skyHorizonColor: '#48535f',
+    skyFogColor: '#5a6573',
+    altitudePulseOverride: 0.05,
+    ridgeFarY: 88,
+    ridgeFarZ: -260,
+    ridgeFarW: 320,
+    ridgeFarH: 179,
+    ridgeFarOpacity: 0.55,
+    ridgeMidY: 100,
+    ridgeMidZ: -200,
+    ridgeMidW: 360,
+    ridgeMidH: 201,
+    ridgeMidOpacity: 0.85,
+    cloudY: 50,
+    cloudZ: -180,
+    cloudSize: 950,
+    cloudFbmScale: 1.5,
+    cloudDriftSpeed: 0.7,
+    cloudCoverageMax: 0.95,
+    cloudContrast: 1.15,
+    cloudRimStrength: 0.4,
+    cloudShadowStrength: 1.5,
+    cloudOpacity: 1.0,
+    cloudVeilY: 76,
+    cloudVeilZ: -235,
+    cloudVeilW: 1380,
+    cloudVeilH: 320,
+    cloudVeilFbmScale: 1.1,
+    cloudVeilDriftSpeed: 0.28,
+    cloudVeilCoverageMax: 0.88,
+    cloudVeilContrast: 0.82,
+    cloudVeilShadowStrength: 1.0,
+    cloudVeilOpacity: 0.56,
+    ledgeOpacityMul: 0.95,
+  },
+} as const;
+
+type AlpinePresetName = keyof typeof ALPINE_PRESETS;
+
 function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
   const groupRef = useRef<Group>(null);
   const lerpedP = useRef(0);
   const isActive = useRef(false);
   const altitudePulse = useRef(0);
   const cloudCoverage = useRef(0);
+  const cloudVeilCoverage = useRef(0);
   const sunPulseZero = useRef(0);
   const alpine = MODULE_TIMELINE.alpine;
   const summit = MODULE_TIMELINE.summit;
   const ranges = useMemo(() => sceneChildRanges('alpine', 4), []);
+
+  const defaultAlpinePreset = ALPINE_PRESETS[ALPINE_PRESET_DEFAULT];
+  const [controls, setAlpineControls] = useControls(
+    'Home Alpine',
+    () => ({
+      'scene · visibility': folder(
+        {
+          hazeEnabled: { label: 'haze', value: true },
+          ridgeFarEnabled: { label: 'ridge far', value: true },
+          ridgeMidEnabled: { label: 'ridge mid', value: true },
+          cloudSeaEnabled: { label: 'cloud sea', value: true },
+          cloudVeilEnabled: { label: 'cloud veil', value: true },
+          ledgesEnabled: { label: 'ledges', value: true },
+          birdEnabled: { label: 'bird', value: true },
+        },
+        { collapsed: false },
+      ),
+      'sky · placement': folder(
+        {
+          skyY: { value: defaultAlpinePreset.skyY, min: 0, max: 200, step: 1 },
+          skyZ: { value: defaultAlpinePreset.skyZ, min: -500, max: -100, step: 1 },
+          skyW: { value: defaultAlpinePreset.skyW, min: 400, max: 2000, step: 10 },
+          skyH: { value: defaultAlpinePreset.skyH, min: 200, max: 1200, step: 10 },
+        },
+        { collapsed: true },
+      ),
+      'sky · haze': folder(
+        {
+          skyFbmScale: { value: defaultAlpinePreset.skyFbmScale, min: 0.5, max: 6, step: 0.05 },
+          skyFogScale: { value: defaultAlpinePreset.skyFogScale, min: 0.5, max: 8, step: 0.05 },
+          skyFogSpeed: { value: defaultAlpinePreset.skyFogSpeed, min: 0, max: 0.3, step: 0.005 },
+          skyGrainAmount: { value: defaultAlpinePreset.skyGrainAmount, min: 0, max: 0.1, step: 0.001 },
+          altitudePulseOverride: {
+            label: 'altitude pulse (-1=auto)',
+            value: defaultAlpinePreset.altitudePulseOverride,
+            min: -1,
+            max: 1,
+            step: 0.01,
+          },
+        },
+        { collapsed: true },
+      ),
+      'sky · color': folder(
+        {
+          skyBaseColor: { value: defaultAlpinePreset.skyBaseColor, label: 'haze base' },
+          skyHighColor: { value: defaultAlpinePreset.skyHighColor, label: 'haze high' },
+          skyHorizonColor: { value: defaultAlpinePreset.skyHorizonColor, label: 'horizon' },
+          skyFogColor: { value: defaultAlpinePreset.skyFogColor, label: 'fog' },
+        },
+        { collapsed: true },
+      ),
+      'ridge · far': folder(
+        {
+          ridgeFarY: { value: defaultAlpinePreset.ridgeFarY, min: 0, max: 200, step: 1 },
+          ridgeFarZ: { value: defaultAlpinePreset.ridgeFarZ, min: -400, max: -100, step: 1 },
+          ridgeFarW: { value: defaultAlpinePreset.ridgeFarW, min: 100, max: 600, step: 2 },
+          ridgeFarH: { value: defaultAlpinePreset.ridgeFarH, min: 60, max: 360, step: 1 },
+          ridgeFarOpacity: { value: defaultAlpinePreset.ridgeFarOpacity, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      'ridge · mid': folder(
+        {
+          ridgeMidY: { value: defaultAlpinePreset.ridgeMidY, min: 0, max: 200, step: 1 },
+          ridgeMidZ: { value: defaultAlpinePreset.ridgeMidZ, min: -400, max: -100, step: 1 },
+          ridgeMidW: { value: defaultAlpinePreset.ridgeMidW, min: 100, max: 700, step: 2 },
+          ridgeMidH: { value: defaultAlpinePreset.ridgeMidH, min: 60, max: 400, step: 1 },
+          ridgeMidOpacity: { value: defaultAlpinePreset.ridgeMidOpacity, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      'cloud sea': folder(
+        {
+          cloudY: { value: defaultAlpinePreset.cloudY, min: 0, max: 160, step: 1 },
+          cloudZ: { value: defaultAlpinePreset.cloudZ, min: -300, max: -50, step: 1 },
+          cloudSize: { value: defaultAlpinePreset.cloudSize, min: 200, max: 1800, step: 10 },
+          cloudFbmScale: { value: defaultAlpinePreset.cloudFbmScale, min: 0.6, max: 3.5, step: 0.05 },
+          cloudDriftSpeed: { value: defaultAlpinePreset.cloudDriftSpeed, min: 0, max: 4, step: 0.05 },
+          cloudCoverageMax: { value: defaultAlpinePreset.cloudCoverageMax, min: 0, max: 1, step: 0.01 },
+          cloudContrast: { value: defaultAlpinePreset.cloudContrast, min: 0.5, max: 3, step: 0.02 },
+          cloudRimStrength: { value: defaultAlpinePreset.cloudRimStrength, min: 0, max: 4, step: 0.05 },
+          cloudShadowStrength: { value: defaultAlpinePreset.cloudShadowStrength, min: 0, max: 1.6, step: 0.02 },
+          cloudOpacity: { value: defaultAlpinePreset.cloudOpacity, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      'cloud veil': folder(
+        {
+          cloudVeilY: { value: defaultAlpinePreset.cloudVeilY, min: 0, max: 180, step: 1 },
+          cloudVeilZ: { value: defaultAlpinePreset.cloudVeilZ, min: -340, max: -80, step: 1 },
+          cloudVeilW: { value: defaultAlpinePreset.cloudVeilW, min: 400, max: 2200, step: 10 },
+          cloudVeilH: { value: defaultAlpinePreset.cloudVeilH, min: 80, max: 700, step: 5 },
+          cloudVeilFbmScale: { value: defaultAlpinePreset.cloudVeilFbmScale, min: 0.5, max: 3.5, step: 0.05 },
+          cloudVeilDriftSpeed: { value: defaultAlpinePreset.cloudVeilDriftSpeed, min: 0, max: 2, step: 0.02 },
+          cloudVeilCoverageMax: { value: defaultAlpinePreset.cloudVeilCoverageMax, min: 0, max: 1, step: 0.01 },
+          cloudVeilContrast: { value: defaultAlpinePreset.cloudVeilContrast, min: 0.4, max: 2.4, step: 0.02 },
+          cloudVeilShadowStrength: { value: defaultAlpinePreset.cloudVeilShadowStrength, min: 0, max: 1.6, step: 0.02 },
+          cloudVeilOpacity: { value: defaultAlpinePreset.cloudVeilOpacity, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+      ledges: folder(
+        {
+          ledgeOpacityMul: { value: defaultAlpinePreset.ledgeOpacityMul, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
+    }),
+    { collapsed: true },
+  );
+
+  useControls('Home Alpine Presets', {
+    preset: {
+      options: Object.keys(ALPINE_PRESETS),
+      value: ALPINE_PRESET_DEFAULT,
+      onChange: (value: string) => {
+        const preset = ALPINE_PRESETS[value as AlpinePresetName];
+        if (preset) setAlpineControls(preset);
+      },
+    },
+  });
 
   useFrame((state, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
@@ -1240,22 +2047,33 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
     const opacity = sceneOpacity('alpine', p);
     isActive.current = opacity > 0;
 
-    // Altitude pulse — couples to climb (alpine.enterStart → exitEnd).
-    // Smoothstep-eased so the brightening feels graded, not linear.
     const altSpan = alpine.exitEnd - alpine.enterStart;
     const altRaw = altSpan > 0 ? Math.min(1, Math.max(0, (p - alpine.enterStart) / altSpan)) : 0;
     altitudePulse.current = altRaw * altRaw * (3.0 - 2.0 * altRaw);
 
-    // Cloud coverage — alpine ramps 0 → 0.6 across its full window, then
-    // hands off into Summit's full carpet (1.0) across the seam.
+    // Coverage curve preserves the baked Alpine→Summit hand-off but uses the
+    // preset-driven peak instead of the previous hardcoded 0.6.
+    const peak = controls.cloudCoverageMax;
     let coverage: number;
     if (p < alpine.ownStart) coverage = 0;
     else if (p < alpine.exitStart)
-      coverage = 0.6 * Math.min(1, (p - alpine.ownStart) / (alpine.exitStart - alpine.ownStart));
+      coverage = peak * Math.min(1, (p - alpine.ownStart) / (alpine.exitStart - alpine.ownStart));
     else if (p < summit.ownStart)
-      coverage = 0.6 + 0.4 * Math.min(1, (p - alpine.exitStart) / (summit.ownStart - alpine.exitStart));
+      coverage = peak + (1.0 - peak) * Math.min(1, (p - alpine.exitStart) / (summit.ownStart - alpine.exitStart));
     else coverage = 1.0;
     cloudCoverage.current = coverage;
+
+    const veilPeak = controls.cloudVeilCoverageMax;
+    let veilCoverage: number;
+    if (p < alpine.ownStart) veilCoverage = 0;
+    else if (p < alpine.exitStart)
+      veilCoverage = veilPeak * Math.min(1, (p - alpine.ownStart) / (alpine.exitStart - alpine.ownStart));
+    else if (p < summit.ownStart)
+      veilCoverage =
+        veilPeak +
+        Math.min(0.2, 1.0 - veilPeak) * Math.min(1, (p - alpine.exitStart) / (summit.ownStart - alpine.exitStart));
+    else veilCoverage = 1.0;
+    cloudVeilCoverage.current = veilCoverage;
 
     if (groupRef.current) {
       groupRef.current.visible = opacity > 0;
@@ -1265,90 +2083,140 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
 
   return (
     <group ref={groupRef}>
-      {/* Painterly pre-dawn haze sky — replaces auto-panning alpine_wall */}
-      <AlpineHaze
-        isActive={isActive}
-        altitudePulseRef={altitudePulse}
-        position={[0, 60, -300]}
-        scale={[1000, 500]}
-        fbmScale={2.0}
-      />
+      {controls.hazeEnabled && (
+        <AlpineHaze
+          isActive={isActive}
+          altitudePulseRef={altitudePulse}
+          position={[0, controls.skyY, controls.skyZ]}
+          scale={[controls.skyW, controls.skyH]}
+          fbmScale={controls.skyFbmScale}
+          fogScale={controls.skyFogScale}
+          fogSpeed={controls.skyFogSpeed}
+          grainAmount={controls.skyGrainAmount}
+          baseColor={controls.skyBaseColor}
+          highColor={controls.skyHighColor}
+          horizonColor={controls.skyHorizonColor}
+          fogColor={controls.skyFogColor}
+          altitudePulseOverride={controls.altitudePulseOverride}
+        />
+      )}
 
-      {/* Far ridge silhouette — atmospheric, very pale, sets horizon */}
-      <SunRakeSilhouette
-        url="/alpine/ridge-far.webp"
-        position={[0, 88, -260]}
-        scale={[320, 179]}
-        sunPulseRef={sunPulseZero}
-        sunDir={[0.6, 0.5]}
-        warmStrength={0}
-      />
+      {controls.cloudVeilEnabled && (
+        <CloudSea
+          isActive={isActive}
+          scrollProgress={scrollProgress}
+          sunPulseRef={sunPulseZero}
+          coverageRef={cloudVeilCoverage}
+          position={[0, controls.cloudVeilY, controls.cloudVeilZ]}
+          size={controls.cloudVeilW}
+          planeScale={[controls.cloudVeilW, controls.cloudVeilH]}
+          rotationX={0}
+          fbmScale={controls.cloudVeilFbmScale}
+          driftSpeed={controls.cloudVeilDriftSpeed}
+          contrast={controls.cloudVeilContrast}
+          rimStrength={0}
+          shadowStrength={controls.cloudVeilShadowStrength}
+          opacity={controls.cloudVeilOpacity}
+          horizonColor={controls.skyFogColor}
+          renderOrder={-4}
+        />
+      )}
 
-      {/* Mid ridge silhouette — definite peaks rising into view as user climbs */}
-      <SunRakeSilhouette
-        url="/alpine/ridge-mid.webp"
-        position={[0, 100, -200]}
-        scale={[360, 201]}
-        sunPulseRef={sunPulseZero}
-        sunDir={[0.6, 0.5]}
-        warmStrength={0}
-      />
+      {controls.ridgeFarEnabled && (
+        <SunRakeSilhouette
+          url="/alpine/ridge-far.webp"
+          position={[0, controls.ridgeFarY, controls.ridgeFarZ]}
+          scale={[controls.ridgeFarW, controls.ridgeFarH]}
+          sunPulseRef={sunPulseZero}
+          sunDir={[0.6, 0.5]}
+          warmStrength={0}
+          opacity={controls.ridgeFarOpacity}
+        />
+      )}
 
-      {/* Distant cloud sea — condenses across the climb, hands off to Summit's full carpet */}
-      <CloudSea
-        isActive={isActive}
-        scrollProgress={scrollProgress}
-        sunPulseRef={sunPulseZero}
-        coverageRef={cloudCoverage}
-        position={[0, 60, -180]}
-        size={800}
-        fbmScale={1.6}
-        driftSpeed={0.4}
-      />
+      {controls.ridgeMidEnabled && (
+        <SunRakeSilhouette
+          url="/alpine/ridge-mid.webp"
+          position={[0, controls.ridgeMidY, controls.ridgeMidZ]}
+          scale={[controls.ridgeMidW, controls.ridgeMidH]}
+          sunPulseRef={sunPulseZero}
+          sunDir={[0.6, 0.5]}
+          warmStrength={0}
+          opacity={controls.ridgeMidOpacity}
+        />
+      )}
 
-      <SyncedRockLedge
-        textureUrl="/alpine_ledge_left.webp"
-        position={[-12, 0, -5]}
-        scale={[25, 25]}
-        range={ranges[0]}
-        lerpedP={lerpedP}
-      />
-      <SyncedRockLedge
-        textureUrl="/alpine_ledge_right.webp"
-        position={[12, 30, -10]}
-        scale={[25, 25]}
-        range={ranges[1]}
-        lerpedP={lerpedP}
-      />
-      <SyncedRockLedge
-        textureUrl="/alpine_ledge_left_variant_2.webp"
-        position={[-12, 60, -15]}
-        scale={[25, 25]}
-        range={ranges[2]}
-        lerpedP={lerpedP}
-      />
-      <SyncedRockLedge
-        textureUrl="/alpine_ledge_right_variant_2.webp"
-        position={[12, 90, -20]}
-        scale={[25, 25]}
-        range={ranges[3]}
-        lerpedP={lerpedP}
-      />
-      <AlpineAnimatedSprite
-        textureUrl="/bird_sprite.webp"
-        startX={-45}
-        endX={45}
-        y={105}
-        z={-30}
-        scrollStart={alpine.exitStart}
-        scrollEnd={alpine.ownEnd}
-        scale={[15, 15]}
-        scrollProgress={scrollProgress}
-        frames={12}
-        cols={6}
-        rows={2}
-        cycles={8}
-      />
+      {controls.cloudSeaEnabled && (
+        <CloudSea
+          isActive={isActive}
+          scrollProgress={scrollProgress}
+          sunPulseRef={sunPulseZero}
+          coverageRef={cloudCoverage}
+          position={[0, controls.cloudY, controls.cloudZ]}
+          size={controls.cloudSize}
+          fbmScale={controls.cloudFbmScale}
+          driftSpeed={controls.cloudDriftSpeed}
+          contrast={controls.cloudContrast}
+          rimStrength={controls.cloudRimStrength}
+          shadowStrength={controls.cloudShadowStrength}
+          opacity={controls.cloudOpacity}
+        />
+      )}
+
+      {controls.ledgesEnabled && (
+        <>
+          <SyncedRockLedge
+            textureUrl="/alpine_ledge_left.webp"
+            position={[-12, 0, -5]}
+            scale={[25, 25]}
+            range={ranges[0]}
+            lerpedP={lerpedP}
+            opacityMul={controls.ledgeOpacityMul}
+          />
+          <SyncedRockLedge
+            textureUrl="/alpine_ledge_right.webp"
+            position={[12, 30, -10]}
+            scale={[25, 25]}
+            range={ranges[1]}
+            lerpedP={lerpedP}
+            opacityMul={controls.ledgeOpacityMul}
+          />
+          <SyncedRockLedge
+            textureUrl="/alpine_ledge_left_variant_2.webp"
+            position={[-12, 60, -15]}
+            scale={[25, 25]}
+            range={ranges[2]}
+            lerpedP={lerpedP}
+            opacityMul={controls.ledgeOpacityMul}
+          />
+          <SyncedRockLedge
+            textureUrl="/alpine_ledge_right_variant_2.webp"
+            position={[12, 90, -20]}
+            scale={[25, 25]}
+            range={ranges[3]}
+            lerpedP={lerpedP}
+            opacityMul={controls.ledgeOpacityMul}
+          />
+        </>
+      )}
+
+      {controls.birdEnabled && (
+        <AlpineAnimatedSprite
+          textureUrl="/bird_sprite.webp"
+          startX={-45}
+          endX={45}
+          y={105}
+          z={-30}
+          scrollStart={alpine.exitStart}
+          scrollEnd={alpine.ownEnd}
+          scale={[15, 15]}
+          scrollProgress={scrollProgress}
+          frames={12}
+          cols={6}
+          rows={2}
+          cycles={8}
+        />
+      )}
     </group>
   );
 }
@@ -1394,10 +2262,18 @@ function CloudSea({
   coverageRef,
   position,
   size,
+  planeScale,
+  rotationX = -Math.PI / 2,
   fbmScale,
   driftSpeed,
+  coverage = 1,
+  contrast = 1,
+  rimStrength = 1,
+  shadowStrength = 1,
+  opacity = 1,
   sunDir,
   horizonColor,
+  renderOrder = 0,
 }: {
   isActive: React.MutableRefObject<boolean>;
   scrollProgress: MotionValue<number>;
@@ -1405,10 +2281,18 @@ function CloudSea({
   coverageRef?: React.MutableRefObject<number>;
   position: [number, number, number];
   size: number;
+  planeScale?: [number, number];
+  rotationX?: number;
   fbmScale: number;
   driftSpeed: number;
+  coverage?: number;
+  contrast?: number;
+  rimStrength?: number;
+  shadowStrength?: number;
+  opacity?: number;
   sunDir?: [number, number];
   horizonColor?: string;
+  renderOrder?: number;
 }) {
   const matRef = useRef<any>(null);
   const horizonColorObj = useMemo(() => (horizonColor ? new Color(horizonColor) : null), [horizonColor]);
@@ -1422,7 +2306,11 @@ function CloudSea({
       matRef.current.uSunPulse = sunPulseRef.current;
       // Coverage: Summit defaults to 1.0 (full carpet); Alpine drives it
       // 0 → 0.6 across the climb so the cloud sea condenses into being.
-      matRef.current.uCoverage = coverageRef ? coverageRef.current : 1.0;
+      matRef.current.uCoverage = coverageRef ? coverageRef.current : coverage;
+      matRef.current.uContrast = contrast;
+      matRef.current.uRimStrength = rimStrength;
+      matRef.current.uShadowStrength = shadowStrength;
+      matRef.current.uOpacity = opacity;
       if (sunDir) {
         matRef.current.uSunDir.set(sunDir[0], sunDir[1]);
       }
@@ -1432,9 +2320,9 @@ function CloudSea({
     }
   });
   return (
-    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={false}>
-      <planeGeometry args={[size, size]} />
-      <CloudSeaShader ref={matRef} transparent depthWrite={false} />
+    <mesh position={position} rotation={[rotationX, 0, 0]} renderOrder={renderOrder} frustumCulled={false}>
+      <planeGeometry args={planeScale ?? [size, size]} />
+      <CloudSeaShader ref={matRef} transparent depthTest={false} depthWrite={false} />
     </mesh>
   );
 }
@@ -1483,6 +2371,50 @@ function SunRakeSilhouette({
     <mesh position={position} frustumCulled={false}>
       <planeGeometry args={scale} />
       <SilhouetteSunRakeShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
+    </mesh>
+  );
+}
+
+function SummitCloudImage({
+  url,
+  position,
+  scale,
+  opacity = 1,
+  renderOrder = 0,
+}: {
+  url: string;
+  position: [number, number, number];
+  scale: [number, number];
+  opacity?: number;
+  renderOrder?: number;
+}) {
+  const tex = useTexture(url);
+  const material = useMemo(
+    () =>
+      new MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        opacity,
+        toneMapped: false,
+      }),
+    [tex, opacity],
+  );
+
+  useEffect(() => {
+    tex.wrapS = ClampToEdgeWrapping;
+    tex.wrapT = ClampToEdgeWrapping;
+    tex.minFilter = LinearFilter;
+    tex.magFilter = LinearFilter;
+    tex.needsUpdate = true;
+
+    return () => material.dispose();
+  }, [material, tex]);
+
+  return (
+    <mesh position={position} material={material} renderOrder={renderOrder} frustumCulled={false}>
+      <planeGeometry args={scale} />
     </mesh>
   );
 }
@@ -1538,23 +2470,23 @@ function screenBottomYAtZ(camera: PerspectiveCamera, z: number): number {
   return camera.position.y + t * dirY;
 }
 
-// Project the screen-right edge ray onto a world-Z plane. Used to corner-pin
-// the cliff and any closing-beat assets in the lower-right of the frame.
+// Project the screen-left edge ray onto a world-Z plane. Used to corner-pin
+// the cliff and closing-beat assets in the lower-left of the frame.
 // Horizontal FOV is derived from the vertical FOV and aspect ratio.
-function screenRightXAtZ(camera: PerspectiveCamera, z: number): number {
+function screenLeftXAtZ(camera: PerspectiveCamera, z: number): number {
   const fovYRad = (camera.fov * Math.PI) / 180;
   const halfV = fovYRad / 2;
   const halfH = Math.atan(Math.tan(halfV) * camera.aspect);
-  const dirX = Math.sin(halfH);
+  const dirX = -Math.sin(halfH);
   const dirZ = -Math.cos(halfH) * Math.cos(camera.rotation.x);
   if (Math.abs(dirZ) < 1e-4) return camera.position.x;
   const t = (z - camera.position.z) / dirZ;
   return camera.position.x + t * dirX;
 }
 
-// Corner-pinned cliff — anchors to the lower-right of the viewport at the
+// Corner-pinned cliff — anchors to the lower-left of the viewport at the
 // cliff's z. cornerOffsetX / cornerOffsetY are small fine-tune offsets in
-// world units (negative cornerOffsetX pulls the cliff inward from the right
+// world units (positive cornerOffsetX pulls the cliff inward from the left
 // edge, positive cornerOffsetY lifts it off the bottom edge). The cliff also
 // publishes its current rock-surface world Y/X to the optional anchorRef so
 // the flag sprite can plant on it without having to recompute the corner pin.
@@ -1601,10 +2533,10 @@ function SunRakeForegroundCliff({
     if (meshRef.current && (camera as PerspectiveCamera).isPerspectiveCamera) {
       const cam = camera as PerspectiveCamera;
       const screenBottomY = screenBottomYAtZ(cam, z);
-      const screenRightX = screenRightXAtZ(cam, z);
-      // Pin plane right-edge to viewport right-edge, plane bottom-edge to
+      const screenLeftX = screenLeftXAtZ(cam, z);
+      // Pin plane left-edge to viewport left-edge, plane bottom-edge to
       // viewport bottom-edge, with offsets for fine tune.
-      const centerX = screenRightX - scale[0] / 2 + cornerOffsetX;
+      const centerX = screenLeftX + scale[0] / 2 + cornerOffsetX;
       const centerY = screenBottomY + scale[1] / 2 + cornerOffsetY;
       meshRef.current.position.x = centerX;
       meshRef.current.position.y = centerY;
@@ -1622,7 +2554,7 @@ function SunRakeForegroundCliff({
   });
 
   return (
-    <mesh ref={meshRef} position={[0, 0, z]} frustumCulled={false}>
+    <mesh ref={meshRef} position={[0, 0, z]} renderOrder={10} frustumCulled={false}>
       <planeGeometry args={scale} />
       <SilhouetteSunRakeShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
     </mesh>
@@ -1684,91 +2616,310 @@ function SunRakeFlagSprite({
   });
 
   return (
-    <mesh ref={meshRef} frustumCulled={false}>
+    <mesh ref={meshRef} renderOrder={11} frustumCulled={false}>
       <planeGeometry args={scale} />
       <SilhouetteSunRakeShader ref={matRef} uTexture={tex} transparent depthWrite={true} />
     </mesh>
   );
 }
 
+const SUMMIT_PRESET_DEFAULT = 'Crisp Summit';
+
+const SUMMIT_PRESETS = {
+  'Cinematic Cloud Reveal': {
+    skyZ: -205,
+    skyY: 126,
+    skyW: 1500,
+    skyH: 760,
+    skyFbmScale: 2.1,
+    cloudY: 28,
+    cloudZ: -76,
+    cloudSize: 900,
+    cloudHeight: 110,
+    cloudFbmScale: 1.35,
+    cloudDriftSpeed: 0.65,
+    cloudOpacity: 0.18,
+    cloudCoverage: 0.38,
+    cloudContrast: 1.35,
+    cloudRimStrength: 1.2,
+    cloudShadowStrength: 0.42,
+    cloudForegroundY: 4,
+    cloudForegroundZ: -42,
+    cloudForegroundSize: 940,
+    cloudForegroundHeight: 80,
+    cloudForegroundOpacity: 0.08,
+    cloudForegroundCoverage: 0.28,
+    cloudHorizonColor: '#bbc7d8',
+    cloudImageX: -18,
+    cloudImageY: 108,
+    cloudImageZ: -150,
+    cloudImageW: 310,
+    cloudImageH: 174,
+    cloudImageOpacity: 1,
+    cloudImageNearX: -14,
+    cloudImageNearY: 10,
+    cloudImageNearZ: -48,
+    cloudImageNearW: 232,
+    cloudImageNearH: 111,
+    cloudImageNearOpacity: 0.3,
+    cliffZ: -2,
+    cliffW: 7.6,
+    cliffH: 4.2,
+    cliffCornerX: -1.35,
+    cliffCornerY: -0.05,
+    cliffRockUvX: 0.55,
+    cliffRockUvY: 0.65,
+    cliffWarm: 0.62,
+    flagScale: 2.85,
+    flagPoleUvX: 0.7,
+    flagPoleUvY: 0.05,
+    flagOffsetX: -0.04,
+    flagOffsetY: 0.02,
+    flagOffsetZ: 1.0,
+    flagWarm: 0.82,
+    sunDirX: 0.82,
+    sunDirY: 0.22,
+    sunGlowX: 14,
+    sunGlowY: 124,
+    sunGlowZ: -155,
+    sunGlowScale: 86,
+    sunGlowIntensity: 1.35,
+    sunGlowColor: '#fff3c7',
+    sunGlowHaloColor: '#f2a86d',
+  },
+  'Cloud Sea Wow': {
+    skyZ: -215,
+    skyY: 128,
+    skyW: 1600,
+    skyH: 820,
+    skyFbmScale: 1.8,
+    cloudY: 30,
+    cloudZ: -82,
+    cloudSize: 1000,
+    cloudHeight: 120,
+    cloudFbmScale: 1.15,
+    cloudDriftSpeed: 0.75,
+    cloudOpacity: 0.24,
+    cloudCoverage: 0.42,
+    cloudContrast: 1.5,
+    cloudRimStrength: 1.45,
+    cloudShadowStrength: 0.5,
+    cloudForegroundY: 6,
+    cloudForegroundZ: -36,
+    cloudForegroundSize: 1080,
+    cloudForegroundHeight: 92,
+    cloudForegroundOpacity: 0.12,
+    cloudForegroundCoverage: 0.34,
+    cloudHorizonColor: '#c0c9d4',
+    cloudImageX: -16,
+    cloudImageY: 110,
+    cloudImageZ: -154,
+    cloudImageW: 350,
+    cloudImageH: 197,
+    cloudImageOpacity: 1,
+    cloudImageNearX: -16,
+    cloudImageNearY: 12,
+    cloudImageNearZ: -42,
+    cloudImageNearW: 264,
+    cloudImageNearH: 127,
+    cloudImageNearOpacity: 0.36,
+    cliffZ: -2,
+    cliffW: 7.8,
+    cliffH: 4.25,
+    cliffCornerX: -1.45,
+    cliffCornerY: -0.08,
+    cliffRockUvX: 0.55,
+    cliffRockUvY: 0.65,
+    cliffWarm: 0.68,
+    flagScale: 2.9,
+    flagPoleUvX: 0.7,
+    flagPoleUvY: 0.05,
+    flagOffsetX: -0.04,
+    flagOffsetY: 0.02,
+    flagOffsetZ: 1.0,
+    flagWarm: 0.88,
+    sunDirX: 0.78,
+    sunDirY: 0.28,
+    sunGlowX: 10,
+    sunGlowY: 126,
+    sunGlowZ: -160,
+    sunGlowScale: 104,
+    sunGlowIntensity: 1.55,
+    sunGlowColor: '#fff4cf',
+    sunGlowHaloColor: '#ef9d66',
+  },
+  'Crisp Summit': {
+    skyZ: -195,
+    skyY: 124,
+    skyW: 1400,
+    skyH: 700,
+    skyFbmScale: 2.8,
+    cloudY: 24,
+    cloudZ: -72,
+    cloudSize: 760,
+    cloudHeight: 90,
+    cloudFbmScale: 1.8,
+    cloudDriftSpeed: 0.45,
+    cloudOpacity: 0.12,
+    cloudCoverage: 0.3,
+    cloudContrast: 1.25,
+    cloudRimStrength: 0.95,
+    cloudShadowStrength: 0.35,
+    cloudForegroundY: 2,
+    cloudForegroundZ: -44,
+    cloudForegroundSize: 780,
+    cloudForegroundHeight: 68,
+    cloudForegroundOpacity: 0.04,
+    cloudForegroundCoverage: 0.22,
+    cloudHorizonColor: '#b8c4d8',
+    cloudImageX: -14,
+    cloudImageY: 106,
+    cloudImageZ: -148,
+    cloudImageW: 300,
+    cloudImageH: 169,
+    cloudImageOpacity: 1,
+    cloudImageNearX: -14,
+    cloudImageNearY: 8,
+    cloudImageNearZ: -46,
+    cloudImageNearW: 224,
+    cloudImageNearH: 108,
+    cloudImageNearOpacity: 0.24,
+    cliffZ: -2,
+    cliffW: 7.4,
+    cliffH: 4.1,
+    cliffCornerX: -1.25,
+    cliffCornerY: -0.02,
+    cliffRockUvX: 0.55,
+    cliffRockUvY: 0.65,
+    cliffWarm: 0.58,
+    flagScale: 2.75,
+    flagPoleUvX: 0.7,
+    flagPoleUvY: 0.05,
+    flagOffsetX: -0.04,
+    flagOffsetY: 0.02,
+    flagOffsetZ: 1.0,
+    flagWarm: 0.78,
+    sunDirX: 0.9,
+    sunDirY: 0.12,
+    sunGlowX: 20,
+    sunGlowY: 123,
+    sunGlowZ: -150,
+    sunGlowScale: 68,
+    sunGlowIntensity: 1.1,
+    sunGlowColor: '#fff1c2',
+    sunGlowHaloColor: '#f4b072',
+  },
+} as const;
+
+type SummitPresetName = keyof typeof SUMMIT_PRESETS;
+
 function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
   const groupRef = useRef<Group>(null);
   const lerpedP = useRef(0);
   const isActive = useRef(false);
   const sunPulse = useRef(0);
+  const appliedDefaultPreset = useRef(false);
   // Cliff publishes its rock-surface world position here every frame so the
   // flag sprite can anchor to it without recomputing the corner pin.
   const cliffAnchor = useRef<{ x: number; y: number; z: number } | null>(null);
   const summit = MODULE_TIMELINE.summit;
 
-  const controls = useControls(
+  const defaultSummitPreset = SUMMIT_PRESETS[SUMMIT_PRESET_DEFAULT];
+  const [controls, setSummitControls] = useControls(
     'Home Summit',
-    {
+    () => ({
       // Dawn sky
-      skyZ: { value: -200, min: -260, max: -80, step: 1 },
-      skyY: { value: 125, min: 60, max: 160, step: 1 },
-      skyW: { value: 1400, min: 400, max: 2000, step: 10 },
-      skyH: { value: 700, min: 200, max: 1200, step: 10 },
-      skyFbmScale: { value: 2.4, min: 0.5, max: 8.0, step: 0.1 },
-      // Cloud sea — sliver of horizon haze between cliff foreground and ridges
-      cloudY: { value: 95, min: 0, max: 130, step: 1 },
-      cloudZ: { value: -60, min: -200, max: 30, step: 1 },
-      cloudSize: { value: 800, min: 200, max: 3000, step: 20 },
-      cloudFbmScale: { value: 1.8, min: 0.4, max: 6.0, step: 0.1 },
-      cloudDriftSpeed: { value: 0.6, min: 0, max: 4.0, step: 0.05 },
-      // Far ridge — atmospheric whisper, dissolves into sky-color
-      farX: { value: 22, min: -80, max: 80, step: 0.5 },
-      farY: { value: 118, min: 60, max: 200, step: 0.5 },
-      farZ: { value: -180, min: -300, max: -40, step: 1 },
-      farScale: { value: 200, min: 100, max: 800, step: 2 },
-      farWarm: { value: 0.0, min: 0, max: 1, step: 0.01 },
-      // Light atmospheric tint only — the asset is already a layered watercolor
-      // with built-in atmospheric perspective. High mix erases its detail.
-      farAtmosphericMix: { value: 0.25, min: 0, max: 1, step: 0.01 },
-      farAtmosphericColor: { value: '#b8c4d8' },
-      // Mid ridge — hero peak, slight off-center for compositional balance
-      midX: { value: 4, min: -60, max: 60, step: 0.5 },
-      midY: { value: 128, min: 60, max: 200, step: 0.5 },
-      midZ: { value: -110, min: -240, max: -30, step: 1 },
-      midScale: { value: 220, min: 80, max: 600, step: 2 },
-      midWarm: { value: 0.5, min: 0, max: 1, step: 0.01 },
-      // Cliff — small lower-right accent corner, anchored to viewport corner
-      cliffZ: { value: -2, min: -10, max: 6, step: 0.25 },
-      cliffW: { value: 2.0, min: 0.5, max: 8, step: 0.05 },
-      cliffH: { value: 1.1, min: 0.3, max: 6, step: 0.05 },
-      cliffCornerX: { value: 0.0, min: -3, max: 1, step: 0.05 },
-      cliffCornerY: { value: 0.0, min: -1, max: 3, step: 0.05 },
+      skyZ: { value: defaultSummitPreset.skyZ, min: -260, max: -80, step: 1 },
+      skyY: { value: defaultSummitPreset.skyY, min: 60, max: 160, step: 1 },
+      skyW: { value: defaultSummitPreset.skyW, min: 400, max: 2000, step: 10 },
+      skyH: { value: defaultSummitPreset.skyH, min: 200, max: 1200, step: 10 },
+      skyFbmScale: { value: defaultSummitPreset.skyFbmScale, min: 0.5, max: 8.0, step: 0.1 },
+      // Cloud sea — layered horizon carpet + closer rolling lip
+      cloudY: { value: defaultSummitPreset.cloudY, min: -40, max: 130, step: 1 },
+      cloudZ: { value: defaultSummitPreset.cloudZ, min: -200, max: 80, step: 1 },
+      cloudSize: { value: defaultSummitPreset.cloudSize, min: 200, max: 3000, step: 20 },
+      cloudHeight: { value: defaultSummitPreset.cloudHeight, min: 80, max: 700, step: 10 },
+      cloudFbmScale: { value: defaultSummitPreset.cloudFbmScale, min: 0.6, max: 3.5, step: 0.05 },
+      cloudDriftSpeed: { value: defaultSummitPreset.cloudDriftSpeed, min: 0, max: 4.0, step: 0.05 },
+      cloudOpacity: { value: defaultSummitPreset.cloudOpacity, min: 0, max: 1, step: 0.01 },
+      cloudCoverage: { value: defaultSummitPreset.cloudCoverage, min: 0, max: 1, step: 0.01 },
+      cloudContrast: { value: defaultSummitPreset.cloudContrast, min: 0.5, max: 3.2, step: 0.02 },
+      cloudRimStrength: { value: defaultSummitPreset.cloudRimStrength, min: 0, max: 4, step: 0.05 },
+      cloudShadowStrength: { value: defaultSummitPreset.cloudShadowStrength, min: 0, max: 1.5, step: 0.02 },
+      cloudForegroundY: { value: defaultSummitPreset.cloudForegroundY, min: -40, max: 130, step: 1 },
+      cloudForegroundZ: { value: defaultSummitPreset.cloudForegroundZ, min: -120, max: 80, step: 1 },
+      cloudForegroundSize: { value: defaultSummitPreset.cloudForegroundSize, min: 120, max: 2600, step: 10 },
+      cloudForegroundHeight: { value: defaultSummitPreset.cloudForegroundHeight, min: 60, max: 600, step: 5 },
+      cloudForegroundOpacity: { value: defaultSummitPreset.cloudForegroundOpacity, min: 0, max: 1, step: 0.01 },
+      cloudForegroundCoverage: { value: defaultSummitPreset.cloudForegroundCoverage, min: 0, max: 1, step: 0.01 },
+      // Generated cloud plates — painterly opaque shape, with shader clouds as atmosphere.
+      cloudHorizonColor: { value: defaultSummitPreset.cloudHorizonColor },
+      cloudImageX: { value: defaultSummitPreset.cloudImageX, min: -100, max: 100, step: 0.5 },
+      cloudImageY: { value: defaultSummitPreset.cloudImageY, min: -20, max: 180, step: 0.5 },
+      cloudImageZ: { value: defaultSummitPreset.cloudImageZ, min: -260, max: -20, step: 1 },
+      cloudImageW: { value: defaultSummitPreset.cloudImageW, min: 80, max: 520, step: 2 },
+      cloudImageH: { value: defaultSummitPreset.cloudImageH, min: 30, max: 260, step: 1 },
+      cloudImageOpacity: { value: defaultSummitPreset.cloudImageOpacity, min: 0, max: 1, step: 0.01 },
+      cloudImageNearX: { value: defaultSummitPreset.cloudImageNearX, min: -100, max: 100, step: 0.5 },
+      cloudImageNearY: { value: defaultSummitPreset.cloudImageNearY, min: -40, max: 140, step: 0.5 },
+      cloudImageNearZ: { value: defaultSummitPreset.cloudImageNearZ, min: -120, max: 20, step: 1 },
+      cloudImageNearW: { value: defaultSummitPreset.cloudImageNearW, min: 60, max: 420, step: 2 },
+      cloudImageNearH: { value: defaultSummitPreset.cloudImageNearH, min: 20, max: 220, step: 1 },
+      cloudImageNearOpacity: { value: defaultSummitPreset.cloudImageNearOpacity, min: 0, max: 1, step: 0.01 },
+      // Cliff — bottom-left foreground ledge, anchored to viewport corner
+      cliffZ: { value: defaultSummitPreset.cliffZ, min: -10, max: 6, step: 0.25 },
+      cliffW: { value: defaultSummitPreset.cliffW, min: 1, max: 14, step: 0.05 },
+      cliffH: { value: defaultSummitPreset.cliffH, min: 0.6, max: 9, step: 0.05 },
+      cliffCornerX: { value: defaultSummitPreset.cliffCornerX, min: -4, max: 6, step: 0.05 },
+      cliffCornerY: { value: defaultSummitPreset.cliffCornerY, min: -1, max: 3, step: 0.05 },
       // Where the visible rock surface sits in the cliff texture (UV space).
       // Asset-specific — the `cliff.webp` rock-top sits around (0.55, 0.65).
-      cliffRockUvX: { value: 0.55, min: 0, max: 1, step: 0.01 },
-      cliffRockUvY: { value: 0.65, min: 0, max: 1, step: 0.01 },
-      cliffWarm: { value: 0.55, min: 0, max: 1, step: 0.01 },
+      cliffRockUvX: { value: defaultSummitPreset.cliffRockUvX, min: 0, max: 1, step: 0.01 },
+      cliffRockUvY: { value: defaultSummitPreset.cliffRockUvY, min: 0, max: 1, step: 0.01 },
+      cliffWarm: { value: defaultSummitPreset.cliffWarm, min: 0, max: 1, step: 0.01 },
       // Flag — closing-beat sprite anchored to the cliff's rock-surface point
-      flagScale: { value: 1.6, min: 0.2, max: 6, step: 0.05 },
+      flagScale: { value: defaultSummitPreset.flagScale, min: 0.2, max: 8, step: 0.05 },
       // Where the pole base sits in the flag texture (UV space). Asset has
       // pole base at the bottom-right cluster of rocks: ≈ (0.70, 0.05).
-      flagPoleUvX: { value: 0.7, min: 0, max: 1, step: 0.01 },
-      flagPoleUvY: { value: 0.05, min: 0, max: 1, step: 0.01 },
+      flagPoleUvX: { value: defaultSummitPreset.flagPoleUvX, min: 0, max: 1, step: 0.01 },
+      flagPoleUvY: { value: defaultSummitPreset.flagPoleUvY, min: 0, max: 1, step: 0.01 },
       // Fine-tune offsets from the cliff anchor, in world units.
-      flagOffsetX: { value: 0.0, min: -2, max: 2, step: 0.02 },
-      flagOffsetY: { value: 0.0, min: -1, max: 1, step: 0.02 },
-      flagOffsetZ: { value: 1.0, min: -2, max: 4, step: 0.05 },
-      flagWarm: { value: 0.75, min: 0, max: 1, step: 0.01 },
+      flagOffsetX: { value: defaultSummitPreset.flagOffsetX, min: -2, max: 2, step: 0.02 },
+      flagOffsetY: { value: defaultSummitPreset.flagOffsetY, min: -1, max: 1, step: 0.02 },
+      flagOffsetZ: { value: defaultSummitPreset.flagOffsetZ, min: -2, max: 4, step: 0.05 },
+      flagWarm: { value: defaultSummitPreset.flagWarm, min: 0, max: 1, step: 0.01 },
       // Sun — low-right, just-risen rake
-      sunDirX: { value: 0.85, min: -1, max: 1, step: 0.02 },
-      sunDirY: { value: 0.15, min: -1, max: 1, step: 0.02 },
+      sunDirX: { value: defaultSummitPreset.sunDirX, min: -1, max: 1, step: 0.02 },
+      sunDirY: { value: defaultSummitPreset.sunDirY, min: -1, max: 1, step: 0.02 },
       // Visible sun glow halo — sits behind mid ridge so the peak silhouettes
       // against the bright disc; only the broad halo bleeds around the edge.
-      sunGlowX: { value: 18, min: -60, max: 60, step: 0.5 },
-      sunGlowY: { value: 122, min: 60, max: 200, step: 0.5 },
-      sunGlowZ: { value: -150, min: -260, max: -60, step: 1 },
-      sunGlowScale: { value: 55, min: 10, max: 200, step: 1 },
-      sunGlowIntensity: { value: 1.0, min: 0, max: 2.5, step: 0.05 },
-      sunGlowColor: { value: '#fff1c2' },
-      sunGlowHaloColor: { value: '#f4b072' },
-    },
+      sunGlowX: { value: defaultSummitPreset.sunGlowX, min: -60, max: 60, step: 0.5 },
+      sunGlowY: { value: defaultSummitPreset.sunGlowY, min: 60, max: 200, step: 0.5 },
+      sunGlowZ: { value: defaultSummitPreset.sunGlowZ, min: -260, max: -60, step: 1 },
+      sunGlowScale: { value: defaultSummitPreset.sunGlowScale, min: 10, max: 200, step: 1 },
+      sunGlowIntensity: { value: defaultSummitPreset.sunGlowIntensity, min: 0, max: 2.5, step: 0.05 },
+      sunGlowColor: { value: defaultSummitPreset.sunGlowColor },
+      sunGlowHaloColor: { value: defaultSummitPreset.sunGlowHaloColor },
+    }),
     { collapsed: true },
   );
+
+  useControls('Home Summit Presets', {
+    preset: {
+      options: Object.keys(SUMMIT_PRESETS),
+      value: SUMMIT_PRESET_DEFAULT,
+      onChange: (value: string) => {
+        const preset = SUMMIT_PRESETS[value as SummitPresetName];
+        if (preset) setSummitControls(preset);
+      },
+    },
+  });
+
+  useEffect(() => {
+    if (appliedDefaultPreset.current) return;
+    appliedDefaultPreset.current = true;
+    setSummitControls(SUMMIT_PRESETS[SUMMIT_PRESET_DEFAULT]);
+  }, [setSummitControls]);
 
   useFrame((state, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
@@ -1814,26 +2965,13 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
         haloColor={controls.sunGlowHaloColor}
       />
 
-      {/* Distant ridge layer — atmospheric whisper, dissolves into sky-color */}
-      <SunRakeSilhouette
-        url="/summit/ridge-far.webp"
-        position={[controls.farX, controls.farY, controls.farZ]}
-        scale={[controls.farScale, controls.farScale / 1.79]}
-        sunPulseRef={sunPulse}
-        sunDir={sunDir}
-        warmStrength={controls.farWarm}
-        atmosphericMix={controls.farAtmosphericMix}
-        atmosphericColor={controls.farAtmosphericColor}
-      />
-
-      {/* Hero ridge — single dominant peak, aspect-corrected (1.79) */}
-      <SunRakeSilhouette
-        url="/summit/ridge-mid.webp"
-        position={[controls.midX, controls.midY, controls.midZ]}
-        scale={[controls.midScale, controls.midScale / 1.79]}
-        sunPulseRef={sunPulse}
-        sunDir={sunDir}
-        warmStrength={controls.midWarm}
+      {/* Generated distant peak + cloud-bank plate — replaces the dominant old ridge image. */}
+      <SummitCloudImage
+        url="/summit/cloud-peak.webp"
+        position={[controls.cloudImageX, controls.cloudImageY, controls.cloudImageZ]}
+        scale={[controls.cloudImageW, controls.cloudImageH]}
+        opacity={controls.cloudImageOpacity}
+        renderOrder={3}
       />
 
       {/* Cloud sea — horizontal painted carpet, sun-coupled crests + horizon fog */}
@@ -1843,13 +2981,49 @@ function SummitSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
         sunPulseRef={sunPulse}
         position={[0, controls.cloudY, controls.cloudZ]}
         size={controls.cloudSize}
+        planeScale={[controls.cloudSize, controls.cloudHeight]}
+        rotationX={0}
         fbmScale={controls.cloudFbmScale}
         driftSpeed={controls.cloudDriftSpeed}
+        coverage={controls.cloudCoverage}
+        contrast={controls.cloudContrast}
+        rimStrength={controls.cloudRimStrength}
+        shadowStrength={controls.cloudShadowStrength}
+        opacity={controls.cloudOpacity}
         sunDir={sunDir}
-        horizonColor={controls.farAtmosphericColor}
+        horizonColor={controls.cloudHorizonColor}
       />
 
-      {/* Cliff — small lower-right accent corner, anchored to viewport corner */}
+      {/* Closer generated cloud lip, kept behind the cliff/flag foreground. */}
+      <SummitCloudImage
+        url="/summit/cloud-sea.webp"
+        position={[controls.cloudImageNearX, controls.cloudImageNearY, controls.cloudImageNearZ]}
+        scale={[controls.cloudImageNearW, controls.cloudImageNearH]}
+        opacity={controls.cloudImageNearOpacity}
+        renderOrder={4}
+      />
+
+      {/* Foreground cloud lip — closer, partial coverage, parallaxed by scroll. */}
+      <CloudSea
+        isActive={isActive}
+        scrollProgress={scrollProgress}
+        sunPulseRef={sunPulse}
+        position={[0, controls.cloudForegroundY, controls.cloudForegroundZ]}
+        size={controls.cloudForegroundSize}
+        planeScale={[controls.cloudForegroundSize, controls.cloudForegroundHeight]}
+        rotationX={0}
+        fbmScale={controls.cloudFbmScale * 1.35}
+        driftSpeed={controls.cloudDriftSpeed * 1.45}
+        coverage={controls.cloudForegroundCoverage}
+        contrast={controls.cloudContrast * 1.12}
+        rimStrength={controls.cloudRimStrength * 1.2}
+        shadowStrength={controls.cloudShadowStrength}
+        opacity={controls.cloudForegroundOpacity}
+        sunDir={sunDir}
+        horizonColor={controls.cloudHorizonColor}
+      />
+
+      {/* Cliff — bottom-left foreground ledge, anchored to viewport corner */}
       <SunRakeForegroundCliff
         textureUrl="/summit/cliff.webp"
         z={controls.cliffZ}

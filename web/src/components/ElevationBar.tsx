@@ -21,10 +21,11 @@ interface Zone {
 
 const ZONES: Zone[] = [
   { label: 'Basecamp', progress: 0.0, altitude: 8400 },
-  { label: 'Forest', progress: 0.22, altitude: 9200 },
-  { label: 'Camp', progress: 0.44, altitude: 10800 },
+  { label: 'Forest', progress: 0.16, altitude: 9200 },
+  { label: 'Camp', progress: 0.42, altitude: 10800 },
+  { label: 'Fork', progress: 0.55, altitude: 11400 },
   { label: 'Alpine', progress: 0.64, altitude: 12600 },
-  { label: 'Summit', progress: 0.84, altitude: 14430 },
+  { label: 'Summit', progress: 0.86, altitude: 14430 },
 ];
 
 const MIN_ALT = 8000;
@@ -34,7 +35,7 @@ const PROFILE_TOP = 10;
 const PROFILE_BOTTOM = 72;
 const VB_HEIGHT = PROFILE_BOTTOM + 29; // extra below baseline for labels
 const PAD_X = 28;
-const MAX_PROGRESS = ZONES[ZONES.length - 1].progress; // 0.84 — summit anchor
+const MAX_PROGRESS = ZONES[ZONES.length - 1].progress; // summit anchor
 
 function altToY(alt: number) {
   const t = (alt - MIN_ALT) / (MAX_ALT - MIN_ALT);

@@ -109,11 +109,19 @@ function Hero3DLayer({
   }, [tex]);
 
   useFrame((state) => {
-    if (isActive && !isActive.current) return;
+    if (isActive && !isActive.current) {
+      if (materialRef.current) {
+        materialRef.current.uMouse.copy(OFFSCREEN_MOUSE);
+      }
+      if (isMobile) {
+        touchMouse.current.copy(OFFSCREEN_MOUSE);
+      }
+      return;
+    }
 
     if (materialRef.current) {
       materialRef.current.uTime = state.clock.elapsedTime * 0.15;
-      materialRef.current.uWind = state.clock.elapsedTime * 0.15;
+      materialRef.current.uWind = 0.06;
       materialRef.current.uRadius = WATER_RADIUS;
       materialRef.current.uWashIntensity = WASH_INTENSITY;
       materialRef.current.uEdgePool = EDGE_POOL;

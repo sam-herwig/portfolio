@@ -8,15 +8,15 @@ import { forwardRef, Suspense, useEffect, useMemo, useRef } from 'react';
 import type { Mesh, ShaderMaterial, Texture } from 'three';
 import { AdditiveBlending, CanvasTexture, Color, LinearFilter, MeshBasicMaterial, SRGBColorSpace } from 'three';
 import { MAX_RIPPLES, WaterShaderMaterial } from '@/components/shaders/WaterMaterial';
-import { SumiSkyShaderMaterial } from '@/components/shaders/SumiSkyMaterial';
+import { GroveSkyShaderMaterial } from '@/components/shaders/GroveSkyMaterial';
 import { PaperOverlayEffect } from '@/components/grove/PaperOverlay';
 
-extend({ SumiSkyShaderMaterial });
+extend({ GroveSkyShaderMaterial });
 
-const SumiSkyShader = 'sumiSkyShaderMaterial' as any;
+const GroveSkyShader = 'groveSkyShaderMaterial' as any;
 
 /**
- * GroveScene — /shhhh dawn lake, true 3D.
+ * GroveScene — /off-trail dawn lake, true 3D.
  *
  * First-person view at a lakeshore looking across still water toward a
  * distant painted mountain silhouette. All values below are Leva-driven
@@ -52,7 +52,7 @@ function SumiSky({
   return (
     <mesh position={[0, 20, -180]} frustumCulled={false}>
       <planeGeometry args={[800, 400]} />
-      <SumiSkyShader
+      <GroveSkyShader
         ref={matRef}
         uColorHorizon={palette.skyHorizon}
         uColorZenith={palette.skyZenith}

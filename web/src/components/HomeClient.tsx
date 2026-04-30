@@ -24,6 +24,7 @@ const UnifiedScene = dynamic(() => import('@/components/UnifiedScene'), { ssr: f
 const heroRange = moduleRange('hero');
 const forestChildRanges = sceneChildRanges('forest', 4);
 const campWindow = MODULE_TIMELINE.camp;
+const trailForkRange = moduleRange('trailFork');
 const alpineChildRanges = sceneChildRanges('alpine', 4);
 const summitWindow = MODULE_TIMELINE.summit;
 
@@ -33,7 +34,7 @@ const summitWindow = MODULE_TIMELINE.summit;
 // rise is "absorbed" by the still-scrolling sticky parent and reads as a pop-in.
 const alpineFirstCardRange = (() => {
   const nextStart = alpineChildRanges[1]?.[0] ?? 0.65;
-  const start = 0.61; // progress at which Alpine sticky container is fully engaged
+  const start = MODULE_TIMELINE.alpine.enterStart + 0.03; // progress at which Alpine sticky container is fully engaged
   const span = nextStart - start;
   const fadeLen = span * 0.2;
   return [start, start + fadeLen, nextStart - fadeLen, nextStart] as const;
@@ -128,6 +129,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
   const refHero = useRef<HTMLDivElement>(null);
   const refForest = useRef<HTMLDivElement>(null);
   const refCamp = useRef<HTMLDivElement>(null);
+  const refTrailFork = useRef<HTMLDivElement>(null);
   const refAlpine = useRef<HTMLDivElement>(null);
   const refSummit = useRef<HTMLElement>(null);
 
@@ -152,18 +154,24 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
     };
   }, [scrollYProgress]);
 
-  // ── Restore scroll position when returning from case study ──
+  // ── Restore scroll position when returning from case study or off-trail ──
   // Read savedScrollY via getState() so this fires only on mount — subscribing
   // would re-fire the effect when CaseStudyCard writes the value on card-click,
   // clearing it before navigation even happens.
   useEffect(() => {
     const y = useAppStore.getState().savedScrollY;
-    if (y <= 0) return;
+    const returnAnchor = window.sessionStorage.getItem('sh-return-anchor');
+    if (y <= 0 && !returnAnchor) return;
     // Double RAF so the long scroll container is laid out before we jump.
     // Without this, document height may still be 0 and the scroll silently clips.
     const raf1 = requestAnimationFrame(() => {
       const raf2 = requestAnimationFrame(() => {
-        window.scrollTo(0, y);
+        if (y > 0) {
+          window.scrollTo(0, y);
+        } else if (returnAnchor) {
+          document.getElementById(returnAnchor)?.scrollIntoView({ block: 'start' });
+          window.sessionStorage.removeItem('sh-return-anchor');
+        }
         useAppStore.getState().setSavedScrollY(0);
       });
       (window as unknown as { __rafRestore2?: number }).__rafRestore2 = raf2;
@@ -201,6 +209,23 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
     [0, 1, 1, 0],
   );
 
+  const trailForkOpacity = useTransform(scrollYProgress, [...trailForkRange], [0, 1, 1, 0]);
+  const trailForkY = useTransform(
+    scrollYProgress,
+    [trailForkRange[0], trailForkRange[1], trailForkRange[3]],
+    reducedMotion ? [0, 0, 0] : [36, 0, -24],
+  );
+
+  const handleOffTrail = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.sessionStorage.setItem('sh-return-anchor', 'selected-work');
+    useAppStore.getState().startTransition({ x: e.clientX, y: e.clientY }, '#f9fafb', '/off-trail');
+  };
+
+  const handleKeepClimbing = () => {
+    refAlpine.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+  };
+
   // ── Summit child sequencing inside summit ownership window ──
   // Content appears after 3D elements fade out (animP 0.70+)
   const summitSpan = summitWindow.ownEnd - summitWindow.ownStart;
@@ -218,7 +243,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
       style={{ backgroundColor, color }}
       className="relative min-h-screen w-full overflow-x-clip transition-colors duration-100"
     >
-      {/* Forest off-trail marker — hidden egg, click → /shhhh */}
+      {/* Forest off-trail marker — hidden egg, click → /off-trail */}
       <GroveMarker scrollProgress={scrollYProgress} />
 
       {/* Preloader — overlays everything until assets are loaded */}
@@ -337,7 +362,7 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           ref={refCamp}
           role="region"
           aria-label="Technical Skills"
-          className="relative w-full min-h-[260vh] md:min-h-[345vh]"
+          className="relative w-full min-h-[210vh] md:min-h-[280vh]"
         >
           <h2 className="sr-only">Technical Skills</h2>
           <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 md:px-12">
@@ -351,6 +376,45 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
                 <div className="relative z-10 p-6 md:p-10 lg:p-12">
                   <GearRack scrollProgress={scrollYProgress} />
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Trail Fork — optional route branch before Alpine */}
+        <section
+          id="trail-fork"
+          ref={refTrailFork}
+          role="region"
+          aria-label="Trail Fork"
+          className="relative w-full min-h-[145vh] md:min-h-[190vh]"
+        >
+          <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 py-20 md:px-12">
+            <motion.div
+              style={{ opacity: trailForkOpacity, y: trailForkY }}
+              className="mx-auto flex w-full max-w-4xl items-center justify-center"
+            >
+              <div className="relative w-[min(78vw,30rem)]">
+                <Image
+                  src="/trail-fork/signpost.png"
+                  alt=""
+                  width={1024}
+                  height={1536}
+                  className="h-auto w-full select-none drop-shadow-[0_22px_44px_rgba(24,24,27,0.18)]"
+                  priority={false}
+                />
+                <button
+                  type="button"
+                  aria-label="Off trail"
+                  onClick={handleOffTrail}
+                  className="absolute left-[4%] top-[22%] h-[19%] w-[66%] -rotate-[1deg] cursor-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-foreground/70 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+                />
+                <button
+                  type="button"
+                  aria-label="Keep climbing"
+                  onClick={handleKeepClimbing}
+                  className="absolute right-[4%] top-[45%] h-[19%] w-[72%] rotate-[1deg] cursor-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-foreground/70 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+                />
               </div>
             </motion.div>
           </div>

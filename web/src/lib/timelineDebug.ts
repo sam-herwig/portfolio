@@ -23,7 +23,7 @@ export function isTimelineDebugEnabled(): boolean {
 }
 
 // ── State tracking for change-based logging ─────────────────────────────
-const MODULES: ModuleName[] = ['hero', 'forest', 'camp', 'alpine', 'summit'];
+const MODULES: ModuleName[] = ['hero', 'forest', 'camp', 'trailFork', 'alpine', 'summit'];
 
 type ModulePhase = 'before' | 'entering' | 'own' | 'exiting' | 'after';
 
@@ -37,7 +37,7 @@ interface DebugState {
 
 const state: DebugState = {
   activeModule: 'none',
-  phases: { hero: 'before', forest: 'before', camp: 'before', alpine: 'before', summit: 'before' },
+  phases: { hero: 'before', forest: 'before', camp: 'before', trailFork: 'before', alpine: 'before', summit: 'before' },
   forestCards: [false, false, false, false],
   alpineCards: [false, false, false, false],
   lastLogProgress: -1,

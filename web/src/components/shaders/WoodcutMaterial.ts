@@ -122,7 +122,7 @@ const WoodcutShaderMaterial = shaderMaterial(
     void main() {
       // 1. Calculate cursor/touch wetness in screen coordinates.
       float distToMouse = distance(vScreenPos, uMouse);
-      float wetRadius = 1.0 - smoothstep(0.0, uRadius * 2.0, distToMouse);
+      float wetRadius = uRadius > 0.0001 ? 1.0 - smoothstep(0.0, uRadius * 2.0, distToMouse) : 0.0;
 
       // 2. Generate organic pigment and paper variation.
       float timeFlow = uTime * uSpeed;
@@ -179,7 +179,7 @@ const WoodcutShaderMaterial = shaderMaterial(
       float washAlpha = (edgeWash * 0.55 + wetRadius * expandedAlpha * uWashIntensity * 0.16 + openWash);
       float finalAlpha = max(baseAlpha, washAlpha) * uOpacity;
 
-      if (finalAlpha < 0.05) discard;
+      if (finalAlpha < 0.08) discard;
 
       gl_FragColor = vec4(finalColor, finalAlpha);
     }

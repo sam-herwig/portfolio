@@ -10,7 +10,7 @@ import { useAppStore } from '@/store/useAppStore';
 const FOREST = MODULE_TIMELINE.forest;
 
 /**
- * Hidden Forest egg — clicking it transitions to /shhhh.
+ * Hidden Forest egg — clicking it transitions to /off-trail.
  * Placeholder visual until the commissioned WebP arrives.
  */
 export default function GroveMarker({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
@@ -29,8 +29,9 @@ export default function GroveMarker({ scrollProgress }: { scrollProgress: Motion
     if (navigatingRef.current) return;
     navigatingRef.current = true;
     useFoundEggs.getState().markFound('grove');
-    useAppStore.getState().startTransition({ x: e.clientX, y: e.clientY }, '#18181b', '/shhhh');
-    window.setTimeout(() => router.push('/shhhh'), 500);
+    window.sessionStorage.setItem('sh-return-anchor', 'selected-work');
+    useAppStore.getState().startTransition({ x: e.clientX, y: e.clientY }, '#18181b', '/off-trail');
+    window.setTimeout(() => router.push('/off-trail'), 500);
   };
 
   if (found) return null;
