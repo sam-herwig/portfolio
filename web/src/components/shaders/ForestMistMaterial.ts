@@ -81,37 +81,19 @@ const ForestMistShaderMaterial = shaderMaterial(
     }
 
     void main() {
-      // Vertical gradient — forest floor (warmer cool at uv.y=0) to canopy
-      // depth (deeper slate at uv.y=1). Subtle inversion of the dawn-sky
-      // gradient: in a forest, depth lives upward and outward, not downward.
+      // Smooth vertical gradient — forest floor (warmer cool at uv.y=0) to canopy
+      // depth (deeper slate at uv.y=1).
       float g = smoothstep(0.0, 1.0, vUv.y);
       vec3 base = mix(uColorMistCool, uColorMistShadow, g);
 
-      // Painterly unevenness via domain-warped fbm — same recipe as DawnSky.
-      vec2 q = vec2(
-        fbm(vUv * uFbmScale + vec2(0.0, uTime * uFogSpeed)),
-        fbm(vUv * uFbmScale + vec2(5.2, 1.3 - uTime * uFogSpeed * 0.5))
-      );
-      float wash = fbm(vUv * uFbmScale + 2.0 * q + vec2(uTime * uFogSpeed * 0.2));
-
-      // Hero dial — uMistDensity flattens the wash. Low density: more
-      // tonal variation visible (you can see structure through the mist).
-      // High density: wash collapses, everything pulls toward a cool
-      // midtone — the visual signature of "thicker fog."
+      // Hero dial — uMistDensity shifts the gradient toward the cool mist color
+      // as density increases, representing thicker fog hiding the dark depths.
       float density = clamp(uMistDensity, 0.0, 1.0);
-      vec3 mist = base + (wash - 0.5) * uWashAmount * (1.0 - density);
-      mist = mix(mist, uColorMistCool * 0.88, density * 0.35);
+      vec3 mist = mix(base, uColorMistCool * 0.9, density * 0.6);
 
-      // Broad, quiet wash bands: enough movement to avoid a flat card,
-      // but low-frequency so the sky does not read as spotted dirt.
-      vec2 bandUv = vec2(vUv.x * 0.55 + vUv.y * 0.2, vUv.y * 2.6);
-      float band = fbm(bandUv + vec2(uTime * uFogSpeed * 0.08, -uTime * uFogSpeed * 0.12));
-      float veil = smoothstep(0.48, 0.86, band) * (1.0 - smoothstep(0.78, 1.0, vUv.y));
-      mist = mix(mist, uColorMistCool * 0.94, veil * uBandStrength * (0.5 + density * 0.5));
-
-      // Paper fiber grain — keeps the gradient from reading digital.
-      float fiber = vnoise(vUv * 90.0);
-      mist += (fiber - 0.5) * uGrainAmount;
+      // Paper fiber grain — keeps the smooth gradient from banding.
+      float fiber = fract(sin(dot(vUv.xy, vec2(12.9898, 78.233))) * 43758.5453);
+      mist += (fiber - 0.5) * uGrainAmount * 2.0;
 
       gl_FragColor = vec4(mist, uOpacity);
     }

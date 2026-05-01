@@ -1,6 +1,6 @@
 'use client';
 
-import { EffectComposer, Noise, ChromaticAberration, Vignette, DepthOfField, Bloom } from '@react-three/postprocessing';
+import { EffectComposer, ChromaticAberration, DepthOfField, Bloom } from '@react-three/postprocessing';
 import { useThree } from '@react-three/fiber';
 import { Vector2 } from 'three';
 import { useQualityStore, qualityPresets } from '@/lib/quality';
@@ -9,12 +9,10 @@ export default function PostProcessingStack({
   bloomIntensity = 0,
   disableDepthOfField = false,
   disableChromaticAberration = false,
-  noiseOpacity = 0.06,
 }: {
   bloomIntensity?: number;
   disableDepthOfField?: boolean;
   disableChromaticAberration?: boolean;
-  noiseOpacity?: number;
 }) {
   const { gl } = useThree();
   const tier = useQualityStore((s) => s.tier);
@@ -26,15 +24,11 @@ export default function PostProcessingStack({
   return (
     <EffectComposer multisampling={preset.multisampling}>
       <>
-        {preset.enableNoise && noiseOpacity > 0.001 ? <Noise opacity={noiseOpacity} /> : <></>}
-
         {preset.enableChromaticAberration && !disableChromaticAberration ? (
           <ChromaticAberration offset={new Vector2(0.0008, 0.0008)} radialModulation={true} modulationOffset={0.5} />
         ) : (
           <></>
         )}
-
-        <Vignette eskil={false} offset={0.1} darkness={0.8} />
 
         {preset.enableDepthOfField && !disableDepthOfField ? (
           <DepthOfField focusDistance={0.0} focalLength={0.02} bokehScale={2} height={480} />

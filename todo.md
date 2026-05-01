@@ -1,3 +1,163 @@
+# Alpine Cloud Follow Pass
+
+## Context
+
+The previous pass made Alpine cloud coverage available earlier, but the visible result still arrives late because the main cloud mesh is a static horizontal world-space carpet at `cloudY: 60`, `cloudZ: -180`, `rotationX: -PI/2`. Alpine's camera climbs from `y=-60` to `y=120`, so the camera does not see the carpet until it reaches that altitude. The apparent rotation is perspective from flying past a flat plane, not the coverage curve.
+
+## Plan
+
+- [ ] 1. Add a minimal `followCameraY` option to `CloudSea` so a cloud layer can keep a constant vertical offset from the active camera.
+- [ ] 2. Use that option only for the Alpine main cloud sea, keeping the existing Leva placement values as offsets.
+- [ ] 3. Keep the Alpine veil screen-facing and static for now so this pass only changes the main cloud carpet.
+- [ ] 4. Leave coverage timing, module timeline, camera path, Summit clouds, and preset values unchanged.
+- [ ] 5. Run `cd web && npm run lint`.
+- [ ] 6. Reload the in-app browser for visual review.
+- [ ] 7. Add a review note with the final change and verification.
+
+---
+
+# Alpine Cloud Carry Pass
+
+## Context
+
+The first visible cloud shader is the Alpine `CloudSea` inside `AlpineSceneGroup`. Right now it is tied to Alpine scene ownership: coverage starts at `0` at `alpine.ownStart`, ramps slowly to the preset peak by `alpine.exitStart`, then ramps toward full coverage by `summit.ownStart`. Summit has its own `CloudSea` layers after that. This makes the cloud arrive late instead of following the user through most of the selected-work/Summit journey.
+
+## Plan
+
+- [x] 1. Update the Alpine `cloudCoverage` curve so it reaches the preset peak by `alpine.enterEnd` instead of waiting until `alpine.exitStart`.
+- [x] 2. Hold main cloud coverage through the Alpine content window, then keep the existing Alpine-to-Summit full-coverage handoff.
+- [x] 3. Apply the same earlier ramp/hold behavior to `cloudVeilCoverage` so the screen-facing veil follows with the main cloud layer.
+- [x] 4. Leave `MODULE_TIMELINE`, camera motion, card layout, and Summit cloud presets unchanged for this pass.
+- [x] 5. Run `cd web && npm run lint`.
+- [x] 6. Reload the in-app browser for visual review.
+- [x] 7. Add a review note with the final change and verification.
+
+## Review
+
+- Changed Alpine main `cloudCoverage` to ramp from `0` to the preset peak during `alpine.ownStart -> alpine.enterEnd`.
+- Held main cloud coverage at the preset peak through the Alpine content window.
+- Kept the existing Alpine-to-Summit handoff, still ramping from the Alpine preset peak toward full coverage during `alpine.exitStart -> summit.ownStart`.
+- Applied the same early ramp and hold behavior to `cloudVeilCoverage`.
+- Left `MODULE_TIMELINE`, camera motion, card layout, Summit cloud presets, and cloud placement values unchanged.
+- Verification: `cd web && npm run lint` passes with 0 errors. It still reports the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings.
+- Reloaded the in-app browser at `http://localhost:3000/`.
+
+---
+
+# Camp Local Noise Reduction Experiment
+
+## Context
+
+Global post-processing `Noise`, global `Vignette`, and `CampGroundWash` are now removed, but Camp still reads noisy. The remaining texture is coming from Camp-local sources: `SumiSkyMaterial` paper grain/stars, `CampDustPlane`, and baked detail in the authored PNGs.
+
+## Findings
+
+- No shared composer `Noise` pass remains.
+- `SumiSkyMaterial` still adds paper grain via `final += (fiber - 0.5) * uGrainAmount`, currently controlled by `grain: 0.022`.
+- `SumiSkyMaterial` also renders a dense procedural star field; visually, the small star flecks can read like noise in the upper sky.
+- `CampDustPlane` still overlays procedural FBM dust at `dustIntensity: 0.85` and `dustAlphaCap: 0.28`.
+- The authored Camp PNGs have baked high-variance texture/ink speckle. Asset stats show high visible luma variance, especially `campsite.png`, `foreground.png`, and the generated ground/underbrush plates.
+
+## Plan
+
+- [x] 1. Disable `CampDustPlane` in `CampSceneGroup`.
+- [x] 2. Set Camp sky `grain` default to `0`.
+- [x] 3. Reduce the star field so intentional stars remain but stop reading like surface speckle.
+- [x] 4. Leave the authored Camp PNG assets unchanged for this pass.
+- [x] 5. Run `cd web && npm run lint`.
+- [x] 6. Reload the in-app browser for visual review.
+- [x] 7. Add a review note with the final change and verification.
+
+## Review
+
+- Removed `CampDustPlane` from the Camp scene render path.
+- Set Camp sky paper grain default from `0.022` to `0`.
+- Reduced procedural stars by making them sparser and dimmer: `starDensity` `0.988 -> 0.995`, `starGrid` `600 -> 420`, `starTrim` `0.85 -> 0.55`, and `heroThreshold` `0.99 -> 0.997`.
+- Left the authored Camp PNG assets unchanged.
+- Verification: `cd web && npm run lint` passes with 0 errors. It still reports the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings.
+- Reloaded the in-app browser at `http://localhost:3000/`.
+
+---
+
+# Global Post-Processing Noise Removal Experiment
+
+## Context
+
+The remaining spotty/static texture is most visible on broad, low-contrast areas such as the Camp ground below the authored assets. The global post-processing `Noise` pass applies screen-space noise over the final rendered frame, then stacks on top of shader-local paper grain and authored texture detail. For this experiment, remove the global pass across the site while leaving shader-local grain intact.
+
+## Plan
+
+- [x] 1. Remove the `Noise` effect from `web/src/components/PostProcessingStack.tsx`.
+- [x] 2. Remove the now-unused `noiseOpacity` prop and homepage noise interpolation state from `UnifiedPostProcessing`.
+- [x] 3. Remove unused `enableNoise` quality preset fields so the quality config matches the active post-processing stack.
+- [x] 4. Run `cd web && npm run lint`.
+- [x] 5. Reload the in-app browser for visual review.
+- [x] 6. Add a review note with the final change and verification.
+
+## Review
+
+- Removed the global screen-space `Noise` pass from `web/src/components/PostProcessingStack.tsx`.
+- Removed `noiseOpacity` from the post-processing API and removed the homepage noise interpolation state from `UnifiedPostProcessing`.
+- Removed the stale `enableNoise` fields from `web/src/lib/quality.ts`.
+- Left shader-local paper/ink/noise controls in place so this experiment only removes final-frame static.
+- Verification: `cd web && npm run lint` passes with 0 errors. It still reports the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings.
+- Reloaded the in-app browser at `http://localhost:3000/`.
+
+---
+
+# Camp Bottom Wash Removal Investigation
+
+## Context
+
+The first pass reduced the global Three.js `Vignette` darkness by 70%, but the Camp screenshot still shows a large gray/dark field over the lower viewport. Further tracing points to Camp-specific layers, especially `CampGroundWash`, rather than the global vignette alone.
+
+## Findings
+
+- `CampGroundWash` renders a near-black `#030407` shader plane at `opacity={0.82}` behind the campsite.
+- The wash shader uses vertical fades plus screen-space grain, then outputs `gl_FragColor = vec4(uColor + grain, alpha)`, which creates the smoky gray block visible in the screenshot.
+- The wash mesh is `depthTest: false`, `depthWrite: false`, and `renderOrder={-1}`, so it behaves like a composited overlay rather than ordinary scene geometry.
+- Camp foreground/campsite/ridge PNGs also contain dark lower-half alpha, but those are authored scene assets. The artificial full-width wash is the safest next thing to remove.
+
+## Plan
+
+- [x] 1. Remove the global `Vignette` pass entirely from `PostProcessingStack.tsx`.
+- [x] 2. Remove the `CampGroundWash` render from `CampSceneGroup`.
+- [x] 3. Leave the actual Camp artwork layers (`ridge`, `campsite`, `foreground`) in place for this pass.
+- [x] 4. Run `cd web && npm run lint`.
+- [x] 5. Reload the in-app browser for visual review.
+- [x] 6. Add a review note with the final change and verification.
+
+## Review
+
+- Removed the global post-processing `Vignette` pass from `web/src/components/PostProcessingStack.tsx`.
+- Removed the custom `CampGroundWash` shader component and its render call from `web/src/components/UnifiedScene.tsx`.
+- Kept the actual Camp authored artwork layers in place: `ridge.png`, `campsite.png`, and `foreground.png`.
+- Verification: `cd web && npm run lint` passes with 0 errors. It still reports the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings.
+- Reloaded the in-app browser at `http://localhost:3000/` for visual review.
+
+---
+
+# Vignette Reduction Pass
+
+## Context
+
+The visible edge-darkening in the Camp screenshot is driven first by the global `Vignette` effect in `web/src/components/PostProcessingStack.tsx`. The current value is `darkness={0.8}`. The requested change is to reduce that first/global vignette effect by about 70%, keeping this pass isolated from the Camp-specific ground wash and foreground artwork.
+
+## Plan
+
+- [x] 1. Change the global `Vignette` darkness from `0.8` to `0.24` in `web/src/components/PostProcessingStack.tsx`.
+- [x] 2. Leave Camp-specific `CampGroundWash` and foreground opacity unchanged so the visual delta is attributable to the global vignette only.
+- [x] 3. Run a focused lint check for the edited file/package if needed.
+- [x] 4. Add a review section summarizing the change and verification.
+
+## Review
+
+- Reduced the global Three.js post-processing vignette darkness by 70%, from `0.8` to `0.24`, in `web/src/components/PostProcessingStack.tsx`.
+- Left Camp-specific `CampGroundWash`, foreground artwork opacity, dust, grain, and bloom settings unchanged so this pass only affects the global edge-darkening effect.
+- Verification: `cd web && npm run lint` passes with 0 errors. It still reports the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings.
+
+---
+
 # Alpine Controls + Presets Pass
 
 ## Context

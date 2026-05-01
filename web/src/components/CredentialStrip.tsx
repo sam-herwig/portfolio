@@ -3,9 +3,21 @@
 import { motion } from 'framer-motion';
 
 const techLogos = [
-  'Three.js', 'WebGL', 'GLSL', 'React', 'Next.js', 'Vue', 'Nuxt',
-  'TypeScript', 'GSAP', 'Framer Motion', 'Tailwind', 'Sanity',
-  'Node.js', 'WebXR', 'D3.js',
+  'Three.js',
+  'WebGL',
+  'GLSL',
+  'React',
+  'Next.js',
+  'Vue',
+  'Nuxt',
+  'TypeScript',
+  'GSAP',
+  'Framer Motion',
+  'Tailwind',
+  'Sanity',
+  'Node.js',
+  'WebXR',
+  'D3.js',
 ];
 
 export default function CredentialStrip() {

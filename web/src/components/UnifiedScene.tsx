@@ -22,7 +22,6 @@ import {
   LinearFilter,
   MathUtils,
   PerspectiveCamera,
-  ShaderMaterial,
 } from 'three';
 import PostProcessingStack from './PostProcessingStack';
 import QualityMonitor from './QualityMonitor';
@@ -251,40 +250,23 @@ function UnifiedPostProcessing({ scrollProgress }: { scrollProgress: MotionValue
   // Throttled setState: only fires ~10-15 times during a scroll through camp,
   // not every frame. Acceptable per r3f perf guidance.
   const [bloomIntensity, setBloomIntensity] = useState(0);
-  const [noiseOpacity, setNoiseOpacity] = useState(0.06);
   const lerpedP = useRef(0);
   const lerpedBloom = useRef(0);
-  const lerpedNoise = useRef(0.06);
   const lastSnap = useRef(0);
-  const lastNoiseSnap = useRef(0.06);
 
   useFrame((state, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
     const p = lerpedP.current;
     const campOpacity = sceneOpacity('camp', p);
-    const forestOpacity = sceneOpacity('forest', p);
     const targetBloom = campOpacity > 0.05 ? 1.2 : 0;
-    const targetNoise = MathUtils.lerp(0.06, 0.015, forestOpacity);
     lerpedBloom.current = MathUtils.damp(lerpedBloom.current, targetBloom, 3, delta);
-    lerpedNoise.current = MathUtils.damp(lerpedNoise.current, targetNoise, 4, delta);
     if (Math.abs(lerpedBloom.current - lastSnap.current) > 0.1) {
       lastSnap.current = lerpedBloom.current;
       setBloomIntensity(lerpedBloom.current);
     }
-    if (Math.abs(lerpedNoise.current - lastNoiseSnap.current) > 0.005) {
-      lastNoiseSnap.current = lerpedNoise.current;
-      setNoiseOpacity(lerpedNoise.current);
-    }
   });
 
-  return (
-    <PostProcessingStack
-      bloomIntensity={bloomIntensity}
-      disableDepthOfField
-      disableChromaticAberration
-      noiseOpacity={noiseOpacity}
-    />
-  );
+  return <PostProcessingStack bloomIntensity={bloomIntensity} disableDepthOfField disableChromaticAberration />;
 }
 
 // =============================================================================
@@ -540,28 +522,29 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
 
 const FOREST_PRESET_DEFAULT = 'Open Glade';
 
-// Six dramatically different forest looks. Visibility flags
+// Twelve dramatically different forest looks. Visibility flags
 // (shaft/motes/canopy/tree layers) are part of each preset so
 // switching can spread the scene out, not just retint it.
+//
+// floorMistDensity drives the flat floor plate. fogCardOpacity is the
+// independent dial for the 15 volumetric FogPlanes cards. mistCoolColor
+// is shared between the ForestMist backdrop, the floor, and the fog
+// cards so the painted hush reads as one continuous atmosphere.
 const FOREST_PRESETS = {
-  // Open Glade — airy default; off-axis shaft slipped back to z=-110 reads as a hint of light, not a god-ray; deep canopy stripped so the named trees breathe.
+  // Open Glade — airy default; off-axis shaft slipped back to z=-110 reads as a hint of light, not a god-ray. Soft backdrop holds the deep distance; toggle backdrop off in Leva for pure airy negative space.
   'Open Glade': {
     shaftEnabled: true,
     motesEnabled: false,
     stagEnabled: true,
-    canopyFarEnabled: false,
-    canopyMidEnabled: true,
-    bgTreesEnabled: false,
-    midTreesEnabled: false,
-    fgTreesEnabled: false,
+    canopyFarEnabled: true,
     treeOpacity: 0.78,
     treeWashIntensity: 0.15,
-    canopyFarOpacity: 1.0,
-    canopyMidOpacity: 0.85,
+    canopyFarOpacity: 1,
     mistDensityOverride: 0.35,
     floorMistDensity: 0.5,
-    mistCoolColor: '#8a98a8',
-    mistShadowColor: '#4a5360',
+    fogCardOpacity: 0.5,
+    mistCoolColor: '#9cb2c9',
+    mistShadowColor: '#3b4759',
     treeInkColor: '#3a4652',
     shaftColor: '#e8eef6',
     shaftIntensity: 0.32,
@@ -587,24 +570,20 @@ const FOREST_PRESETS = {
     motesWidth: 24,
     motesHeight: 14,
   },
-  // Hollow Air — pure negative-space study; shaft + motes off entirely, only the four named woodcut trees against a near-clear cool wash.
+  // Hollow Air — minimal study; shaft + motes off entirely, four named woodcut trees against a near-clear cool wash with the soft tree-line backdrop reading as a quiet horizon.
   'Hollow Air': {
     shaftEnabled: false,
     motesEnabled: false,
     stagEnabled: true,
-    canopyFarEnabled: false,
-    canopyMidEnabled: true,
-    bgTreesEnabled: false,
-    midTreesEnabled: false,
-    fgTreesEnabled: false,
+    canopyFarEnabled: true,
     treeOpacity: 1.0,
     treeWashIntensity: 0.4,
-    canopyFarOpacity: 1.0,
-    canopyMidOpacity: 0.7,
+    canopyFarOpacity: 1,
     mistDensityOverride: 0.2,
-    floorMistDensity: 0.4,
-    mistCoolColor: '#95a3b3',
-    mistShadowColor: '#525c68',
+    floorMistDensity: 0.35,
+    fogCardOpacity: 0.35,
+    mistCoolColor: '#a1b4c9',
+    mistShadowColor: '#46505c',
     treeInkColor: '#465360',
     shaftColor: '#e8eef6',
     shaftIntensity: 0.25,
@@ -635,19 +614,15 @@ const FOREST_PRESETS = {
     shaftEnabled: false,
     motesEnabled: false,
     stagEnabled: true,
-    canopyFarEnabled: false,
-    canopyMidEnabled: true,
-    bgTreesEnabled: false,
-    midTreesEnabled: true,
-    fgTreesEnabled: true,
-    treeOpacity: 0.7,
+    canopyFarEnabled: true,
+    treeOpacity: 0.78,
     treeWashIntensity: 1.6,
-    canopyFarOpacity: 0.6,
-    canopyMidOpacity: 0.85,
+    canopyFarOpacity: 0.9,
     mistDensityOverride: 0.85,
-    floorMistDensity: 1.05,
-    mistCoolColor: '#5a5d7a',
-    mistShadowColor: '#2a2840',
+    floorMistDensity: 0.7,
+    fogCardOpacity: 0.7,
+    mistCoolColor: '#63678c',
+    mistShadowColor: '#1d1a33',
     treeInkColor: '#323747',
     shaftColor: '#9e9bb8',
     shaftIntensity: 0.0,
@@ -679,21 +654,17 @@ const FOREST_PRESETS = {
     motesEnabled: false,
     stagEnabled: true,
     canopyFarEnabled: true,
-    canopyMidEnabled: true,
-    bgTreesEnabled: true,
-    midTreesEnabled: true,
-    fgTreesEnabled: true,
     treeOpacity: 0.78,
-    treeWashIntensity: 2.0,
-    canopyFarOpacity: 0.55,
-    canopyMidOpacity: 0.7,
+    treeWashIntensity: 1.6,
+    canopyFarOpacity: 0.9,
     mistDensityOverride: 0.95,
-    floorMistDensity: 1.1,
-    mistCoolColor: '#5a6470',
-    mistShadowColor: '#2a3038',
+    floorMistDensity: 0.9,
+    fogCardOpacity: 0.9,
+    mistCoolColor: '#687787',
+    mistShadowColor: '#1d2229',
     treeInkColor: '#2f3842',
     shaftColor: '#a8b0bc',
-    shaftIntensity: 0.25,
+    shaftIntensity: 0.4,
     shaftBrushScale: 5.5,
     shaftBrushSpeed: 0.1,
     shaftSplotchAmount: 0.6,
@@ -722,25 +693,21 @@ const FOREST_PRESETS = {
     motesEnabled: false,
     stagEnabled: true,
     canopyFarEnabled: true,
-    canopyMidEnabled: true,
-    bgTreesEnabled: false,
-    midTreesEnabled: true,
-    fgTreesEnabled: true,
     treeOpacity: 1.0,
     treeWashIntensity: 0.85,
-    canopyFarOpacity: 0.85,
-    canopyMidOpacity: 1.0,
+    canopyFarOpacity: 0.9,
     mistDensityOverride: 0.3,
-    floorMistDensity: 0.5,
-    mistCoolColor: '#8a96a6',
-    mistShadowColor: '#3a4554',
+    floorMistDensity: 0.55,
+    fogCardOpacity: 0.55,
+    mistCoolColor: '#9cafc4',
+    mistShadowColor: '#2e3745',
     treeInkColor: '#2f3c49',
     shaftColor: '#f0f4fa',
     shaftIntensity: 1.3,
     shaftBrushScale: 5.5,
     shaftBrushSpeed: 0.07,
     shaftSplotchAmount: 0.4,
-    shaftBleedStrength: 0.9,
+    shaftBleedStrength: 1.05,
     shaftBreathRate: 0.32,
     shaftBreathAmplitude: 0.1,
     shaftX: 6,
@@ -759,27 +726,23 @@ const FOREST_PRESETS = {
     motesWidth: 20,
     motesHeight: 12,
   },
-  // Cathedral Hour — a clean pearl column over a wet pool, framed by a cleared focal area: bg trees and far canopy off so the shaft owns the stage, deep cool mist behind, low splotch keeps the column architectural.
+  // Cathedral Hour — a clean pearl column over a wet pool. Soft slate backdrop holds the deep distance; the shaft still owns the stage thanks to low fog density and a cleared midground.
   'Cathedral Hour': {
     shaftEnabled: true,
     motesEnabled: false,
     stagEnabled: true,
-    canopyFarEnabled: false,
-    canopyMidEnabled: true,
-    bgTreesEnabled: false,
-    midTreesEnabled: true,
-    fgTreesEnabled: true,
+    canopyFarEnabled: true,
     treeOpacity: 0.92,
     treeWashIntensity: 1.1,
-    canopyFarOpacity: 0.0,
-    canopyMidOpacity: 0.95,
+    canopyFarOpacity: 0.9,
     mistDensityOverride: 0.55,
-    floorMistDensity: 0.7,
-    mistCoolColor: '#5e6a7a',
-    mistShadowColor: '#252e38',
+    floorMistDensity: 0.6,
+    fogCardOpacity: 0.6,
+    mistCoolColor: '#6e7e94',
+    mistShadowColor: '#1a212b',
     treeInkColor: '#2f3742',
     shaftColor: '#e6e8ec',
-    shaftIntensity: 1.15,
+    shaftIntensity: 1.3,
     shaftBrushScale: 4.0,
     shaftBrushSpeed: 0.05,
     shaftSplotchAmount: 0.25,
@@ -801,6 +764,240 @@ const FOREST_PRESETS = {
     motesOffset: 8,
     motesWidth: 22,
     motesHeight: 14,
+  },
+  // Heavy Fog — maximizes the volumetric effect with deep, thick floor mist and heavy scattering.
+  'Heavy Fog': {
+    shaftEnabled: true,
+    motesEnabled: false,
+    stagEnabled: false,
+    canopyFarEnabled: true,
+    treeOpacity: 0.85,
+    treeWashIntensity: 1.85,
+    canopyFarOpacity: 0.9,
+    mistDensityOverride: 1.2,
+    floorMistDensity: 1.0,
+    fogCardOpacity: 1,
+    mistCoolColor: '#7a8c9e',
+    mistShadowColor: '#2b3642',
+    treeInkColor: '#1c242c',
+    shaftColor: '#ffffff',
+    shaftIntensity: 1.35,
+    shaftBrushScale: 6.0,
+    shaftBrushSpeed: 0.1,
+    shaftSplotchAmount: 0.7,
+    shaftBleedStrength: 1.2,
+    shaftBreathRate: 0.5,
+    shaftBreathAmplitude: 0.2,
+    shaftX: 2,
+    shaftCenterY: -1,
+    shaftZ: -80,
+    shaftHeight: 40,
+    shaftRadiusTop: 2.0,
+    shaftRadiusBottom: 10,
+    motesColor: '#ffffff',
+    motesIntensity: 0.3,
+    motesScale: 90,
+    motesThreshold: 0.9,
+    motesSoftness: 0.5,
+    motesDriftSpeed: 0.02,
+    motesOffset: 12,
+    motesWidth: 30,
+    motesHeight: 20,
+  },
+  // Forest Breath — sparse wisps threaded between trunks; camera moves through near-clear pockets while distant trees dissolve into pale haze.
+  'Forest Breath': {
+    shaftEnabled: true,
+    motesEnabled: true,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.95,
+    treeWashIntensity: 0.7,
+    canopyFarOpacity: 0.9,
+    mistDensityOverride: 0.45,
+    floorMistDensity: 0.55,
+    fogCardOpacity: 0.55,
+    mistCoolColor: '#b8c8d8',
+    mistShadowColor: '#42505e',
+    treeInkColor: '#384350',
+    shaftColor: '#eef2f8',
+    shaftIntensity: 0.55,
+    shaftBrushScale: 4.5,
+    shaftBrushSpeed: 0.06,
+    shaftSplotchAmount: 0.3,
+    shaftBleedStrength: 0.7,
+    shaftBreathRate: 0.28,
+    shaftBreathAmplitude: 0.1,
+    shaftX: -8,
+    shaftCenterY: -1,
+    shaftZ: -120,
+    shaftHeight: 38,
+    shaftRadiusTop: 0.5,
+    shaftRadiusBottom: 4,
+    motesColor: '#d2dce8',
+    motesIntensity: 0.14,
+    motesScale: 95,
+    motesThreshold: 0.92,
+    motesSoftness: 0.45,
+    motesDriftSpeed: 0.014,
+    motesOffset: 9,
+    motesWidth: 22,
+    motesHeight: 14,
+  },
+  // Drift Banks — pale horizontal fog banks rolling between camera and trees, parting as you pass through; no shaft, the volume is the subject.
+  'Drift Banks': {
+    shaftEnabled: false,
+    motesEnabled: false,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.88,
+    treeWashIntensity: 1.2,
+    canopyFarOpacity: 0.9,
+    mistDensityOverride: 0.6,
+    floorMistDensity: 1.15,
+    fogCardOpacity: 1.15,
+    mistCoolColor: '#aebccd',
+    mistShadowColor: '#3a4554',
+    treeInkColor: '#36404c',
+    shaftColor: '#e8eef6',
+    shaftIntensity: 0.0,
+    shaftBrushScale: 3.0,
+    shaftBrushSpeed: 0.05,
+    shaftSplotchAmount: 0.3,
+    shaftBleedStrength: 0.5,
+    shaftBreathRate: 0.25,
+    shaftBreathAmplitude: 0.08,
+    shaftX: 0,
+    shaftCenterY: -1,
+    shaftZ: -100,
+    shaftHeight: 32,
+    shaftRadiusTop: 0.6,
+    shaftRadiusBottom: 5,
+    motesColor: '#c5d0de',
+    motesIntensity: 0.06,
+    motesScale: 110,
+    motesThreshold: 0.96,
+    motesSoftness: 0.4,
+    motesDriftSpeed: 0.012,
+    motesOffset: 10,
+    motesWidth: 24,
+    motesHeight: 14,
+  },
+  // Smoke Hollow — heavy low-lying banks pooled at the floor; trunks rise out clean, canopies sit above the soup like islands.
+  'Smoke Hollow': {
+    shaftEnabled: true,
+    motesEnabled: false,
+    stagEnabled: false,
+    canopyFarEnabled: true,
+    treeOpacity: 0.96,
+    treeWashIntensity: 0.9,
+    canopyFarOpacity: 0.9,
+    mistDensityOverride: 0.4,
+    floorMistDensity: 1.7,
+    fogCardOpacity: 1.7,
+    mistCoolColor: '#8a8a96',
+    mistShadowColor: '#26262e',
+    treeInkColor: '#1f242c',
+    shaftColor: '#dcdee2',
+    shaftIntensity: 0.5,
+    shaftBrushScale: 4.5,
+    shaftBrushSpeed: 0.06,
+    shaftSplotchAmount: 0.45,
+    shaftBleedStrength: 1.3,
+    shaftBreathRate: 0.3,
+    shaftBreathAmplitude: 0.1,
+    shaftX: 4,
+    shaftCenterY: -3,
+    shaftZ: -95,
+    shaftHeight: 30,
+    shaftRadiusTop: 0.7,
+    shaftRadiusBottom: 6,
+    motesColor: '#aab0b8',
+    motesIntensity: 0.1,
+    motesScale: 80,
+    motesThreshold: 0.9,
+    motesSoftness: 0.5,
+    motesDriftSpeed: 0.016,
+    motesOffset: 8,
+    motesWidth: 26,
+    motesHeight: 14,
+  },
+  // Sumi-e Quietude — Hokusai/Sesshu ink wash on rice paper; no shaft, monochrome fog stains pool against deep ink trunks with the painted tree-line dissolving into the wash.
+  'Sumi-e Quietude': {
+    shaftEnabled: false,
+    motesEnabled: false,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.95,
+    treeWashIntensity: 2.2,
+    canopyFarOpacity: 0.9,
+    mistDensityOverride: 0.5,
+    floorMistDensity: 1.6,
+    fogCardOpacity: 1.6,
+    mistCoolColor: '#cdd0d2',
+    mistShadowColor: '#26282d',
+    treeInkColor: '#0e1014',
+    shaftColor: '#ffffff',
+    shaftIntensity: 0.0,
+    shaftBrushScale: 4.0,
+    shaftBrushSpeed: 0.04,
+    shaftSplotchAmount: 0.5,
+    shaftBleedStrength: 0.0,
+    shaftBreathRate: 0.2,
+    shaftBreathAmplitude: 0.06,
+    shaftX: 0,
+    shaftCenterY: -1,
+    shaftZ: -100,
+    shaftHeight: 32,
+    shaftRadiusTop: 0.6,
+    shaftRadiusBottom: 5,
+    motesColor: '#cdd0d2',
+    motesIntensity: 0.0,
+    motesScale: 100,
+    motesThreshold: 0.95,
+    motesSoftness: 0.4,
+    motesDriftSpeed: 0.008,
+    motesOffset: 10,
+    motesWidth: 24,
+    motesHeight: 14,
+  },
+  // Mononoke Moss — Ghibli ancient-forest jade; mossy canopy at full density, billowing fog cards between trunks, kodama-spore motes.
+  'Mononoke Moss': {
+    shaftEnabled: true,
+    motesEnabled: true,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.9,
+    treeWashIntensity: 0.95,
+    canopyFarOpacity: 0.9,
+    mistDensityOverride: 0.7,
+    floorMistDensity: 1.2,
+    fogCardOpacity: 1.2,
+    mistCoolColor: '#7a9489',
+    mistShadowColor: '#243029',
+    treeInkColor: '#2c3a32',
+    shaftColor: '#d8e4c8',
+    shaftIntensity: 0.85,
+    shaftBrushScale: 4.5,
+    shaftBrushSpeed: 0.06,
+    shaftSplotchAmount: 0.45,
+    shaftBleedStrength: 0.85,
+    shaftBreathRate: 0.28,
+    shaftBreathAmplitude: 0.1,
+    shaftX: -8,
+    shaftCenterY: -1,
+    shaftZ: -95,
+    shaftHeight: 38,
+    shaftRadiusTop: 0.7,
+    shaftRadiusBottom: 6,
+    motesColor: '#c8d4b6',
+    motesIntensity: 0.22,
+    motesScale: 85,
+    motesThreshold: 0.88,
+    motesSoftness: 0.5,
+    motesDriftSpeed: 0.018,
+    motesOffset: 9,
+    motesWidth: 26,
+    motesHeight: 16,
   },
 } as const;
 
@@ -825,11 +1022,7 @@ function ForestSceneGroup({
           shaftEnabled: { label: 'shaft', value: defaultForestPreset.shaftEnabled },
           motesEnabled: { label: 'motes', value: defaultForestPreset.motesEnabled },
           stagEnabled: { label: 'stag', value: defaultForestPreset.stagEnabled },
-          canopyFarEnabled: { label: 'canopy far', value: defaultForestPreset.canopyFarEnabled },
-          canopyMidEnabled: { label: 'canopy mid', value: defaultForestPreset.canopyMidEnabled },
-          bgTreesEnabled: { label: 'bg trees', value: defaultForestPreset.bgTreesEnabled },
-          midTreesEnabled: { label: 'mid trees', value: defaultForestPreset.midTreesEnabled },
-          fgTreesEnabled: { label: 'fg trees', value: defaultForestPreset.fgTreesEnabled },
+          canopyFarEnabled: { label: 'backdrop', value: defaultForestPreset.canopyFarEnabled },
         },
         { collapsed: false },
       ),
@@ -844,15 +1037,8 @@ function ForestSceneGroup({
             step: 0.02,
           },
           canopyFarOpacity: {
-            label: 'canopy far opacity',
+            label: 'backdrop opacity',
             value: defaultForestPreset.canopyFarOpacity,
-            min: 0,
-            max: 1,
-            step: 0.01,
-          },
-          canopyMidOpacity: {
-            label: 'canopy mid opacity',
-            value: defaultForestPreset.canopyMidOpacity,
             min: 0,
             max: 1,
             step: 0.01,
@@ -870,6 +1056,13 @@ function ForestSceneGroup({
             min: 0,
             max: 1.2,
             step: 0.01,
+          },
+          fogCardOpacity: {
+            label: 'fog card opacity',
+            value: defaultForestPreset.fogCardOpacity,
+            min: 0,
+            max: 3.5,
+            step: 0.05,
           },
         },
         { collapsed: false },
@@ -1158,72 +1351,6 @@ function CampBillboard({
   );
 }
 
-function CampGroundWash({
-  position,
-  scale,
-  opacity,
-}: {
-  position: [number, number, number];
-  scale: [number, number];
-  opacity: number;
-}) {
-  const color = useMemo(() => new Color('#030407'), []);
-  const material = useMemo(
-    () =>
-      new ShaderMaterial({
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-        uniforms: {
-          uColor: { value: color },
-          uOpacity: { value: opacity },
-        },
-        vertexShader: `
-          varying vec2 vUv;
-
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          precision highp float;
-
-          varying vec2 vUv;
-          uniform vec3 uColor;
-          uniform float uOpacity;
-
-          float hash21(vec2 p) {
-            p = fract(p * vec2(123.34, 456.21));
-            p += dot(p, p + 45.32);
-            return fract(p.x * p.y);
-          }
-
-          void main() {
-            float topFade = 1.0 - smoothstep(0.48, 0.96, vUv.y);
-            float bottomFade = smoothstep(0.0, 0.12, vUv.y);
-            float sideFade = smoothstep(0.0, 0.08, vUv.x) * (1.0 - smoothstep(0.92, 1.0, vUv.x));
-            float grain = hash21(gl_FragCoord.xy) * 0.08;
-            float alpha = uOpacity * topFade * bottomFade * mix(0.72, 1.0, sideFade);
-            gl_FragColor = vec4(uColor + grain, alpha);
-          }
-        `,
-      }),
-    [color, opacity],
-  );
-
-  useEffect(() => {
-    material.uniforms.uOpacity.value = opacity;
-    return () => material.dispose();
-  }, [material, opacity]);
-
-  return (
-    <mesh position={position} material={material} renderOrder={-1} frustumCulled={false}>
-      <planeGeometry args={scale} />
-    </mesh>
-  );
-}
-
 function CampSceneGroup({
   scrollProgress,
   scrollVelocity,
@@ -1273,14 +1400,14 @@ function CampSceneGroup({
       ),
       'sky · stars': folder(
         {
-          starDensity: { label: 'star sparsity', value: 0.988, min: 0.95, max: 0.999, step: 0.0005 },
-          starGrid: { label: 'star grid', value: 600, min: 200, max: 1200, step: 10 },
+          starDensity: { label: 'star sparsity', value: 0.995, min: 0.95, max: 0.999, step: 0.0005 },
+          starGrid: { label: 'star grid', value: 420, min: 200, max: 1200, step: 10 },
           starFalloff: { label: 'brightness power', value: 8.0, min: 2, max: 16, step: 0.25 },
           starSizeBase: { label: 'star size base', value: 0.18, min: 0.05, max: 0.4, step: 0.005 },
           starSizeRange: { label: 'star size range', value: 0.2, min: 0, max: 0.5, step: 0.005 },
           twinkle: { label: 'twinkle rate', value: 0.7, min: 0, max: 3, step: 0.05 },
-          starTrim: { label: 'star trim', value: 0.85, min: 0, max: 1.5, step: 0.01 },
-          heroThreshold: { label: 'hero rarity', value: 0.99, min: 0.95, max: 0.999, step: 0.001 },
+          starTrim: { label: 'star trim', value: 0.55, min: 0, max: 1.5, step: 0.01 },
+          heroThreshold: { label: 'hero rarity', value: 0.997, min: 0.95, max: 0.999, step: 0.001 },
           heroHalo: { label: 'hero halo', value: 0.55, min: 0, max: 1.5, step: 0.02 },
           heroHaloRadius: { label: 'hero halo radius', value: 0.5, min: 0.1, max: 1.5, step: 0.02 },
           heroBoost: { label: 'hero bloom kick', value: 1.8, min: 0, max: 4, step: 0.05 },
@@ -1301,7 +1428,7 @@ function CampSceneGroup({
       ),
       'sky · finish': folder(
         {
-          grain: { label: 'paper grain', value: 0.022, min: 0, max: 0.1, step: 0.001 },
+          grain: { label: 'paper grain', value: 0, min: 0, max: 0.1, step: 0.001 },
           scrollFloor: { label: 'scroll coupling floor', value: 0.4, min: 0, max: 1, step: 0.01 },
         },
         { collapsed: true },
@@ -1376,22 +1503,12 @@ function CampSceneGroup({
     <group ref={groupRef}>
       <SumiSky isActive={isActive} campProgress={campProgress} lutTexture={skyLUT} controls={controls} />
 
-      {/* Foreground atmospheric dust — parallaxes against the sky for depth. */}
-      <CampDustPlane isActive={isActive} campProgress={campProgress} controls={controls} />
-
       {/* Distant ridge + treeline, generated as part of the Camp atmosphere family. */}
       <CampBillboard
         url="/camp/atmosphere/ridge.png"
         position={[0, controls.ridgeY, controls.ridgeZ]}
         scale={[controls.ridgeScale, controls.ridgeScale / ridgeAspect]}
         opacity={controls.ridgeOpacity}
-      />
-
-      {/* Ink ground wash behind the campsite, softened so it cannot expose a rectangular edge during handoff. */}
-      <CampGroundWash
-        position={[0, controls.foregroundY - 35, controls.campsiteZ - 34]}
-        scale={[260, 120]}
-        opacity={0.82}
       />
 
       {/* New composed campsite image. This replaces the old standalone campfire layer. */}
@@ -2051,27 +2168,26 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
     const altRaw = altSpan > 0 ? Math.min(1, Math.max(0, (p - alpine.enterStart) / altSpan)) : 0;
     altitudePulse.current = altRaw * altRaw * (3.0 - 2.0 * altRaw);
 
-    // Coverage curve preserves the baked Alpine→Summit hand-off but uses the
-    // preset-driven peak instead of the previous hardcoded 0.6.
+    // Coverage comes in during Alpine entry, then preserves the baked
+    // Alpine-to-Summit hand-off into the full cloud carpet.
     const peak = controls.cloudCoverageMax;
+    const entrySpan = alpine.enterEnd - alpine.ownStart;
+    const exitSpan = summit.ownStart - alpine.exitStart;
     let coverage: number;
     if (p < alpine.ownStart) coverage = 0;
-    else if (p < alpine.exitStart)
-      coverage = peak * Math.min(1, (p - alpine.ownStart) / (alpine.exitStart - alpine.ownStart));
-    else if (p < summit.ownStart)
-      coverage = peak + (1.0 - peak) * Math.min(1, (p - alpine.exitStart) / (summit.ownStart - alpine.exitStart));
+    else if (p < alpine.enterEnd) coverage = peak * Math.min(1, (p - alpine.ownStart) / entrySpan);
+    else if (p < alpine.exitStart) coverage = peak;
+    else if (p < summit.ownStart) coverage = peak + (1.0 - peak) * Math.min(1, (p - alpine.exitStart) / exitSpan);
     else coverage = 1.0;
     cloudCoverage.current = coverage;
 
     const veilPeak = controls.cloudVeilCoverageMax;
     let veilCoverage: number;
     if (p < alpine.ownStart) veilCoverage = 0;
-    else if (p < alpine.exitStart)
-      veilCoverage = veilPeak * Math.min(1, (p - alpine.ownStart) / (alpine.exitStart - alpine.ownStart));
+    else if (p < alpine.enterEnd) veilCoverage = veilPeak * Math.min(1, (p - alpine.ownStart) / entrySpan);
+    else if (p < alpine.exitStart) veilCoverage = veilPeak;
     else if (p < summit.ownStart)
-      veilCoverage =
-        veilPeak +
-        Math.min(0.2, 1.0 - veilPeak) * Math.min(1, (p - alpine.exitStart) / (summit.ownStart - alpine.exitStart));
+      veilCoverage = veilPeak + Math.min(0.2, 1.0 - veilPeak) * Math.min(1, (p - alpine.exitStart) / exitSpan);
     else veilCoverage = 1.0;
     cloudVeilCoverage.current = veilCoverage;
 

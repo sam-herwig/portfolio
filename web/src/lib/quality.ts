@@ -23,21 +23,18 @@ export const qualityPresets = {
     particleMultiplier: 1.0,
     enableDepthOfField: true,
     enableChromaticAberration: true,
-    enableNoise: true,
     multisampling: 4,
   },
   high: {
     particleMultiplier: 1.0,
     enableDepthOfField: false,
     enableChromaticAberration: false,
-    enableNoise: true,
     multisampling: 0,
   },
   medium: {
     particleMultiplier: 0.5,
     enableDepthOfField: false,
     enableChromaticAberration: false,
-    enableNoise: false,
     multisampling: 0,
   },
 } as const;

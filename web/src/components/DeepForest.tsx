@@ -1,16 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react/display-name */
-import { useTexture, Html } from '@react-three/drei';
+import { useTexture, useDepthBuffer } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
-import {
-  Texture,
-  Mesh,
-  Group,
-  MeshBasicMaterial,
-  MathUtils,
-  AdditiveBlending,
-  DoubleSide,
-  RepeatWrapping,
-} from 'three';
+import { Texture, Mesh, Group, MathUtils, AdditiveBlending, DoubleSide, RepeatWrapping } from 'three';
 import { useRef, useMemo, useEffect, forwardRef } from 'react';
 import { MotionValue } from 'framer-motion';
 import { MODULE_TIMELINE } from '@/lib/moduleTimeline';
@@ -18,11 +9,13 @@ import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSh
 import './shaders/ForestMistMaterial';
 import './shaders/ForestShaftMaterial';
 import './shaders/ForestMotesMaterial';
+import './shaders/FogCardMaterial';
 
 const WoodcutShader = 'woodcutShaderMaterial' as any;
 const ForestMistShader = 'forestMistShaderMaterial' as any;
 const ForestShaftShader = 'forestShaftShaderMaterial' as any;
 const ForestMotesShader = 'forestMotesShaderMaterial' as any;
+const FogCardShader = 'fogCardShaderMaterial' as any;
 
 function AnimatedSprite({
   textureUrl,
@@ -488,96 +481,103 @@ function ForestMotes({
   );
 }
 
-function SpatialText({
-  position,
-  title,
-  subtitle,
+function generateFogPlanes(count: number) {
+  const items = [];
+  for (let i = 0; i < count; i++) {
+    // Z ranges from front of forest (-20) to deep back (-600)
+    const z = MathUtils.lerp(-20, -600, i / count) + (Math.random() - 0.5) * 20;
+    // X spreads wider as we go deeper
+    const spread = Math.abs(z) * 0.4 + 40;
+    const x = (Math.random() - 0.5) * spread;
+    // Y floats slightly above ground to mid-canopy
+    const y = MathUtils.lerp(-5, 20, Math.random());
+
+    // Scale increases with depth to maintain screen presence
+    const scaleBase = Math.abs(z) * 0.2 + 30;
+    const scaleX = scaleBase * (1.5 + Math.random());
+    const scaleY = scaleBase * (0.8 + Math.random() * 0.4);
+
+    items.push({
+      position: [x, y, z] as [number, number, number],
+      scale: [scaleX, scaleY] as [number, number],
+      noiseScale: 1.0 + Math.random() * 2.0,
+      noiseSpeed: 0.1 + Math.random() * 0.2,
+    });
+  }
+  return items;
+}
+
+const INITIAL_FOG_PLANES = generateFogPlanes(15);
+
+function FogPlanes({
   scrollProgress,
-  trees,
+  depthBuffer,
+  controls,
 }: {
-  position: [number, number, number];
-  title: string;
-  subtitle: string;
   scrollProgress: MotionValue<number>;
-  trees: React.MutableRefObject<Mesh | null>[];
+  depthBuffer: any;
+  controls?: any;
 }) {
   const { camera } = useThree();
-  const groupRef = useRef<Group>(null);
-  const textRef = useRef<HTMLHeadingElement>(null);
-  const htmlRef = useRef<HTMLDivElement>(null);
-  const shieldMatRef = useRef<MeshBasicMaterial>(null);
-  const lerpedScroll = useRef(0);
 
-  // Filter out null tree refs for occlusion
-  const occludeArray = trees.filter((t) => t.current !== null) as any;
+  // Use the statically generated planes to satisfy React purity rules
+  const planes = INITIAL_FOG_PLANES;
 
-  useFrame((state, delta) => {
-    lerpedScroll.current = MathUtils.damp(lerpedScroll.current, scrollProgress.get(), 4, delta);
-    const progress = lerpedScroll.current;
+  const matsRef = useRef<any[]>([]);
+  const meshRefs = useRef<any[]>([]);
 
-    // 1. Fog Logic: Calculate distance from camera to text Z. Fade to 0 if deeper than -60 units away.
-    const dist = camera.position.z - position[2];
-    // At 10 units away, full opacity. At 60 units away, zero opacity.
-    const targetOpacity = 1.0 - Math.min(1, Math.max(0, (dist - 10) / 50));
+  useFrame((state) => {
+    const camZ = camera.position.z;
 
-    if (htmlRef.current) {
-      htmlRef.current.style.opacity = targetOpacity.toFixed(3);
-    }
+    matsRef.current.forEach((m, i) => {
+      if (!m) return;
+      m.uTime = state.clock.elapsedTime;
+      m.uCameraNear = camera.near;
+      m.uCameraFar = camera.far;
 
-    // 2. Kinetic Kineticism (Letter Spacing) based on scroll velocity
-    if (textRef.current) {
-      const vel = Math.abs(scrollProgress.getVelocity()); // px/sec roughly
-      // Map 0 -> 1000 velocity to 0em -> 0.15em letter-spacing
-      const mappedSpacing = Math.min(0.15, vel * 0.00015);
-
-      // Dampen the letter-spacing directly into the DOM node to prevent React layout thrashing
-      const currentSpacing = parseFloat(textRef.current.style.letterSpacing || '0');
-      const dampedSpacing = MathUtils.damp(currentSpacing, mappedSpacing, 4, delta);
-      textRef.current.style.letterSpacing = `${dampedSpacing.toFixed(4)}em`;
-    }
-
-    // 3. Readability Shield (meshBasicMaterial)
-    // Fade in a dark radial backdrop if we enter the dense focal zone of the forest [0.4 -> 0.6]
-    if (shieldMatRef.current) {
-      let shieldOpacity = 0;
-      if (progress > 0.4 && progress < 0.6) {
-        // Peak opacity of 0.8 at exactly 0.5
-        const distFromCenter = Math.abs(0.5 - progress); // 0 at center, 0.1 at edges
-        shieldOpacity = 0.8 * (1.0 - distFromCenter / 0.1);
+      if (controls) {
+        m.uColor.set(controls.mistCoolColor || '#7a8696');
+        // Independent of floorMistDensity so the floor plate and the
+        // 15 volumetric cards can be tuned separately per preset.
+        m.uOpacity = controls.fogCardOpacity ?? 1.6;
       }
-      shieldMatRef.current.opacity = Math.min(0.8, Math.max(0, shieldOpacity));
-    }
+
+      // Parting effect
+      const mesh = meshRefs.current[i];
+      if (mesh) {
+        const basePos = planes[i].position;
+        const distZ = basePos[2] - camZ;
+
+        // As the camera gets within 40 units, start pushing the fog outwards
+        let pushFactor = 0;
+        if (distZ < 40 && distZ > -10) {
+          pushFactor = 1.0 - Math.max(0, distZ + 10) / 50;
+        }
+
+        // Push away from the center (X=0)
+        const signX = basePos[0] > 0 ? 1 : -1;
+        mesh.position.x = basePos[0] + signX * pushFactor * 15;
+        // Push slightly down
+        mesh.position.y = basePos[1] - pushFactor * 5;
+      }
+    });
   });
 
   return (
-    <group ref={groupRef} position={position}>
-      <Html
-        ref={htmlRef}
-        transform
-        occlude={occludeArray}
-        zIndexRange={[100, 0]}
-        scale={2}
-        distanceFactor={15} // Maintain proportional size
-      >
-        <div className="w-[90vw] max-w-[800px] text-center pointer-events-none flex flex-col items-center select-none font-inter text-balance">
-          <h2
-            ref={textRef}
-            className="text-5xl md:text-8xl font-bold mb-4 font-instrument text-stone-100 drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)]"
-            style={{ transition: 'none' }}
-          >
-            {title}
-          </h2>
-          <p className="text-xl md:text-3xl text-white/80 max-w-[30ch] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] font-bold">
-            {subtitle}
-          </p>
-        </div>
-      </Html>
-
-      {/* Readability Guard Shield placed physically behind the HTML text (Z = -0.5) */}
-      <mesh position={[0, 0, -0.5]}>
-        <planeGeometry args={[60, 40]} />
-        <meshBasicMaterial ref={shieldMatRef} color="#000000" transparent opacity={0} depthWrite={false} />
-      </mesh>
+    <group>
+      {planes.map((plane, i) => (
+        <mesh key={i} ref={(el) => (meshRefs.current[i] = el)} position={plane.position} frustumCulled={false}>
+          <planeGeometry args={plane.scale} />
+          <FogCardShader
+            ref={(el: any) => (matsRef.current[i] = el)}
+            uDepthBuffer={depthBuffer}
+            uNoiseScale={plane.noiseScale}
+            uNoiseSpeed={plane.noiseSpeed}
+            transparent={true}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -591,11 +591,11 @@ export default function DeepForest({
   scrollVelocity?: React.MutableRefObject<number>;
   controls?: any;
 }) {
-  const tree1Ref = useRef<Mesh>(null);
-  const tree2Ref = useRef<Mesh>(null);
-  const tree3Ref = useRef<Mesh>(null);
-  const tree4Ref = useRef<Mesh>(null);
-  const treeArray = [tree1Ref, tree2Ref, tree3Ref, tree4Ref];
+  // Grab the depth buffer for soft particles. 1024 / continuous: a 256
+  // depth buffer captured once produced visible square fragments where fog
+  // cards intersect tree silhouettes, especially near the end of the scene
+  // where the camera has moved far from the original capture position.
+  const depthBuffer = useDepthBuffer({ size: 1024, frames: Infinity });
 
   const shaftPos: [number, number, number] = controls
     ? [controls.shaftX, controls.shaftCenterY, controls.shaftZ]
@@ -609,19 +609,14 @@ export default function DeepForest({
   const showShaft = controls?.shaftEnabled ?? true;
   const showMotes = controls?.motesEnabled ?? true;
   const showStag = controls?.stagEnabled ?? true;
-  const showCanopyFar = controls?.canopyFarEnabled ?? true;
-  const showCanopyMid = controls?.canopyMidEnabled ?? true;
-  const showBackgroundTrees = controls?.bgTreesEnabled ?? true;
-  const showMidgroundTrees = controls?.midTreesEnabled ?? true;
-  const showForegroundTrees = controls?.fgTreesEnabled ?? true;
-  const canopyFarOpacity = controls?.canopyFarOpacity ?? 1.0;
-  const canopyMidOpacity = controls?.canopyMidOpacity ?? 1.0;
+  const showBackdrop = controls?.canopyFarEnabled ?? true;
+  const backdropOpacity = controls?.canopyFarOpacity ?? 1.0;
   const floorMistDensity = controls?.floorMistDensity ?? 0.8;
 
   return (
     <group>
       {/* Painted cool-mist backdrop (replaces auto-panning forest_wall).
-          Pushed back so the canopy-far silhouette has fog-room behind it. */}
+          Pushed back so the painted backdrop has fog-room behind it. */}
       <ForestMist scrollProgress={scrollProgress} position={[0, 10, -680]} scale={[1500, 900]} controls={controls} />
 
       {/* Forest Floor - Grounding the scene (horizontal plane). Reuses
@@ -645,96 +640,27 @@ export default function DeepForest({
         <ForestMotes scrollProgress={scrollProgress} offset={motesOffset} size={motesSize} controls={controls} />
       )}
 
-      {/* Far canopy silhouette — pale, atmospheric depth.
-          Pushed back ~2x so it recedes into the fog. Plane scaled up to
-          maintain frame coverage; horizontal repeat keeps silhouette
-          detail at the doubled width. */}
-      {showCanopyFar && (
-        <CanopyLayer
-          textureUrl="/forest/canopy-far.webp"
-          position={[0, 4, -600]}
-          scale={[880, 490]}
-          opacity={canopyFarOpacity}
-          repeatX={2}
-        />
-      )}
+      {/* Volumetric Fog Cards driven by depth buffer */}
+      <FogPlanes scrollProgress={scrollProgress} depthBuffer={depthBuffer} controls={controls} />
 
-      {/* Mid canopy silhouette — visible tree shapes through the mist */}
-      {showCanopyMid && (
+      {/* Painted forest backdrop — single distant atmospheric plate.
+          Replaces the old canopy-far + canopy-mid pair. Sits at z=-500
+          between the two old positions; the FogPlanes carry the depth
+          modulation that two stacked canopy layers used to fake. */}
+      {showBackdrop && (
         <CanopyLayer
-          textureUrl="/forest/canopy-mid.webp"
-          position={[0, 3, -440]}
-          scale={[560, 310]}
-          opacity={canopyMidOpacity}
+          textureUrl="/forest/backdrop.webp"
+          position={[0, 6, -500]}
+          scale={[1100, 615]}
+          opacity={backdropOpacity}
         />
-      )}
-
-      {/* Background Density Layer — pushed back ~2x; planes kept at
-          their original scale so the deepest trees read as smaller and
-          farther, adding depth instead of crowding the focal area.
-          instantReveal: camera never walks close enough to trigger the
-          approach-slide, so just hold them at their target X. */}
-      {showBackgroundTrees && (
-        <>
-          <ForestTree
-            textureUrl="/tree_1.webp"
-            position={[-45, 0, -640]}
-            scale={[70, 70]}
-            rotation={0.02}
-            controls={controls}
-            instantReveal
-          />
-          <ForestTree
-            textureUrl="/tree_2.webp"
-            position={[40, 2, -620]}
-            scale={[65, 65]}
-            rotation={-0.03}
-            controls={controls}
-            instantReveal
-          />
-          <ForestTree
-            textureUrl="/tree_3.webp"
-            position={[-15, 3, -600]}
-            scale={[55, 55]}
-            rotation={0.01}
-            controls={controls}
-            instantReveal
-          />
-        </>
       )}
 
       {/* Tree 4: Deep distance - The massive Sequoia anchoring the path (Left) */}
-      <ForestTree
-        ref={tree4Ref}
-        textureUrl="/tree_sequoia.webp"
-        position={[-28, 2, -85]}
-        scale={[65, 65]}
-        controls={controls}
-      />
-
-      {/* Midground Density Layer */}
-      {showMidgroundTrees && (
-        <>
-          <ForestTree
-            textureUrl="/tree_2.webp"
-            position={[35, 1, -70]}
-            scale={[60, 60]}
-            rotation={-0.04}
-            controls={controls}
-          />
-          <ForestTree
-            textureUrl="/tree_1.webp"
-            position={[-38, 4, -40]}
-            scale={[55, 55]}
-            rotation={0.03}
-            controls={controls}
-          />
-        </>
-      )}
+      <ForestTree textureUrl="/tree_sequoia.webp" position={[-28, 2, -85]} scale={[65, 65]} controls={controls} />
 
       {/* Tree 3: Mid-distance - The sharp Spruce (Right) */}
       <ForestTree
-        ref={tree3Ref}
         textureUrl="/tree_spruce.webp"
         position={[25, 5, -55]}
         scale={[50, 50]}
@@ -744,7 +670,6 @@ export default function DeepForest({
 
       {/* Tree 2: Mid-foreground - The twisted Cherry Blossom (Left) */}
       <ForestTree
-        ref={tree2Ref}
         textureUrl="/tree_cherry.webp"
         position={[-25, 5, -25]}
         scale={[60, 60]}
@@ -752,25 +677,8 @@ export default function DeepForest({
         controls={controls}
       />
 
-      {/* Foreground Density Layer */}
-      {showForegroundTrees && (
-        <ForestTree
-          textureUrl="/tree_3.webp"
-          position={[32, -1, -10]}
-          scale={[50, 50]}
-          rotation={-0.02}
-          controls={controls}
-        />
-      )}
-
       {/* Tree 1: Extreme foreground, framing the entrance - The stark Aspen (Right) */}
-      <ForestTree
-        ref={tree1Ref}
-        textureUrl="/tree_aspen.webp"
-        position={[25, -2, 0]}
-        scale={[45, 45]}
-        controls={controls}
-      />
+      <ForestTree textureUrl="/tree_aspen.webp" position={[25, -2, 0]} scale={[45, 45]} controls={controls} />
 
       {/* The Animated Stag — walks through the deep midground. */}
       {showStag && (
