@@ -5,6 +5,7 @@ import { OrbitControls, Text3D, Center, useFBO, MeshTransmissionMaterial, Enviro
 import { useEffect, useRef, useState } from 'react';
 import { Mesh } from 'three';
 import DispersionMaterial, { makeDispersionUniforms } from '@/components/lab/DispersionMaterial';
+import { useMouseVelocity } from '@/lib/useMouseVelocity';
 
 const uniforms = makeDispersionUniforms();
 
@@ -42,6 +43,7 @@ function Backdrop() {
 function DispersionText({ mode }: { mode: Mode }) {
   const meshRef = useRef<Mesh>(null);
   const fbo = useFBO();
+  const velocity = useMouseVelocity();
   const { gl, scene, camera, size, viewport } = useThree();
 
   useEffect(() => {
@@ -49,6 +51,8 @@ function DispersionText({ mode }: { mode: Mode }) {
   }, [mode]);
 
   useFrame(() => {
+    uniforms.uVelocity.value = velocity.current.magnitude;
+
     if (!meshRef.current) return;
     if (mode === 'drei') return;
     meshRef.current.visible = false;
