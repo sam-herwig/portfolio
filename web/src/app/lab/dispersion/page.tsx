@@ -1,12 +1,20 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Text3D, Center, useFBO } from '@react-three/drei';
-import { useRef } from 'react';
+import { OrbitControls, Text3D, Center, useFBO, MeshTransmissionMaterial, Environment } from '@react-three/drei';
+import { useEffect, useRef, useState } from 'react';
 import { Mesh } from 'three';
 import DispersionMaterial, { makeDispersionUniforms } from '@/components/lab/DispersionMaterial';
 
 const uniforms = makeDispersionUniforms();
+
+type Mode = 'drei' | 'rgb' | 'rygcbv';
+
+const MODE_LABEL: Record<Mode, string> = {
+  drei: '1 — drei baseline (MeshTransmissionMaterial)',
+  rgb: '2 — 3-channel per-channel IOR',
+  rygcbv: '3 — rygcbv 6-channel spectral split',
+};
 
 function Backdrop() {
   return (
@@ -31,13 +39,18 @@ function Backdrop() {
   );
 }
 
-function DispersionText() {
+function DispersionText({ mode }: { mode: Mode }) {
   const meshRef = useRef<Mesh>(null);
   const fbo = useFBO();
   const { gl, scene, camera, size, viewport } = useThree();
 
+  useEffect(() => {
+    uniforms.uMode.value = mode === 'rygcbv' ? 1 : 0;
+  }, [mode]);
+
   useFrame(() => {
     if (!meshRef.current) return;
+    if (mode === 'drei') return;
     meshRef.current.visible = false;
     gl.setRenderTarget(fbo);
     gl.clear();
@@ -65,20 +78,53 @@ function DispersionText() {
         letterSpacing={-0.04}
       >
         Sam Herwig
-        <DispersionMaterial uniforms={uniforms} />
+        {mode === 'drei' ? (
+          <MeshTransmissionMaterial
+            transmission={1}
+            ior={1.5}
+            chromaticAberration={0.05}
+            thickness={0.5}
+            backside
+            backsideThickness={0.8}
+            samples={8}
+            resolution={512}
+            roughness={0}
+          />
+        ) : (
+          <DispersionMaterial uniforms={uniforms} />
+        )}
       </Text3D>
     </Center>
   );
 }
 
 export default function DispersionLab() {
+  const [mode, setMode] = useState<Mode>('rygcbv');
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '1') setMode('drei');
+      if (e.key === '2') setMode('rgb');
+      if (e.key === '3') setMode('rygcbv');
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   return (
-    <main className="h-screen w-full bg-background">
+    <main className="relative h-screen w-full bg-background">
+      <div
+        className="pointer-events-none absolute left-6 top-6 z-10 text-xs uppercase tracking-[0.25em] text-foreground/60"
+        style={{ fontFamily: 'var(--font-geist-mono)' }}
+      >
+        Dispersion Lab · Mode: {MODE_LABEL[mode]}
+      </div>
       <Canvas camera={{ position: [0, 0, 5], fov: 35 }} dpr={[1, 2]}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 5, 5]} intensity={1.2} />
+        {mode === 'drei' && <Environment preset="studio" />}
         <Backdrop />
-        <DispersionText />
+        <DispersionText mode={mode} />
         <OrbitControls />
       </Canvas>
     </main>
