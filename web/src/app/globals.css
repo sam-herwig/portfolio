@@ -2,6 +2,7 @@
 
 @theme {
   --font-fraunces: var(--font-fraunces), 'Times New Roman', Times, serif;
+  --font-instrument: var(--font-instrument), 'Times New Roman', Times, serif;
   --font-geist-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-geist-mono: var(--font-geist-mono), ui-monospace, 'Menlo', monospace;
 

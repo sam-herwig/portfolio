@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Fraunces, Geist, Geist_Mono } from 'next/font/google';
+import { Fraunces, Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import './globals.css';
 
 const fraunces = Fraunces({
@@ -7,6 +7,14 @@ const fraunces = Fraunces({
   variable: '--font-fraunces',
   display: 'swap',
   axes: ['SOFT', 'WONK', 'opsz'],
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  variable: '--font-instrument',
+  display: 'swap',
+  weight: '400',
+  style: ['normal', 'italic'],
 });
 
 const geistSans = Geist({
@@ -80,7 +88,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
       </head>
       <body
-        className={`${fraunces.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${fraunces.variable} ${instrumentSerif.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
         style={{ fontFamily: 'var(--font-geist-sans)' }}
       >
         <a

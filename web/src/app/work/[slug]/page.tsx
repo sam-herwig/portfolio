@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getProjectBySlug, getAllSlugs, getAdjacentProjects } from '@/data/projects';
+import BlockRenderer from '@/components/case-study/BlockRenderer';
+import CaseStudyHero from '@/components/case-study/CaseStudyHero';
+import NextProject from '@/components/case-study/NextProject';
 
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }));
@@ -38,47 +41,72 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   const { next } = getAdjacentProjects(slug);
 
   return (
-    <main className="min-h-screen w-full px-8 py-24 md:px-16">
-      <Link
-        href="/"
-        className="text-xs uppercase tracking-[0.3em] text-foreground/50 hover:text-foreground"
-        style={{ fontFamily: 'var(--font-geist-mono)' }}
-      >
-        ← Index
-      </Link>
-
-      <header className="mt-16 max-w-4xl">
-        <p
-          className="text-xs uppercase tracking-[0.3em] text-foreground/40"
+    <main className="min-h-screen w-full">
+      <nav className="absolute left-8 top-8 z-20 md:left-16">
+        <Link
+          href="/"
+          className="text-xs uppercase tracking-[0.3em] text-foreground/55 hover:text-foreground"
           style={{ fontFamily: 'var(--font-geist-mono)' }}
         >
-          {[project.year, project.role, project.client].filter(Boolean).join(' · ')}
-        </p>
-        <h1
-          className="mt-6 text-6xl font-medium leading-[0.95] tracking-tight md:text-8xl"
-          style={{ fontFamily: 'var(--font-fraunces)' }}
-        >
-          {project.title}
-        </h1>
-        <p className="mt-6 max-w-[60ch] text-xl text-foreground/70 md:text-2xl">{project.overview.headline}</p>
-        <p className="mt-6 max-w-[68ch] text-base leading-relaxed text-foreground/60">{project.overview.body}</p>
-      </header>
+          ← Index
+        </Link>
+      </nav>
 
-      {next && (
-        <footer className="mt-32 border-t border-foreground/10 pt-12">
-          <p
-            className="text-xs uppercase tracking-[0.3em] text-foreground/40"
-            style={{ fontFamily: 'var(--font-geist-mono)' }}
-          >
-            Next
-          </p>
-          <Link href={`/work/${next.slug}`} className="mt-4 inline-block">
-            <h2 className="text-4xl font-medium md:text-5xl" style={{ fontFamily: 'var(--font-fraunces)' }}>
-              {next.title}
-            </h2>
-          </Link>
+      <CaseStudyHero project={project} />
+
+      {project.blocks?.map((block, i) => (
+        <BlockRenderer key={i} block={block} />
+      ))}
+
+      {project.deliverables && project.deliverables.length > 0 && (
+        <footer className="px-8 py-24 md:px-16">
+          <div className="grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-12 md:gap-12">
+            <div className="md:col-span-4">
+              <p
+                className="text-[11px] uppercase tracking-[0.35em] text-foreground/50"
+                style={{ fontFamily: 'var(--font-geist-mono)' }}
+              >
+                Credits
+              </p>
+            </div>
+            <div className="md:col-span-8">
+              <p
+                className="text-base leading-relaxed text-foreground/70 md:text-lg"
+                style={{ fontFamily: 'var(--font-instrument)' }}
+              >
+                {project.year && <span>{project.year}. </span>}
+                {project.role && <span>{project.role} for </span>}
+                {project.client && <span>{project.client}. </span>}
+                {project.deliverables.length > 0 && <span>Delivered: {project.deliverables.join(', ')}.</span>}
+              </p>
+              {project.relatedSites && project.relatedSites.length > 0 && (
+                <ul className="mt-8 flex flex-col gap-2">
+                  {project.relatedSites.map((site) => (
+                    <li key={site.url}>
+                      <a
+                        href={site.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-baseline gap-3 text-sm text-foreground/60 hover:text-foreground"
+                      >
+                        <span
+                          className="text-[10px] uppercase tracking-[0.3em] text-foreground/40"
+                          style={{ fontFamily: 'var(--font-geist-mono)' }}
+                        >
+                          {site.tag}
+                        </span>
+                        {site.name} ↗
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </footer>
       )}
+
+      {next && <NextProject next={next} />}
     </main>
   );
 }
