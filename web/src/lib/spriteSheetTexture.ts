@@ -13,6 +13,7 @@ type SpriteFrameOptions = {
   frame: number;
   cols: number;
   rows: number;
+  frames?: number;
   insetPx?: number;
 };
 
@@ -34,13 +35,16 @@ export function configureSpriteSheetTexture(texture: Texture): Texture {
   return texture;
 }
 
-export function setSpriteSheetFrame(texture: Texture, { frame, cols, rows, insetPx = 4 }: SpriteFrameOptions): void {
+export function setSpriteSheetFrame(
+  texture: Texture,
+  { frame, cols, rows, frames, insetPx = 4 }: SpriteFrameOptions,
+): void {
   const { width, height } = textureSize(texture, cols, rows);
   const cellWidth = width / cols;
   const cellHeight = height / rows;
   const insetX = Math.min(insetPx, Math.max(0, cellWidth / 2 - 0.5));
   const insetY = Math.min(insetPx, Math.max(0, cellHeight / 2 - 0.5));
-  const totalFrames = cols * rows;
+  const totalFrames = Math.max(1, Math.min(frames ?? cols * rows, cols * rows));
   const safeFrame = ((frame % totalFrames) + totalFrames) % totalFrames;
   const col = safeFrame % cols;
   const row = Math.floor(safeFrame / cols);

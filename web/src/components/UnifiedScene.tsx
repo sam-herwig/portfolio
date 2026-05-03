@@ -35,8 +35,8 @@ import './shaders/DawnSunMaterial';
 import './shaders/CloudSeaMaterial';
 import './shaders/AlpineHazeMaterial';
 import DeepForest from './DeepForest';
+import ScrollLinkedSprite from './ScrollLinkedSprite';
 import { MODULE_TIMELINE, sceneVisible, sceneOpacity, sceneChildRanges } from '@/lib/moduleTimeline';
-import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
 
 // ── Scene envelope helper ─────────────────────────────────────────────
 // Applies sceneOpacity as a multiplier on all materials in a group,
@@ -1476,6 +1476,18 @@ function CampSceneGroup({
         },
         { collapsed: true },
       ),
+      fox: folder(
+        {
+          foxEnabled: { label: 'enabled', value: true },
+          foxStartX: { label: 'start x', value: -24, min: -50, max: 20, step: 0.5 },
+          foxEndX: { label: 'end x', value: -4, min: -30, max: 30, step: 0.5 },
+          foxY: { label: 'y', value: -5.5, min: -18, max: 8, step: 0.25 },
+          foxZ: { label: 'z', value: -14, min: -40, max: 5, step: 1 },
+          foxScale: { label: 'scale', value: 12, min: 4, max: 28, step: 0.5 },
+          foxOpacity: { label: 'opacity', value: 0.95, min: 0, max: 1, step: 0.01 },
+        },
+        { collapsed: true },
+      ),
     },
     { collapsed: true },
   );
@@ -1519,6 +1531,25 @@ function CampSceneGroup({
         opacity={controls.campsiteOpacity}
       />
 
+      {controls.foxEnabled && (
+        <ScrollLinkedSprite
+          textureUrl="/sprites/wildlife/fox-walk-padded.webp"
+          startPosition={[controls.foxStartX, controls.foxY, controls.foxZ]}
+          endPosition={[controls.foxEndX, controls.foxY, controls.foxZ]}
+          scale={[controls.foxScale, controls.foxScale]}
+          frames={16}
+          cols={4}
+          rows={4}
+          frameInsetPx={3}
+          scrollStart={MODULE_TIMELINE.camp.enterEnd}
+          scrollEnd={MODULE_TIMELINE.camp.exitStart}
+          cycles={1}
+          endBehavior="hold-last"
+          opacity={controls.foxOpacity}
+          scrollProgress={scrollProgress}
+        />
+      )}
+
       {/* Foreground frame: trail, rocks, and underbrush generated in the same style as the campsite. */}
       <CampBillboard
         url="/camp/atmosphere/foreground.png"
@@ -1533,83 +1564,6 @@ function CampSceneGroup({
 // =============================================================================
 // ALPINE SCENE GROUP
 // =============================================================================
-
-function AlpineAnimatedSprite({
-  textureUrl,
-  startX,
-  endX,
-  y,
-  z,
-  scale,
-  rotation = 0,
-  frames = 8,
-  cols = 8,
-  rows = 1,
-  frameInsetPx = 4,
-  scrollStart,
-  scrollEnd,
-  cycles = 6,
-  scrollProgress,
-}: {
-  textureUrl: string;
-  startX: number;
-  endX: number;
-  y: number;
-  z: number;
-  scale: [number, number];
-  rotation?: number;
-  frames?: number;
-  cols?: number;
-  rows?: number;
-  frameInsetPx?: number;
-  scrollStart: number;
-  scrollEnd: number;
-  cycles?: number;
-  scrollProgress: MotionValue<number>;
-}) {
-  const tex = useTexture(textureUrl) as Texture;
-  const meshRef = useRef<Mesh>(null);
-  const matRef = useRef<any>(null);
-  const lerpedP = useRef(0);
-  const playhead = useRef(0);
-
-  const clonedTex = useMemo(() => {
-    const c = configureSpriteSheetTexture(tex.clone());
-    setSpriteSheetFrame(c, { frame: 0, cols, rows, insetPx: frameInsetPx });
-    return c;
-  }, [tex, cols, rows, frameInsetPx]);
-
-  useEffect(() => {
-    return () => {
-      tex.dispose();
-      clonedTex.dispose();
-    };
-  }, [tex, clonedTex]);
-
-  useFrame((_, delta) => {
-    if (meshRef.current) {
-      lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
-      const clamped = Math.min(1, Math.max(0, (lerpedP.current - scrollStart) / (scrollEnd - scrollStart)));
-      meshRef.current.position.x = MathUtils.lerp(startX, endX, clamped);
-      if (clamped > 0 && clamped < 1) {
-        playhead.current = clamped * cycles * frames;
-      } else if (clamped >= 1) {
-        playhead.current = cycles * frames;
-      } else {
-        playhead.current = 0;
-      }
-      const frame = Math.floor(playhead.current) % frames;
-      setSpriteSheetFrame(clonedTex, { frame, cols, rows, insetPx: frameInsetPx });
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={[startX, y, z]} rotation-z={rotation}>
-      <planeGeometry args={scale} />
-      <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} />
-    </mesh>
-  );
-}
 
 function RockLedge({
   textureUrl,
@@ -2317,20 +2271,19 @@ function AlpineSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<numb
       )}
 
       {controls.birdEnabled && (
-        <AlpineAnimatedSprite
-          textureUrl="/bird_sprite.webp"
-          startX={-45}
-          endX={45}
-          y={105}
-          z={-30}
+        <ScrollLinkedSprite
+          textureUrl="/sprites/wildlife/bird-flight-padded.webp"
+          startPosition={[-45, 105, -30]}
+          endPosition={[45, 105, -30]}
           scrollStart={alpine.exitStart}
           scrollEnd={alpine.ownEnd}
-          scale={[15, 15]}
-          scrollProgress={scrollProgress}
+          scale={[30, 15]}
           frames={12}
           cols={6}
           rows={2}
           cycles={8}
+          endBehavior="loop"
+          scrollProgress={scrollProgress}
         />
       )}
     </group>

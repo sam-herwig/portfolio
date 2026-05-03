@@ -4,8 +4,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture, useVideoTexture } from '@react-three/drei';
 import { Suspense, useRef, useMemo, useEffect } from 'react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
-import { Texture, Mesh, Group, Vector3, MeshBasicMaterial, RepeatWrapping, MathUtils } from 'three';
+import { Texture, Mesh, Group, Vector3, MeshBasicMaterial, MathUtils } from 'three';
 import PostProcessingStack from './PostProcessingStack';
+import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
 
 type Vec2 = [number, number];
 type Vec3 = [number, number, number];
@@ -41,6 +42,7 @@ type OneShotAnimatedFoxProps = {
   frames?: number;
   cols?: number;
   rows?: number;
+  frameInsetPx?: number;
   scrollStart: number;
   scrollEnd: number;
   cycles?: number;
@@ -202,6 +204,7 @@ function OneShotAnimatedFox({
   frames = 8,
   cols = 8,
   rows = 1,
+  frameInsetPx = 4,
   scrollStart,
   scrollEnd,
   cycles = 6,
@@ -211,12 +214,10 @@ function OneShotAnimatedFox({
   const meshRef = useRef<Mesh>(null);
 
   const clonedTex = useMemo(() => {
-    const clone = tex.clone();
-    clone.wrapS = RepeatWrapping;
-    clone.wrapT = RepeatWrapping;
-    clone.repeat.set(1 / cols, 1 / rows);
+    const clone = configureSpriteSheetTexture(tex.clone());
+    setSpriteSheetFrame(clone, { frame: 0, cols, rows, frames, insetPx: frameInsetPx });
     return clone;
-  }, [tex, cols, rows]);
+  }, [tex, cols, rows, frames, frameInsetPx]);
 
   const lerpedProgress = useRef(0);
 
@@ -254,19 +255,14 @@ function OneShotAnimatedFox({
       // Frame Animation Logic
       if (walkProgress >= 1.0) {
         // Lock on the final cuddling pose
-        const lastFrame = frames - 1;
-        const col = lastFrame % cols;
-        const row = Math.floor(lastFrame / cols);
-        clonedTex.offset.set(col / cols, (rows - 1 - row) / rows);
+        setSpriteSheetFrame(clonedTex, { frame: frames - 1, cols, rows, frames, insetPx: frameInsetPx });
       } else if (walkProgress > 0) {
         // Loop normally while walking
         const totalFrames = walkProgress * cycles * frames;
         const currentFrame = Math.floor(totalFrames) % frames;
-        const col = currentFrame % cols;
-        const row = Math.floor(currentFrame / cols);
-        clonedTex.offset.set(col / cols, (rows - 1 - row) / rows);
+        setSpriteSheetFrame(clonedTex, { frame: currentFrame, cols, rows, frames, insetPx: frameInsetPx });
       } else {
-        clonedTex.offset.set(0, (rows - 1) / rows);
+        setSpriteSheetFrame(clonedTex, { frame: 0, cols, rows, frames, insetPx: frameInsetPx });
       }
     }
   });
@@ -274,7 +270,7 @@ function OneShotAnimatedFox({
   return (
     <mesh ref={meshRef} position={[startX, startYOffset, startZ]} rotation-z={rotation}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} />
+      <meshBasicMaterial map={clonedTex} transparent depthWrite={false} alphaTest={0.5} />
     </mesh>
   );
 }
@@ -332,14 +328,14 @@ function SummitScene({ scrollProgress }: { scrollProgress: MotionValue<number> }
 
         {/* The Fox that walks in and curls up on the ledge */}
         <OneShotAnimatedFox
-          textureUrl="/fox_sprite.webp"
+          textureUrl="/sprites/wildlife/fox-walk-padded.webp"
           startX={-18}
           endX={2}
           startYOffset={-12} // Starts relative to deep cliff Y
           endYOffset={-2} // Land nicely on top of the big cliff
           startZ={-150} // Same flight path as ledge
           endZ={5} // Same stop point
-          scale={[6, 6]} // Organic Fox scale, not too gigantic
+          scale={[6, 7.5]} // Padded square cells preserve the fox's original visible height
           frames={16}
           cols={4}
           rows={4}

@@ -1,3 +1,85 @@
+# Forest Hero Bleed + Wildlife Sprite Artifact Pass
+
+## Context
+
+The Forest section screenshot shows three separate visual issues. Initial suspicion was Hero bleed, but source tracing confirmed the main artifacts are Forest-local:
+
+- `web/public/forest/backdrop.webp` contains baked horizontal smear/repeat bands in the upper alpha region, which reads like mirrored/ghosted background artwork behind the Forest card.
+- Forest transparent cutout layers were writing depth in places where they only need to visually composite, increasing the chance of ghost/fleck artifacts in the fog stack.
+- The elk sprite sheet has frames touching row boundaries and stray hoof fragments from adjacent rows, causing vertical repeat/bleed around the legs.
+
+## Plan
+
+- [x] 1. Verify the artifact source and confirm it is Forest-local rather than Hero/Leva state.
+- [x] 2. Create a cleaned Forest backdrop variant that removes the corrupted upper smear/repeat bands without overwriting the original asset.
+- [x] 3. Point the Forest backdrop layer at the cleaned asset and stop that transparent backdrop from writing depth.
+- [x] 4. Fix `ScrollLinkedSprite` material defaults for cutout wildlife sprites: avoid double-sided mirrored backfaces, avoid transparent depth-writing artifacts, and keep alpha behavior crisp.
+- [x] 5. Create padded wildlife sprite variants and wire the active Forest elk to the padded sheet so legs cannot sample adjacent rows.
+- [x] 6. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 7. Reload the in-app browser and check runtime logs.
+- [x] 8. Add a review note here with the final changes and verification.
+
+## Review
+
+- Confirmed the visible mirrored/ghosted background was not Hero or Leva-driven. The bad source was `web/public/forest/backdrop.webp`, which has baked horizontal smear/repeat bands in its upper transparent region.
+- Added `web/public/forest/backdrop-clean.webp`, a non-destructive cleaned variant that keeps only the lower atmospheric tree bank and removes the corrupt upper bands.
+- Updated Forest backdrop rendering in `web/src/components/DeepForest.tsx` to use the cleaned asset, set `depthWrite={false}`, and use a softer `alphaTest` so the backdrop composites instead of contributing stray depth artifacts.
+- Added padded wildlife sheets:
+  - `web/public/sprites/wildlife/elk-walk-padded.webp`
+  - `web/public/sprites/wildlife/fox-walk-padded.webp`
+  - `web/public/sprites/wildlife/bird-flight-padded.webp`
+- Rebuilt the elk padded sheet after removing small disconnected hoof fragments from adjacent rows; edge inspection now reports no non-transparent pixels on elk cell boundaries.
+- Updated `ScrollLinkedSprite` to use `FrontSide` instead of `DoubleSide` and default `depthWrite` to `false`, preventing mirrored backface rendering and transparent depth occlusion.
+- Wired Forest elk, Camp fox, Alpine bird, and the legacy Summit fox reference to padded sheets while preserving their visible proportions with plane scale adjustments.
+- Verification:
+  - `cd web && npm run lint` passes with 0 errors. The two pre-existing `GroveScene.tsx` `no-explicit-any` warnings remain.
+  - `cd web && npm run typecheck` passes.
+  - `cd web && npm run build` passes.
+  - `node scripts/check-asset-size.mjs` still fails on five pre-existing oversized assets unrelated to this pass: `camp/atmosphere/foreground.png`, `home-hero/02-mountains.webp`, `home-hero/05-mist.webp`, `home-hero/06-near-bank.webp`, and `summit/cloud-sea.png`.
+  - Reloaded the in-app browser at `http://localhost:3000/`; runtime logs show no new errors. Automated screenshot capture timed out in the in-app browser, so final visual confirmation should be done in the open browser.
+
+---
+
+# Wildlife Sprite Replacement Pass
+
+## Context
+
+The active wildlife sprites are using inconsistent sheets and duplicated renderer logic. The fox sheet is especially risky because its image size is not a clean multiple of its declared `4x4` grid, so frame sampling can bleed between cells. Forest and Alpine also have separate sprite helpers that do nearly the same thing, and Summit has a third fox-only implementation that does not use the safer sprite-sheet helper.
+
+## Plan
+
+- [x] 1. Create three new clean wildlife sprite sheets based on the current bird, stag/elk, and fox art direction, saved as new project assets without overwriting the old files.
+- [x] 2. Make each new sheet use exact uniform cells with transparent padding so adjacent frames cannot overlap or bleed during frame switches.
+- [x] 3. Update `spriteSheetTexture` so frame sampling is explicit about frame count, cell padding, clamped wrapping, and non-bleeding UVs.
+- [x] 4. Replace the duplicated local sprite helpers with one small shared scroll-linked sprite renderer.
+- [x] 5. Wire the elk into the Forest scroll window, the bird into the Alpine/Summit transition window, and the fox into the Camp scene as requested.
+- [x] 6. Keep scene timing tied to `MODULE_TIMELINE` rather than hard-coded scroll ranges.
+- [x] 7. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 8. Start or reuse the local dev server, then visually inspect the scroll behavior in browser at Forest, Camp, and Alpine/Summit.
+- [x] 9. Add a review section here summarizing the exact asset paths, renderer changes, scene placement, and verification results.
+
+## Review
+
+- Added clean project-bound wildlife sheets:
+  - `web/public/sprites/wildlife/bird-flight-clean.webp` (`6x2`, exact `256x512` cells)
+  - `web/public/sprites/wildlife/elk-walk-clean.webp` (`4x4`, exact `384x256` cells)
+  - `web/public/sprites/wildlife/fox-walk-clean.webp` (`4x4`, exact `350x280` cells)
+- Cropped the fox sheet from the old irregular `1402x1122` source to an exact `1400x1120` grid so the renderer no longer samples fractional cells.
+- Updated `setSpriteSheetFrame` to accept an explicit `frames` count and clamp it against the sheet grid before calculating inset UVs.
+- Added `ScrollLinkedSprite`, a shared scroll-driven sprite renderer that clones/configures sprite textures once, uses the shared frame helper, and drives frame + position from scroll progress.
+- Replaced the active Forest stag usage with the new elk sheet and shared renderer.
+- Added the fox to the Camp scene between the campsite and foreground layers, tied to `MODULE_TIMELINE.camp.enterEnd -> MODULE_TIMELINE.camp.exitStart`, holding the final resting frame.
+- Replaced the Alpine bird with the clean bird sheet and shared renderer, still tied to the Alpine exit window.
+- Updated the legacy `SummitModule` fox renderer to use the clean fox sheet and shared frame helper so it no longer has stale repeat/offset math.
+- Verification:
+  - `cd web && npm run lint` passes with 0 errors; the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings remain.
+  - `cd web && npm run typecheck` passes.
+  - `cd web && npm run build` passes.
+  - Reused the existing dev server on `http://localhost:3000`.
+  - In-app browser console shows no errors. Headless Playwright could not create WebGL in this environment, so exact-scroll screenshots fell back to the no-WebGL page.
+
+---
+
 # Alpine Cloud Follow Pass
 
 ## Context

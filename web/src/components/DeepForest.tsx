@@ -5,7 +5,7 @@ import { Texture, Mesh, Group, MathUtils, AdditiveBlending, DoubleSide, RepeatWr
 import { useRef, useMemo, useEffect, forwardRef } from 'react';
 import { MotionValue } from 'framer-motion';
 import { MODULE_TIMELINE } from '@/lib/moduleTimeline';
-import { configureSpriteSheetTexture, setSpriteSheetFrame } from '@/lib/spriteSheetTexture';
+import ScrollLinkedSprite from './ScrollLinkedSprite';
 import './shaders/ForestMistMaterial';
 import './shaders/ForestShaftMaterial';
 import './shaders/ForestMotesMaterial';
@@ -16,83 +16,6 @@ const ForestMistShader = 'forestMistShaderMaterial' as any;
 const ForestShaftShader = 'forestShaftShaderMaterial' as any;
 const ForestMotesShader = 'forestMotesShaderMaterial' as any;
 const FogCardShader = 'fogCardShaderMaterial' as any;
-
-function AnimatedSprite({
-  textureUrl,
-  startX,
-  endX,
-  y,
-  z,
-  scale,
-  rotation = 0,
-  frames = 8,
-  cols = 8,
-  rows = 1,
-  frameInsetPx = 4,
-  scrollStart,
-  scrollEnd,
-  cycles = 6,
-  scrollProgress,
-}: {
-  textureUrl: string;
-  startX: number;
-  endX: number;
-  y: number;
-  z: number;
-  scale: [number, number];
-  rotation?: number;
-  frames?: number;
-  cols?: number;
-  rows?: number;
-  frameInsetPx?: number;
-  scrollStart: number;
-  scrollEnd: number;
-  cycles?: number;
-  scrollProgress: MotionValue<number>;
-}) {
-  const tex = useTexture(textureUrl) as Texture;
-  const meshRef = useRef<Mesh>(null);
-  const materialRef = useRef<any>(null);
-  const lerpedProgress = useRef(0);
-  const playhead = useRef(0); // Added to accumulate velocity independently
-
-  const clonedTex = useMemo(() => {
-    const clone = configureSpriteSheetTexture(tex.clone());
-    setSpriteSheetFrame(clone, { frame: 0, cols, rows, insetPx: frameInsetPx });
-    return clone;
-  }, [tex, cols, rows, frameInsetPx]);
-  useEffect(() => {
-    return () => {
-      tex.dispose();
-      clonedTex.dispose();
-    };
-  }, [tex, clonedTex]);
-
-  useFrame((_, delta) => {
-    if (meshRef.current) {
-      lerpedProgress.current = MathUtils.damp(lerpedProgress.current, scrollProgress.get(), 4, delta);
-      const progress = lerpedProgress.current;
-      const clamped = Math.min(1, Math.max(0, (progress - scrollStart) / (scrollEnd - scrollStart)));
-
-      meshRef.current.position.x = MathUtils.lerp(startX, endX, clamped);
-
-      // Walk cycle advances on real time (not scroll) so legs never flicker
-      // with scroll velocity or step backward when you scroll up.
-      if (clamped > 0 && clamped < 1) {
-        playhead.current += delta * cycles;
-        const currentFrame = Math.floor(playhead.current) % frames;
-        setSpriteSheetFrame(clonedTex, { frame: currentFrame, cols, rows, insetPx: frameInsetPx });
-      }
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={[startX, y, z]} rotation-z={rotation}>
-      <planeGeometry args={scale} />
-      <meshBasicMaterial map={clonedTex} transparent depthWrite={true} alphaTest={0.5} />
-    </mesh>
-  );
-}
 
 const ForestTree = forwardRef(
   ({ textureUrl, position, scale, rotation = 0, controls, instantReveal = false }: any, externalRef: any) => {
@@ -317,7 +240,7 @@ function CanopyLayer({
   return (
     <mesh position={position} frustumCulled={false}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial map={mapTex} transparent depthWrite={true} alphaTest={0.5} opacity={opacity} />
+      <meshBasicMaterial map={mapTex} transparent depthWrite={false} alphaTest={0.05} opacity={opacity} />
     </mesh>
   );
 }
@@ -649,7 +572,7 @@ export default function DeepForest({
           modulation that two stacked canopy layers used to fake. */}
       {showBackdrop && (
         <CanopyLayer
-          textureUrl="/forest/backdrop.webp"
+          textureUrl="/forest/backdrop-clean.webp"
           position={[0, 6, -500]}
           scale={[1100, 615]}
           opacity={backdropOpacity}
@@ -682,21 +605,21 @@ export default function DeepForest({
 
       {/* The Animated Stag — walks through the deep midground. */}
       {showStag && (
-        <AnimatedSprite
-          textureUrl="/stag_sprite.webp"
-          startX={-42}
-          endX={34}
-          y={-5}
-          z={-95}
+        <ScrollLinkedSprite
+          textureUrl="/sprites/wildlife/elk-walk-padded.webp"
+          startPosition={[-42, -5, -95]}
+          endPosition={[34, -5, -95]}
           scrollStart={MODULE_TIMELINE.forest.enterEnd}
           scrollEnd={
             MODULE_TIMELINE.forest.enterEnd + (MODULE_TIMELINE.forest.exitStart - MODULE_TIMELINE.forest.enterEnd) / 3
           }
-          scale={[32, 32]}
+          scale={[32, 48]}
           frames={16}
           cols={4}
           rows={4}
-          cycles={6}
+          frameInsetPx={8}
+          cycles={4}
+          endBehavior="loop"
           scrollProgress={scrollProgress}
         />
       )}
