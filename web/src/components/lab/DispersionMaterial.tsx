@@ -1,6 +1,6 @@
 'use client';
 
-import { type IUniform, MeshPhysicalMaterial, Texture, Vector2 } from 'three';
+import { type IUniform, MeshPhysicalMaterial, Texture, Vector2, Vector3 } from 'three';
 import CustomShaderMaterial from 'three-custom-shader-material';
 
 const vertexShader = /* glsl */ `
@@ -25,6 +25,11 @@ const fragmentShader = /* glsl */ `
   uniform float uSaturation;
   uniform float uMode;
   uniform float uVelocity;
+  uniform sampler2D uBackDepth;
+  uniform float uCameraNear;
+  uniform float uCameraFar;
+  uniform float uAbsorption;
+  uniform vec3 uAbsorptionColor;
 
   varying vec3 vDispWorldPos;
   varying vec3 vDispWorldNormal;
@@ -33,6 +38,23 @@ const fragmentShader = /* glsl */ `
     const vec3 W = vec3(0.2125, 0.7154, 0.0721);
     vec3 intensity = vec3(dot(rgb, W));
     return mix(intensity, rgb, adjustment);
+  }
+
+  // Inline RGBADepthPacking unpacker matching THREE.MeshDepthMaterial output.
+  float unpackDepth(vec4 v) {
+    const vec4 unpackFactors = vec4(
+      1.0 / (256.0 * 256.0 * 256.0),
+      1.0 / (256.0 * 256.0),
+      1.0 / 256.0,
+      1.0
+    );
+    return dot(v, unpackFactors);
+  }
+
+  // Linearize a NDC-space [0,1] depth into view-space distance.
+  float linearizeDepth(float z, float near, float far) {
+    float zN = 2.0 * z - 1.0;
+    return (2.0 * near * far) / (far + near - zN * (far - near));
   }
 
   // 3-channel per-channel IOR refraction (commit 3 baseline)
@@ -99,6 +121,16 @@ const fragmentShader = /* glsl */ `
       : dispersion3(uv, viewDir, normal, power);
     col = sat(col, uSaturation);
 
+    // Per-fragment thickness from back-face depth FBO.
+    // Beer-Lambert absorption tints the body of the glass differently
+    // through thick (counters of o/e/a) vs thin (bevel edges) regions.
+    float backRaw = unpackDepth(texture2D(uBackDepth, uv));
+    float backLinear = linearizeDepth(backRaw, uCameraNear, uCameraFar);
+    float frontLinear = linearizeDepth(gl_FragCoord.z, uCameraNear, uCameraFar);
+    float thickness = max(0.0, backLinear - frontLinear);
+    vec3 transmission = exp(-uAbsorptionColor * thickness * uAbsorption);
+    col *= transmission;
+
     float NdotV = max(dot(normal, -viewDir), 0.0);
     float fresnel = pow(1.0 - NdotV, uFresnelPower);
 
@@ -118,6 +150,11 @@ export interface DispersionUniforms {
   uSaturation: { value: number };
   uMode: { value: number };
   uVelocity: { value: number };
+  uBackDepth: { value: Texture | null };
+  uCameraNear: { value: number };
+  uCameraFar: { value: number };
+  uAbsorption: { value: number };
+  uAbsorptionColor: { value: Vector3 };
 }
 
 export function makeDispersionUniforms(): DispersionUniforms {
@@ -132,6 +169,11 @@ export function makeDispersionUniforms(): DispersionUniforms {
     uSaturation: { value: 1.1 },
     uMode: { value: 1 },
     uVelocity: { value: 0 },
+    uBackDepth: { value: null },
+    uCameraNear: { value: 0.1 },
+    uCameraFar: { value: 1000 },
+    uAbsorption: { value: 1.6 },
+    uAbsorptionColor: { value: new Vector3(0.6, 0.4, 0.3) },
   };
 }
 

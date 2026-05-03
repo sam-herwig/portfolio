@@ -2,8 +2,8 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, useFBO, MeshTransmissionMaterial, Environment } from '@react-three/drei';
-import { useEffect, useRef, useState } from 'react';
-import { Mesh } from 'three';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { BackSide, Group, Mesh, MeshDepthMaterial, type PerspectiveCamera, RGBADepthPacking } from 'three';
 import DispersionMaterial, { makeDispersionUniforms } from '@/components/lab/DispersionMaterial';
 import { useMouseVelocity } from '@/lib/useMouseVelocity';
 
@@ -17,9 +17,9 @@ const MODE_LABEL: Record<Mode, string> = {
   rygcbv: '3 — rygcbv 6-channel spectral split',
 };
 
-function Backdrop() {
+const Backdrop = forwardRef<Group>(function Backdrop(_, ref) {
   return (
-    <group position={[0, 0, -2]}>
+    <group ref={ref} position={[0, 0, -2]}>
       <mesh position={[-2.5, 0, 0]}>
         <planeGeometry args={[1.5, 5]} />
         <meshBasicMaterial color="#ff3366" />
@@ -38,13 +38,28 @@ function Backdrop() {
       </mesh>
     </group>
   );
+});
+
+interface DispersionTextProps {
+  mode: Mode;
+  backdropRef: React.RefObject<Group | null>;
 }
 
-function DispersionText({ mode }: { mode: Mode }) {
+function DispersionText({ mode, backdropRef }: DispersionTextProps) {
   const meshRef = useRef<Mesh>(null);
-  const fbo = useFBO();
+  const sceneFbo = useFBO();
+  const backDepthFbo = useFBO();
   const velocity = useMouseVelocity();
   const { gl, scene, camera, size, viewport } = useThree();
+
+  const backDepthMat = useMemo(
+    () =>
+      new MeshDepthMaterial({
+        depthPacking: RGBADepthPacking,
+        side: BackSide,
+      }),
+    [],
+  );
 
   useEffect(() => {
     uniforms.uMode.value = mode === 'rygcbv' ? 1 : 0;
@@ -55,14 +70,32 @@ function DispersionText({ mode }: { mode: Mode }) {
 
     if (!meshRef.current) return;
     if (mode === 'drei') return;
+
+    // Pass 1: scene minus text → sceneFbo
     meshRef.current.visible = false;
-    gl.setRenderTarget(fbo);
+    gl.setRenderTarget(sceneFbo);
     gl.clear();
     gl.render(scene, camera);
-    gl.setRenderTarget(null);
-    meshRef.current.visible = true;
 
-    uniforms.uScene.value = fbo.texture;
+    // Pass 2: text only with back-face depth packed as RGBA → backDepthFbo.
+    // Swap the text's material to depth-RGBA, hide the backdrop so the FBO
+    // only captures the text mesh, render, restore.
+    meshRef.current.visible = true;
+    const original = meshRef.current.material;
+    meshRef.current.material = backDepthMat;
+    if (backdropRef.current) backdropRef.current.visible = false;
+    gl.setRenderTarget(backDepthFbo);
+    gl.clear();
+    gl.render(scene, camera);
+    meshRef.current.material = original;
+    if (backdropRef.current) backdropRef.current.visible = true;
+    gl.setRenderTarget(null);
+
+    const persp = camera as PerspectiveCamera;
+    uniforms.uScene.value = sceneFbo.texture;
+    uniforms.uBackDepth.value = backDepthFbo.texture;
+    uniforms.uCameraNear.value = persp.near;
+    uniforms.uCameraFar.value = persp.far;
     uniforms.uResolution.value.set(size.width * viewport.dpr, size.height * viewport.dpr);
   });
 
@@ -104,6 +137,7 @@ function DispersionText({ mode }: { mode: Mode }) {
 
 export default function DispersionLab() {
   const [mode, setMode] = useState<Mode>('rygcbv');
+  const backdropRef = useRef<Group>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -127,8 +161,8 @@ export default function DispersionLab() {
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 5, 5]} intensity={1.2} />
         {mode === 'drei' && <Environment preset="studio" />}
-        <Backdrop />
-        <DispersionText mode={mode} />
+        <Backdrop ref={backdropRef} />
+        <DispersionText mode={mode} backdropRef={backdropRef} />
         <OrbitControls />
       </Canvas>
     </main>
