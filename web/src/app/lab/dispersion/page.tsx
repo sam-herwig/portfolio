@@ -1,7 +1,12 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
-import { Text, OrbitControls, MeshTransmissionMaterial, Environment } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls, Text3D, Center, useFBO } from '@react-three/drei';
+import { useRef } from 'react';
+import { Mesh } from 'three';
+import DispersionMaterial, { makeDispersionUniforms } from '@/components/lab/DispersionMaterial';
+
+const uniforms = makeDispersionUniforms();
 
 function Backdrop() {
   return (
@@ -26,35 +31,54 @@ function Backdrop() {
   );
 }
 
+function DispersionText() {
+  const meshRef = useRef<Mesh>(null);
+  const fbo = useFBO();
+  const { gl, scene, camera, size, viewport } = useThree();
+
+  useFrame(() => {
+    if (!meshRef.current) return;
+    meshRef.current.visible = false;
+    gl.setRenderTarget(fbo);
+    gl.clear();
+    gl.render(scene, camera);
+    gl.setRenderTarget(null);
+    meshRef.current.visible = true;
+
+    uniforms.uScene.value = fbo.texture;
+    uniforms.uResolution.value.set(size.width * viewport.dpr, size.height * viewport.dpr);
+  });
+
+  return (
+    <Center>
+      <Text3D
+        ref={meshRef}
+        font="/fonts/Fraunces.json"
+        size={1.1}
+        height={0.32}
+        bevelEnabled
+        bevelThickness={0.04}
+        bevelSize={0.025}
+        bevelOffset={0}
+        bevelSegments={3}
+        curveSegments={10}
+        letterSpacing={-0.04}
+      >
+        Sam Herwig
+        <DispersionMaterial uniforms={uniforms} />
+      </Text3D>
+    </Center>
+  );
+}
+
 export default function DispersionLab() {
   return (
     <main className="h-screen w-full bg-background">
       <Canvas camera={{ position: [0, 0, 5], fov: 35 }} dpr={[1, 2]}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 5, 5]} intensity={1.2} />
-        <Environment preset="studio" />
         <Backdrop />
-        <Text
-          font="/fonts/Fraunces.ttf"
-          fontSize={1.2}
-          anchorX="center"
-          anchorY="middle"
-          maxWidth={6}
-          letterSpacing={-0.03}
-        >
-          Sam Herwig
-          <MeshTransmissionMaterial
-            transmission={1}
-            ior={1.5}
-            chromaticAberration={0.05}
-            thickness={0.5}
-            backside
-            backsideThickness={0.8}
-            samples={8}
-            resolution={512}
-            roughness={0}
-          />
-        </Text>
+        <DispersionText />
         <OrbitControls />
       </Canvas>
     </main>
