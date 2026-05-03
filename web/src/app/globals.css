@@ -1,26 +1,20 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-space-mono: var(--font-space-mono), 'Courier New', Courier, monospace;
-  --font-chivo: var(--font-chivo), ui-sans-serif, system-ui, sans-serif;
+  --font-fraunces: var(--font-fraunces), 'Times New Roman', Times, serif;
+  --font-geist-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: var(--font-geist-mono), ui-monospace, 'Menlo', monospace;
 
-  --color-background: #f9fafb;
-  --color-background-light: #f9fafb;
-  --color-background-dark: #09090b; /* zinc-950 */
-  --color-foreground: #18181b;
-  --color-foreground-light: #18181b; /* zinc-900 */
-  --color-foreground-dark: #fafafa; /* zinc-50 */
-
-  /* Taste-Skill Config Variables */
-  --design-variance: 8;
-  --motion-intensity: 6;
-  --visual-density: 4;
+  --color-background: #0a0a0a;
+  --color-foreground: #fafafa;
+  --color-muted: #6b7280;
+  --color-accent: #c4f57a;
 }
 
 @layer base {
   :root {
-    --background: var(--color-background-light);
-    --foreground: var(--color-foreground-light);
+    --background: var(--color-background);
+    --foreground: var(--color-foreground);
   }
 
   html {
@@ -30,12 +24,8 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-feature-settings:
-      'rlig' 1,
-      'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Prevents scroll bump */
     overflow-y: scroll;
   }
 
@@ -49,75 +39,13 @@
   .text-balance {
     text-wrap: balance;
   }
-
-  /* Taste-Skill liquid glass refraction */
-  .glassmorphism {
-    @apply backdrop-blur-md bg-white/5 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)];
-  }
-
-  /* Field Journal — editorial typography utilities */
-
-  /* Five-line drop cap on the first letter of a paragraph */
-  .drop-cap-5::first-letter {
-    font-family: var(--font-instrument-serif), Georgia, serif;
-    font-weight: 700;
-    font-size: 5.2em;
-    line-height: 0.9;
-    float: left;
-    margin: 0.08em 0.12em 0 -0.02em;
-    color: var(--color-foreground);
-  }
-
-  /* Italic right-aligned figure caption */
-  .fig-caption {
-    font-family: var(--font-instrument-serif), Georgia, serif;
-    font-style: italic;
-    text-align: right;
-    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
-  }
 }
 
-@property --angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes border-rotate {
-  to {
-    --angle: 360deg;
-  }
-}
-
-@keyframes ember-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 20px -5px rgba(251, 191, 36, 0.08);
-  }
-  50% {
-    box-shadow: 0 0 30px -5px rgba(251, 191, 36, 0.18);
-  }
-}
-
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-.animate-marquee {
-  animation: marquee 30s linear infinite;
-}
-
-/* Keyboard navigation focus rings */
 :focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
 
-/* Reduced motion — disable CSS animations/transitions */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -14,52 +14,35 @@ export default async function OpengraphImage() {
         flexDirection: 'column',
         justifyContent: 'space-between',
         padding: '80px 88px',
-        background: '#f9fafb',
-        color: '#18181b',
-        // Faint paper/ink cross-hatch made with layered gradients
-        backgroundImage:
-          'radial-gradient(circle at 20% 110%, rgba(24,24,27,0.05), transparent 55%),' +
-          'radial-gradient(circle at 100% 0%, rgba(24,24,27,0.06), transparent 55%),' +
-          'repeating-linear-gradient(135deg, transparent 0 14px, rgba(24,24,27,0.025) 14px 15px)',
+        background: '#0a0a0a',
+        color: '#fafafa',
       }}
     >
-      {/* Top row — mono caption + rule */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 18,
-            fontFamily: 'sans-serif',
-            fontSize: 18,
-            letterSpacing: '0.28em',
-            textTransform: 'uppercase',
-            color: '#18181b99',
-          }}
-        >
-          <span
-            style={{
-              display: 'block',
-              width: 48,
-              height: 1,
-              background: '#18181b55',
-            }}
-          />
-          <span>samherwig.dev — Portfolio 2026</span>
-        </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 18,
+          fontFamily: 'sans-serif',
+          fontSize: 18,
+          letterSpacing: '0.28em',
+          textTransform: 'uppercase',
+          color: '#fafafa99',
+        }}
+      >
+        <span style={{ display: 'block', width: 48, height: 1, background: '#fafafa55' }} />
+        <span>samherwig.dev — Portfolio 2026</span>
       </div>
 
-      {/* Center — wordmark + tagline */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
         <div
           style={{
             fontFamily: 'serif',
-            fontStyle: 'italic',
-            fontSize: 180,
+            fontSize: 200,
             lineHeight: 0.95,
-            letterSpacing: '-0.02em',
-            color: '#18181b',
-            fontWeight: 400,
+            letterSpacing: '-0.03em',
+            color: '#fafafa',
+            fontWeight: 500,
           }}
         >
           Sam Herwig
@@ -73,24 +56,13 @@ export default async function OpengraphImage() {
             fontSize: 22,
             letterSpacing: '0.3em',
             textTransform: 'uppercase',
-            color: '#18181baa',
+            color: '#fafafaaa',
           }}
         >
           <span>Creative Engineer</span>
-          <span
-            style={{
-              display: 'block',
-              width: 6,
-              height: 6,
-              background: '#18181b55',
-              borderRadius: '50%',
-            }}
-          />
-          <span>Denver, CO</span>
         </div>
       </div>
 
-      {/* Bottom — attribution line */}
       <div
         style={{
           display: 'flex',
@@ -100,11 +72,10 @@ export default async function OpengraphImage() {
           fontSize: 18,
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
-          color: '#18181b88',
+          color: '#fafafa88',
         }}
       >
-        <span>Three.js · Shaders · Web as canvas</span>
-        <span>Fig. 01 — Field Journal</span>
+        <span>Three.js · Shaders · WebGL</span>
       </div>
     </div>,
     { ...size },
