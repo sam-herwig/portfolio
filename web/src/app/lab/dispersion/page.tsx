@@ -2,6 +2,7 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, useFBO, MeshTransmissionMaterial, Environment } from '@react-three/drei';
+import { Leva, useControls } from 'leva';
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { BackSide, Group, Mesh, MeshDepthMaterial, type PerspectiveCamera, RGBADepthPacking } from 'three';
 import DispersionMaterial, { makeDispersionUniforms } from '@/components/lab/DispersionMaterial';
@@ -43,6 +44,116 @@ const Backdrop = forwardRef<Group>(function Backdrop(_, ref) {
 interface DispersionTextProps {
   mode: Mode;
   backdropRef: React.RefObject<Group | null>;
+}
+
+function useDispersionControls() {
+  useControls('Dispersion · IOR', {
+    iorR: {
+      value: 1.15,
+      min: 1.0,
+      max: 2.0,
+      step: 0.01,
+      onChange: (v: number) => {
+        uniforms.uIorR.value = v;
+      },
+    },
+    iorG: {
+      value: 1.18,
+      min: 1.0,
+      max: 2.0,
+      step: 0.01,
+      onChange: (v: number) => {
+        uniforms.uIorG.value = v;
+      },
+    },
+    iorB: {
+      value: 1.22,
+      min: 1.0,
+      max: 2.0,
+      step: 0.01,
+      onChange: (v: number) => {
+        uniforms.uIorB.value = v;
+      },
+    },
+    refractPower: {
+      value: 0.4,
+      min: 0,
+      max: 2,
+      step: 0.01,
+      onChange: (v: number) => {
+        uniforms.uRefractPower.value = v;
+      },
+    },
+    fresnelPower: {
+      value: 4.0,
+      min: 0,
+      max: 16,
+      step: 0.1,
+      onChange: (v: number) => {
+        uniforms.uFresnelPower.value = v;
+      },
+    },
+    saturation: {
+      value: 1.1,
+      min: 0,
+      max: 2,
+      step: 0.01,
+      onChange: (v: number) => {
+        uniforms.uSaturation.value = v;
+      },
+    },
+  });
+
+  useControls('Glass body', {
+    absorption: {
+      value: 1.6,
+      min: 0,
+      max: 8,
+      step: 0.05,
+      onChange: (v: number) => {
+        uniforms.uAbsorption.value = v;
+      },
+    },
+    absorbR: {
+      value: 0.6,
+      min: 0,
+      max: 2,
+      step: 0.01,
+      onChange: (v: number) => {
+        uniforms.uAbsorptionColor.value.x = v;
+      },
+    },
+    absorbG: {
+      value: 0.4,
+      min: 0,
+      max: 2,
+      step: 0.01,
+      onChange: (v: number) => {
+        uniforms.uAbsorptionColor.value.y = v;
+      },
+    },
+    absorbB: {
+      value: 0.3,
+      min: 0,
+      max: 2,
+      step: 0.01,
+      onChange: (v: number) => {
+        uniforms.uAbsorptionColor.value.z = v;
+      },
+    },
+  });
+
+  useControls('Breath', {
+    breath: {
+      value: 0.012,
+      min: 0,
+      max: 0.05,
+      step: 0.001,
+      onChange: (v: number) => {
+        uniforms.uBreath.value = v;
+      },
+    },
+  });
 }
 
 function DispersionText({ mode, backdropRef }: DispersionTextProps) {
@@ -140,6 +251,8 @@ export default function DispersionLab() {
   const [mode, setMode] = useState<Mode>('rygcbv');
   const backdropRef = useRef<Group>(null);
 
+  useDispersionControls();
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === '1') setMode('drei');
@@ -152,16 +265,23 @@ export default function DispersionLab() {
 
   return (
     <main className="relative h-screen w-full bg-background">
+      <Leva collapsed titleBar={{ title: 'Dispersion · Live tune' }} />
       <div
         className="pointer-events-none absolute left-6 top-6 z-10 text-xs uppercase tracking-[0.25em] text-foreground/60"
         style={{ fontFamily: 'var(--font-geist-mono)' }}
       >
         Dispersion Lab · Mode: {MODE_LABEL[mode]}
       </div>
+      <div
+        className="pointer-events-none absolute bottom-6 left-6 z-10 text-[10px] uppercase tracking-[0.25em] text-foreground/40"
+        style={{ fontFamily: 'var(--font-geist-mono)' }}
+      >
+        1 · drei baseline 2 · 3-channel 3 · rygcbv
+      </div>
       <Canvas camera={{ position: [0, 0, 5], fov: 35 }} dpr={[1, 2]}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 5, 5]} intensity={1.2} />
-        {mode === 'drei' && <Environment preset="studio" />}
+        <Environment preset="studio" />
         <Backdrop ref={backdropRef} />
         <DispersionText mode={mode} backdropRef={backdropRef} />
         <OrbitControls />
