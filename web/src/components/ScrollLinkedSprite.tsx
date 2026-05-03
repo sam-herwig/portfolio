@@ -30,6 +30,7 @@ type ScrollLinkedSpriteProps = {
   scrollProgress: MotionValue<number>;
   opacity?: number;
   depthWrite?: boolean;
+  depthTest?: boolean;
   alphaTest?: number;
   renderOrder?: number;
 };
@@ -61,6 +62,7 @@ export default function ScrollLinkedSprite({
   scrollProgress,
   opacity = 1,
   depthWrite = false,
+  depthTest = true,
   alphaTest = 0.5,
   renderOrder,
 }: ScrollLinkedSpriteProps) {
@@ -104,6 +106,7 @@ export default function ScrollLinkedSprite({
         map={spriteTexture}
         transparent
         depthWrite={depthWrite}
+        depthTest={depthTest}
         alphaTest={alphaTest}
         opacity={opacity}
         side={FrontSide}

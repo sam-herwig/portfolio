@@ -10,6 +10,7 @@ import ElevationBar from '@/components/ElevationBar';
 import GearRack from '@/components/GearRack';
 import Preloader from '@/components/Preloader';
 import { useAppStore } from '@/store/useAppStore';
+import { useFoundEggs } from '@/lib/eggs/useFoundEggs';
 import { Project } from '@/data/projects';
 import { MODULE_TIMELINE, moduleRange, sceneChildRanges } from '@/lib/moduleTimeline';
 import { isTimelineDebugEnabled, tickTimelineDebug, dumpTimeline, destroyTimelineDebug } from '@/lib/timelineDebug';
@@ -198,9 +199,9 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
 
   // ── Hero content ──
   const scrollHintOpacity = useTransform(scrollYProgress, [0, heroRange[1]], [1, 0]);
-  // Text fades out early (0.05→0.11) so the 3D backdrop has solo screen time
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.05, 0.11], [1, 1, 0]);
-  const heroY = useTransform(scrollYProgress, [0, 0.11], reducedMotion ? [0, 0] : [0, -56]);
+  // Text fades out early (0.035→0.077) so the 3D backdrop has solo screen time
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.035, 0.077], [1, 1, 0]);
+  const heroY = useTransform(scrollYProgress, [0, 0.077], reducedMotion ? [0, 0] : [0, -56]);
 
   // ── Camp content opacity — starts at enterEnd (after scene fully visible) ──
   const campContentOpacity = useTransform(
@@ -209,21 +210,17 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
     [0, 1, 1, 0],
   );
 
+  // Trail-fork hit area opacity follows the module enter/exit envelope so the
+  // compass cursor (which uses getBoundingClientRect + computed opacity) only
+  // points at the creek while the scene is actually visible.
   const trailForkOpacity = useTransform(scrollYProgress, [...trailForkRange], [0, 1, 1, 0]);
-  const trailForkY = useTransform(
-    scrollYProgress,
-    [trailForkRange[0], trailForkRange[1], trailForkRange[3]],
-    reducedMotion ? [0, 0, 0] : [36, 0, -24],
-  );
 
-  const handleOffTrail = (e: React.MouseEvent) => {
+  const handleCreek = (e: React.MouseEvent) => {
     e.preventDefault();
     window.sessionStorage.setItem('sh-return-anchor', 'selected-work');
-    useAppStore.getState().startTransition({ x: e.clientX, y: e.clientY }, '#f9fafb', '/off-trail');
-  };
-
-  const handleKeepClimbing = () => {
-    refAlpine.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+    window.sessionStorage.setItem('sh-egg-via', 'creek');
+    useFoundEggs.getState().markFound('creek');
+    useAppStore.getState().startTransition({ x: e.clientX, y: e.clientY }, '#18181b', '/off-trail');
   };
 
   // ── Summit child sequencing inside summit ownership window ──
@@ -381,42 +378,26 @@ export default function HomeClient({ caseStudies }: { caseStudies: Project[] }) 
           </div>
         </section>
 
-        {/* Trail Fork — optional route branch before Alpine */}
+        {/* Trail Fork — Y-fork scene with creek as the off-trail entry point.
+            The 3D backdrop, branch, and bird live in UnifiedScene.tsx. This
+            HTML overlay is just the click hit-area over the stream region;
+            the compass cursor finds it via [data-egg="creek"]. */}
         <section
           id="trail-fork"
           ref={refTrailFork}
           role="region"
           aria-label="Trail Fork"
-          className="relative w-full min-h-[145vh] md:min-h-[190vh]"
+          className="relative w-full min-h-[80vh] md:min-h-[105vh]"
         >
-          <div className="sticky top-0 flex min-h-screen items-center justify-center px-4 py-20 md:px-12">
-            <motion.div
-              style={{ opacity: trailForkOpacity, y: trailForkY }}
-              className="mx-auto flex w-full max-w-4xl items-center justify-center"
-            >
-              <div className="relative w-[min(78vw,30rem)]">
-                <Image
-                  src="/trail-fork/signpost.png"
-                  alt=""
-                  width={1024}
-                  height={1536}
-                  className="h-auto w-full select-none drop-shadow-[0_22px_44px_rgba(24,24,27,0.18)]"
-                  priority={false}
-                />
-                <button
-                  type="button"
-                  aria-label="Off trail"
-                  onClick={handleOffTrail}
-                  className="absolute left-[4%] top-[22%] h-[19%] w-[66%] -rotate-[1deg] cursor-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-foreground/70 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
-                />
-                <button
-                  type="button"
-                  aria-label="Keep climbing"
-                  onClick={handleKeepClimbing}
-                  className="absolute right-[4%] top-[45%] h-[19%] w-[72%] rotate-[1deg] cursor-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-foreground/70 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
-                />
-              </div>
-            </motion.div>
+          <div className="sticky top-0 flex min-h-screen items-center justify-start px-4 md:px-12">
+            <motion.button
+              type="button"
+              data-egg="creek"
+              aria-label="Follow the creek off-trail"
+              onClick={handleCreek}
+              style={{ opacity: trailForkOpacity }}
+              className="absolute left-0 top-1/2 h-[55vh] w-[33vw] max-w-[28rem] -translate-y-1/2 rounded-md bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-foreground/70 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+            />
           </div>
         </section>
 

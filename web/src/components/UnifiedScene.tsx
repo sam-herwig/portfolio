@@ -37,6 +37,7 @@ import './shaders/AlpineHazeMaterial';
 import DeepForest from './DeepForest';
 import ScrollLinkedSprite from './ScrollLinkedSprite';
 import { MODULE_TIMELINE, sceneVisible, sceneOpacity, sceneChildRanges } from '@/lib/moduleTimeline';
+import { type HeroParams, type PresetName, getPresetParams } from '@/lib/heroParams';
 
 // ── Scene envelope helper ─────────────────────────────────────────────
 // Applies sceneOpacity as a multiplier on all materials in a group,
@@ -138,13 +139,13 @@ function UnifiedCamera({ scrollProgress }: { scrollProgress: MotionValue<number>
     const campZ = MathUtils.lerp(30, -10, campP);
     const campRX = 0;
 
-    // Trail Fork zone: no 3D scene group, just a camera bridge from camp to alpine.
-    const trailForkSpan = trailFork.ownEnd - trailFork.ownStart;
-    const trailForkP = Math.min(1, Math.max(0, (p - trailFork.ownStart) / trailForkSpan));
-    const trailForkX = MathUtils.lerp(0, 0, trailForkP);
-    const trailForkY = MathUtils.lerp(15, -60, trailForkP);
-    const trailForkZ = MathUtils.lerp(-10, 15, trailForkP);
-    const trailForkRX = MathUtils.lerp(0, 0.15, trailForkP);
+    // Trail Fork zone: pause camera at eye-level so the trail-fork backdrop
+    // plane fills the view. Camp → TrailFork dives down from above-treeline;
+    // TrailFork → Alpine continues the descent into the alpine valley.
+    const trailForkX = 0;
+    const trailForkY = 0;
+    const trailForkZ = 8;
+    const trailForkRX = 0;
 
     // Alpine zone: z=15 fixed, y -60->120 (start below lowest cliff so cliffs rise from below), climb sway, rotX=0.15
     const alpineSpan = alpine.ownEnd - alpine.ownStart;
@@ -293,6 +294,8 @@ function Hero3DLayer({
   uColorWater = DEFAULT_WATERCOLOR_WASH,
   uColorWarm = DEFAULT_WATERCOLOR_WARM,
   scrollProgress,
+  drawParams,
+  drawProgressRef,
 }: {
   textureUrl: string;
   position: [number, number, number];
@@ -313,6 +316,10 @@ function Hero3DLayer({
   uColorWater?: string;
   uColorWarm?: string;
   scrollProgress: MotionValue<number>;
+  // Liquid line-draw params (optional). When provided, the layer animates its
+  // ink in via the soak shader using drawProgressRef as the 0..1 driver.
+  drawParams?: HeroParams;
+  drawProgressRef?: React.MutableRefObject<number>;
 }) {
   const tex = useTexture(textureUrl) as Texture;
   const waterColor = useMemo(() => new Color(uColorWater), [uColorWater]);
@@ -331,7 +338,7 @@ function Hero3DLayer({
 
     if (materialRef.current) {
       materialRef.current.uTime = state.clock.elapsedTime;
-      materialRef.current.uWind = state.clock.elapsedTime * 0.5;
+      materialRef.current.uWind = 0;
       materialRef.current.uRadius = uRadius;
       materialRef.current.uStrength = uStrength;
       materialRef.current.uNoiseScale = uNoiseScale;
@@ -343,6 +350,31 @@ function Hero3DLayer({
       materialRef.current.uUseLuminance = 0;
       materialRef.current.uColorWater.set(uColorWater);
       materialRef.current.uColorWarm.set(uColorWarm);
+
+      // Liquid line-draw uniforms — only active when drawParams is provided.
+      // Without drawParams the shader's defaults (uDrawProgress=1) leave the
+      // layer fully drawn at all times, preserving prior behavior.
+      if (drawParams && drawProgressRef) {
+        materialRef.current.uDrawProgress = drawProgressRef.current;
+        materialRef.current.uDrawMode = drawParams.drawMode;
+        materialRef.current.uDrawDirection.copy(drawParams.drawDirection);
+        materialRef.current.uSeedPoint0.copy(drawParams.seedPoint0);
+        materialRef.current.uSeedPoint1.copy(drawParams.seedPoint1);
+        materialRef.current.uHasSkeleton = 0.0;
+        materialRef.current.uFrontWidth = drawParams.frontWidth;
+        materialRef.current.uFrontPoolStrength = drawParams.frontPoolStrength;
+        materialRef.current.uFrontFeather = drawParams.frontFeather;
+        materialRef.current.uDrawNoiseScale = drawParams.drawNoiseScale;
+        materialRef.current.uDrawNoiseStrength = drawParams.drawNoiseStrength;
+        materialRef.current.uNoiseStretch = drawParams.noiseStretch;
+        materialRef.current.uSoakContrast = drawParams.soakContrast;
+        materialRef.current.uSoakBias = drawParams.soakBias;
+        materialRef.current.uSoakDetailScale = drawParams.soakDetailScale;
+        materialRef.current.uSoakDetailStrength = drawParams.soakDetailStrength;
+        materialRef.current.uSweepWeight = drawParams.sweepWeight;
+        materialRef.current.uActivationNoise = drawParams.activationNoise;
+        materialRef.current.uActivationScale = drawParams.activationScale;
+      }
 
       if (isMobile) {
         touchMouse.current.lerp(touchTarget.current, 0.1);
@@ -377,6 +409,68 @@ function Hero3DLayer({
   );
 }
 
+// Home hero layered diorama: each layer draws in on a staggered time window
+// after the page mounts, back-to-front. Uses the liquid line-draw shader
+// path with per-layer presets matched to the layer's role in the scene.
+type HomeHeroLayer = {
+  key: string;
+  url: string;
+  preset: PresetName;
+  // [start, end] expressed as hero-local scroll progress (0..1 across the
+  // hero zone). Layers stagger back-to-front so the painting reveals as the
+  // user scrolls. The hero canvas is already pinned (fixed background), so
+  // scrolling through the hero zone literally draws the painting in.
+  scrollWindow: [number, number];
+  // Position + scale relative to the existing mountains/forest composition
+  // (Leva-tunable defaults; tweak in dev to taste)
+  position: [number, number, number];
+  scale: [number, number];
+};
+
+// Draw order is closest-first → farthest-last. The framing tree commits
+// first, then the near-bank, the forest, the mist, and finally the distant
+// mountains "appear" to complete the painting. Array order remains
+// back-to-front (z-position) for readability; the scrollWindow values drive
+// reveal sequence, not the array order.
+const HOME_HERO_LAYERS: readonly HomeHeroLayer[] = [
+  // Mountains arrive last — the distant peaks that close the composition.
+  {
+    key: 'mountains',
+    url: '/home-hero/02-mountains.webp',
+    preset: 'Pure Soak',
+    scrollWindow: [0.55, 0.72],
+    position: [-8.0, 28.5, -92],
+    scale: [207, 80],
+  },
+  // Mist precedes the mountains, bleeding outward to settle the haze.
+  {
+    key: 'mist',
+    url: '/home-hero/05-mist.webp',
+    preset: 'Pure Soak',
+    scrollWindow: [0.42, 0.58],
+    position: [0.0, 4.0, -85],
+    scale: [180, 60],
+  },
+  // Forest mid-ground — the artist commits the treeline diagonally.
+  {
+    key: 'forest',
+    url: '/home-hero/04-forest.webp',
+    preset: 'Diagonal Brush',
+    scrollWindow: [0.28, 0.44],
+    position: [0.0, -12.5, -70],
+    scale: [150, 40],
+  },
+  // Near-bank — closest element, draws first to anchor the foreground.
+  {
+    key: 'near-bank',
+    url: '/home-hero/06-near-bank.webp',
+    preset: 'Pop-Around',
+    scrollWindow: [0.0, 0.16],
+    position: [0.0, -22.0, -30],
+    scale: [80, 28],
+  },
+] as const;
+
 function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
   const groupRef = useRef<Group>(null);
   const lerpedP = useRef(0);
@@ -386,6 +480,21 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
   const touchMouse = useRef(new Vector2(10, 10));
   const touchTarget = useRef(new Vector2(10, 10));
   const [isMobile, setIsMobile] = useState(false);
+
+  // Per-layer scroll-based draw progress. Each layer has its own scrollWindow
+  // (HOME_HERO_LAYERS[i].scrollWindow) and is driven by hero-local scroll
+  // progress (0..1 across the hero zone). The painting reveals as the user
+  // scrolls down the pinned hero.
+  const drawProgressMountains = useRef(0);
+  const drawProgressMist = useRef(0);
+  const drawProgressForest = useRef(0);
+  const drawProgressNearBank = useRef(0);
+
+  const drawParamsByKey = useMemo(
+    () =>
+      Object.fromEntries(HOME_HERO_LAYERS.map((l) => [l.key, getPresetParams(l.preset)])) as Record<string, HeroParams>,
+    [],
+  );
 
   const composition = useControls(
     'Home Hero',
@@ -403,17 +512,6 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
         fZ: { value: -70, min: -200, max: -20, step: 1 },
         fW: { value: 150, min: 40, max: 400, step: 1 },
         fH: { value: 40, min: 10, max: 120, step: 1 },
-      }),
-      watercolor: folder({
-        waterColor: { value: DEFAULT_WATERCOLOR_WASH },
-        warmColor: { value: DEFAULT_WATERCOLOR_WARM },
-        radius: { value: 0.35, min: 0.0, max: 1.2, step: 0.01 },
-        washIntensity: { value: 1.4, min: 0.0, max: 1.4, step: 0.01 },
-        edgePool: { value: 0.12, min: 0.0, max: 1.0, step: 0.01 },
-        grainAmount: { value: 0.03, min: 0.0, max: 0.3, step: 0.005 },
-        strength: { value: 0.01, min: 0.0, max: 0.2, step: 0.005 },
-        noiseScale: { value: 15.0, min: 10.0, max: 200.0, step: 1.0 },
-        speed: { value: 0.05, min: 0.0, max: 2.0, step: 0.05 },
       }),
     },
     { collapsed: false },
@@ -440,8 +538,30 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
     return () => window.removeEventListener('mousemove', onMouse);
   }, [isMobile]);
 
+  const drawProgressByKey: Record<string, React.MutableRefObject<number>> = {
+    mountains: drawProgressMountains,
+    mist: drawProgressMist,
+    forest: drawProgressForest,
+    'near-bank': drawProgressNearBank,
+  };
+
   useFrame((_, delta) => {
     lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
+
+    // Hero-local scroll progress (0..1 across the pinned hero zone). Each
+    // layer's scrollWindow maps a slice of this to its own draw progress so
+    // the painting reveals back-to-front as the user scrolls.
+    const heroWindow = MODULE_TIMELINE.hero;
+    const heroP = MathUtils.clamp(
+      (lerpedP.current - heroWindow.ownStart) / (heroWindow.ownEnd - heroWindow.ownStart),
+      0,
+      1,
+    );
+    for (const layer of HOME_HERO_LAYERS) {
+      const [start, end] = layer.scrollWindow;
+      const ref = drawProgressByKey[layer.key];
+      if (ref) ref.current = MathUtils.smoothstep(heroP, start, end);
+    }
 
     if (isMobile) {
       const heroWindow = MODULE_TIMELINE.hero;
@@ -463,6 +583,19 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
     }
   });
 
+  // Resolve final position/scale per layer — mountains and forest still
+  // honor Leva tuning; the new layers use their HOME_HERO_LAYERS defaults.
+  const layerOverrides: Record<string, { position: [number, number, number]; scale: [number, number] }> = {
+    mountains: {
+      position: [composition.mX, composition.mY, composition.mZ],
+      scale: [composition.mW, composition.mH],
+    },
+    forest: {
+      position: [composition.fX, composition.fY, composition.fZ],
+      scale: [composition.fW, composition.fH],
+    },
+  };
+
   return (
     <group ref={groupRef}>
       {/* Solid Paper Background */}
@@ -470,48 +603,31 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
         <planeGeometry args={[500, 500]} />
         <meshBasicMaterial color="#f9fafb" />
       </mesh>
-      <Hero3DLayer
-        textureUrl="/home-hero/02-mountains.webp"
-        position={[composition.mX, composition.mY, composition.mZ]}
-        scale={[composition.mW, composition.mH]}
-        uPaperOpacity={0}
-        isActive={isActive}
-        mousePos={mousePos}
-        touchMouse={touchMouse}
-        touchTarget={touchTarget}
-        isMobile={isMobile}
-        uRadius={composition.radius}
-        uStrength={composition.strength}
-        uNoiseScale={composition.noiseScale}
-        uSpeed={composition.speed}
-        uWashIntensity={composition.washIntensity}
-        uEdgePool={composition.edgePool}
-        uGrainAmount={composition.grainAmount}
-        uColorWater={composition.waterColor}
-        uColorWarm={composition.warmColor}
-        scrollProgress={scrollProgress}
-      />
-      <Hero3DLayer
-        textureUrl="/home-hero/04-forest.webp"
-        position={[composition.fX, composition.fY, composition.fZ]}
-        scale={[composition.fW, composition.fH]}
-        uPaperOpacity={0}
-        isActive={isActive}
-        mousePos={mousePos}
-        touchMouse={touchMouse}
-        touchTarget={touchTarget}
-        isMobile={isMobile}
-        uRadius={composition.radius}
-        uStrength={composition.strength}
-        uNoiseScale={composition.noiseScale}
-        uSpeed={composition.speed}
-        uWashIntensity={composition.washIntensity}
-        uEdgePool={composition.edgePool}
-        uGrainAmount={composition.grainAmount}
-        uColorWater={composition.waterColor}
-        uColorWarm={composition.warmColor}
-        scrollProgress={scrollProgress}
-      />
+      {HOME_HERO_LAYERS.map((layer) => {
+        const override = layerOverrides[layer.key];
+        const position = override?.position ?? layer.position;
+        const scale = override?.scale ?? layer.scale;
+        return (
+          <Hero3DLayer
+            key={layer.key}
+            textureUrl={layer.url}
+            position={position}
+            scale={scale}
+            uPaperOpacity={0}
+            isActive={isActive}
+            mousePos={mousePos}
+            touchMouse={touchMouse}
+            touchTarget={touchTarget}
+            isMobile={isMobile}
+            uWashIntensity={0}
+            uEdgePool={0}
+            uGrainAmount={0}
+            scrollProgress={scrollProgress}
+            drawParams={drawParamsByKey[layer.key]}
+            drawProgressRef={drawProgressByKey[layer.key]}
+          />
+        );
+      })}
     </group>
   );
 }
@@ -520,484 +636,144 @@ function HeroSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number
 // FOREST SCENE GROUP
 // =============================================================================
 
-const FOREST_PRESET_DEFAULT = 'Open Glade';
+const FOREST_PRESET_DEFAULT = 'Ink-Wash Grove';
 
-// Twelve dramatically different forest looks. Visibility flags
-// (shaft/motes/canopy/tree layers) are part of each preset so
-// switching can spread the scene out, not just retint it.
-//
-// floorMistDensity drives the flat floor plate. fogCardOpacity is the
-// independent dial for the 15 volumetric FogPlanes cards. mistCoolColor
-// is shared between the ForestMist backdrop, the floor, and the fog
-// cards so the painted hush reads as one continuous atmosphere.
+// Launch presets for the simplified Forest stack. The old shaft, mote,
+// floor, and fog-card controls remain present for debugging, but presets
+// keep them explicitly off so switching looks cannot revive the trippy
+// pre-launch composition.
+const DISABLED_FOREST_EFFECTS = {
+  shaftEnabled: false,
+  motesEnabled: false,
+  floorMistDensity: 0,
+  fogCardOpacity: 0,
+  shaftColor: '#ffffff',
+  shaftIntensity: 0,
+  shaftBrushScale: 3,
+  shaftBrushSpeed: 0,
+  shaftSplotchAmount: 0,
+  shaftBleedStrength: 0,
+  shaftBreathRate: 0,
+  shaftBreathAmplitude: 0,
+  shaftX: 0,
+  shaftCenterY: -1,
+  shaftZ: -100,
+  shaftHeight: 32,
+  shaftRadiusTop: 0.6,
+  shaftRadiusBottom: 5,
+  motesColor: '#ffffff',
+  motesIntensity: 0,
+  motesScale: 120,
+  motesThreshold: 0.99,
+  motesSoftness: 0.25,
+  motesDriftSpeed: 0,
+  motesOffset: 10,
+  motesWidth: 24,
+  motesHeight: 14,
+} as const;
+
 const FOREST_PRESETS = {
-  // Open Glade — airy default; off-axis shaft slipped back to z=-110 reads as a hint of light, not a god-ray. Soft backdrop holds the deep distance; toggle backdrop off in Leva for pure airy negative space.
-  'Open Glade': {
-    shaftEnabled: true,
-    motesEnabled: false,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 0.78,
-    treeWashIntensity: 0.15,
-    canopyFarOpacity: 1,
-    mistDensityOverride: 0.35,
-    floorMistDensity: 0.5,
-    fogCardOpacity: 0.5,
-    mistCoolColor: '#9cb2c9',
-    mistShadowColor: '#3b4759',
-    treeInkColor: '#3a4652',
-    shaftColor: '#e8eef6',
-    shaftIntensity: 0.32,
-    shaftBrushScale: 3.0,
-    shaftBrushSpeed: 0.05,
-    shaftSplotchAmount: 0.18,
-    shaftBleedStrength: 0.55,
-    shaftBreathRate: 0.25,
-    shaftBreathAmplitude: 0.08,
-    shaftX: 6,
-    shaftCenterY: -1,
-    shaftZ: -110,
-    shaftHeight: 36,
-    shaftRadiusTop: 0.6,
-    shaftRadiusBottom: 5,
-    motesColor: '#c5d0de',
-    motesIntensity: 0.08,
-    motesScale: 110,
-    motesThreshold: 0.95,
-    motesSoftness: 0.4,
-    motesDriftSpeed: 0.01,
-    motesOffset: 10,
-    motesWidth: 24,
-    motesHeight: 14,
-  },
-  // Hollow Air — minimal study; shaft + motes off entirely, four named woodcut trees against a near-clear cool wash with the soft tree-line backdrop reading as a quiet horizon.
-  'Hollow Air': {
-    shaftEnabled: false,
-    motesEnabled: false,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 1.0,
-    treeWashIntensity: 0.4,
-    canopyFarOpacity: 1,
-    mistDensityOverride: 0.2,
-    floorMistDensity: 0.35,
-    fogCardOpacity: 0.35,
-    mistCoolColor: '#a1b4c9',
-    mistShadowColor: '#46505c',
-    treeInkColor: '#465360',
-    shaftColor: '#e8eef6',
-    shaftIntensity: 0.25,
-    shaftBrushScale: 3.0,
-    shaftBrushSpeed: 0.05,
-    shaftSplotchAmount: 0.4,
-    shaftBleedStrength: 0.6,
-    shaftBreathRate: 0.25,
-    shaftBreathAmplitude: 0.08,
-    shaftX: 0,
-    shaftCenterY: -1,
-    shaftZ: -100,
-    shaftHeight: 32,
-    shaftRadiusTop: 0.6,
-    shaftRadiusBottom: 5,
-    motesColor: '#c5d0de',
-    motesIntensity: 0.2,
-    motesScale: 120,
-    motesThreshold: 0.96,
-    motesSoftness: 0.4,
-    motesDriftSpeed: 0.008,
-    motesOffset: 10,
-    motesWidth: 24,
-    motesHeight: 14,
-  },
-  // Twilight Hush — blue-hour dusk; depth comes from violet fog and silhouette fade, with motes opt-in only.
-  'Twilight Hush': {
-    shaftEnabled: false,
-    motesEnabled: false,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 0.78,
-    treeWashIntensity: 1.6,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.85,
-    floorMistDensity: 0.7,
-    fogCardOpacity: 0.7,
-    mistCoolColor: '#63678c',
-    mistShadowColor: '#1d1a33',
-    treeInkColor: '#323747',
-    shaftColor: '#9e9bb8',
-    shaftIntensity: 0.0,
-    shaftBrushScale: 4.0,
-    shaftBrushSpeed: 0.05,
-    shaftSplotchAmount: 0.5,
-    shaftBleedStrength: 0.0,
-    shaftBreathRate: 0.3,
-    shaftBreathAmplitude: 0.1,
-    shaftX: 0,
-    shaftCenterY: -1,
-    shaftZ: -90,
-    shaftHeight: 30,
-    shaftRadiusTop: 1.5,
-    shaftRadiusBottom: 10,
-    motesColor: '#9c98b8',
-    motesIntensity: 0.12,
-    motesScale: 70,
-    motesThreshold: 0.85,
-    motesSoftness: 0.5,
-    motesDriftSpeed: 0.022,
-    motesOffset: 7,
-    motesWidth: 26,
-    motesHeight: 18,
-  },
-  // Stormwall — cold overcast gloom; shaft survives only as a thin off-center glimpse cutting through dense slate mist.
-  Stormwall: {
-    shaftEnabled: true,
-    motesEnabled: false,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 0.78,
-    treeWashIntensity: 1.6,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.95,
-    floorMistDensity: 0.9,
-    fogCardOpacity: 0.9,
-    mistCoolColor: '#687787',
-    mistShadowColor: '#1d2229',
-    treeInkColor: '#2f3842',
-    shaftColor: '#a8b0bc',
-    shaftIntensity: 0.4,
-    shaftBrushScale: 5.5,
-    shaftBrushSpeed: 0.1,
-    shaftSplotchAmount: 0.6,
-    shaftBleedStrength: 0.6,
-    shaftBreathRate: 0.4,
-    shaftBreathAmplitude: 0.15,
-    shaftX: -12,
-    shaftCenterY: -1,
-    shaftZ: -90,
-    shaftHeight: 32,
-    shaftRadiusTop: 1.0,
-    shaftRadiusBottom: 4,
-    motesColor: '#8a929c',
-    motesIntensity: 0.1,
-    motesScale: 75,
-    motesThreshold: 0.88,
-    motesSoftness: 0.45,
-    motesDriftSpeed: 0.018,
-    motesOffset: 8,
-    motesWidth: 24,
-    motesHeight: 16,
-  },
-  // Lone Ray — a single tight column found off to the right deep in the fog; the camera passes near it, never through it, so the shaft reads as a chosen feature rather than a wall of light.
-  'Lone Ray': {
-    shaftEnabled: true,
-    motesEnabled: false,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 1.0,
-    treeWashIntensity: 0.85,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.3,
-    floorMistDensity: 0.55,
-    fogCardOpacity: 0.55,
-    mistCoolColor: '#9cafc4',
-    mistShadowColor: '#2e3745',
-    treeInkColor: '#2f3c49',
-    shaftColor: '#f0f4fa',
-    shaftIntensity: 1.3,
-    shaftBrushScale: 5.5,
-    shaftBrushSpeed: 0.07,
-    shaftSplotchAmount: 0.4,
-    shaftBleedStrength: 1.05,
-    shaftBreathRate: 0.32,
-    shaftBreathAmplitude: 0.1,
-    shaftX: 6,
-    shaftCenterY: -1,
-    shaftZ: -115,
-    shaftHeight: 42,
-    shaftRadiusTop: 0.4,
-    shaftRadiusBottom: 4,
-    motesColor: '#bcc7d6',
-    motesIntensity: 0.08,
-    motesScale: 110,
-    motesThreshold: 0.95,
-    motesSoftness: 0.4,
-    motesDriftSpeed: 0.01,
-    motesOffset: 9,
-    motesWidth: 20,
-    motesHeight: 12,
-  },
-  // Cathedral Hour — a clean pearl column over a wet pool. Soft slate backdrop holds the deep distance; the shaft still owns the stage thanks to low fog density and a cleared midground.
-  'Cathedral Hour': {
-    shaftEnabled: true,
-    motesEnabled: false,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 0.92,
-    treeWashIntensity: 1.1,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.55,
-    floorMistDensity: 0.6,
-    fogCardOpacity: 0.6,
-    mistCoolColor: '#6e7e94',
-    mistShadowColor: '#1a212b',
-    treeInkColor: '#2f3742',
-    shaftColor: '#e6e8ec',
-    shaftIntensity: 1.3,
-    shaftBrushScale: 4.0,
-    shaftBrushSpeed: 0.05,
-    shaftSplotchAmount: 0.25,
-    shaftBleedStrength: 1.1,
-    shaftBreathRate: 0.22,
-    shaftBreathAmplitude: 0.08,
-    shaftX: 0,
-    shaftCenterY: -1,
-    shaftZ: -100,
-    shaftHeight: 44,
-    shaftRadiusTop: 0.8,
-    shaftRadiusBottom: 7,
-    motesColor: '#c4cfdc',
-    motesIntensity: 0.1,
-    motesScale: 75,
-    motesThreshold: 0.9,
-    motesSoftness: 0.42,
-    motesDriftSpeed: 0.013,
-    motesOffset: 8,
-    motesWidth: 22,
-    motesHeight: 14,
-  },
-  // Heavy Fog — maximizes the volumetric effect with deep, thick floor mist and heavy scattering.
-  'Heavy Fog': {
-    shaftEnabled: true,
-    motesEnabled: false,
-    stagEnabled: false,
-    canopyFarEnabled: true,
-    treeOpacity: 0.85,
-    treeWashIntensity: 1.85,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 1.2,
-    floorMistDensity: 1.0,
-    fogCardOpacity: 1,
-    mistCoolColor: '#7a8c9e',
-    mistShadowColor: '#2b3642',
-    treeInkColor: '#1c242c',
-    shaftColor: '#ffffff',
-    shaftIntensity: 1.35,
-    shaftBrushScale: 6.0,
-    shaftBrushSpeed: 0.1,
-    shaftSplotchAmount: 0.7,
-    shaftBleedStrength: 1.2,
-    shaftBreathRate: 0.5,
-    shaftBreathAmplitude: 0.2,
-    shaftX: 2,
-    shaftCenterY: -1,
-    shaftZ: -80,
-    shaftHeight: 40,
-    shaftRadiusTop: 2.0,
-    shaftRadiusBottom: 10,
-    motesColor: '#ffffff',
-    motesIntensity: 0.3,
-    motesScale: 90,
-    motesThreshold: 0.9,
-    motesSoftness: 0.5,
-    motesDriftSpeed: 0.02,
-    motesOffset: 12,
-    motesWidth: 30,
-    motesHeight: 20,
-  },
-  // Forest Breath — sparse wisps threaded between trunks; camera moves through near-clear pockets while distant trees dissolve into pale haze.
-  'Forest Breath': {
-    shaftEnabled: true,
-    motesEnabled: true,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 0.95,
-    treeWashIntensity: 0.7,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.45,
-    floorMistDensity: 0.55,
-    fogCardOpacity: 0.55,
-    mistCoolColor: '#b8c8d8',
-    mistShadowColor: '#42505e',
-    treeInkColor: '#384350',
-    shaftColor: '#eef2f8',
-    shaftIntensity: 0.55,
-    shaftBrushScale: 4.5,
-    shaftBrushSpeed: 0.06,
-    shaftSplotchAmount: 0.3,
-    shaftBleedStrength: 0.7,
-    shaftBreathRate: 0.28,
-    shaftBreathAmplitude: 0.1,
-    shaftX: -8,
-    shaftCenterY: -1,
-    shaftZ: -120,
-    shaftHeight: 38,
-    shaftRadiusTop: 0.5,
-    shaftRadiusBottom: 4,
-    motesColor: '#d2dce8',
-    motesIntensity: 0.14,
-    motesScale: 95,
-    motesThreshold: 0.92,
-    motesSoftness: 0.45,
-    motesDriftSpeed: 0.014,
-    motesOffset: 9,
-    motesWidth: 22,
-    motesHeight: 14,
-  },
-  // Drift Banks — pale horizontal fog banks rolling between camera and trees, parting as you pass through; no shaft, the volume is the subject.
-  'Drift Banks': {
-    shaftEnabled: false,
-    motesEnabled: false,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 0.88,
-    treeWashIntensity: 1.2,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.6,
-    floorMistDensity: 1.15,
-    fogCardOpacity: 1.15,
-    mistCoolColor: '#aebccd',
-    mistShadowColor: '#3a4554',
-    treeInkColor: '#36404c',
-    shaftColor: '#e8eef6',
-    shaftIntensity: 0.0,
-    shaftBrushScale: 3.0,
-    shaftBrushSpeed: 0.05,
-    shaftSplotchAmount: 0.3,
-    shaftBleedStrength: 0.5,
-    shaftBreathRate: 0.25,
-    shaftBreathAmplitude: 0.08,
-    shaftX: 0,
-    shaftCenterY: -1,
-    shaftZ: -100,
-    shaftHeight: 32,
-    shaftRadiusTop: 0.6,
-    shaftRadiusBottom: 5,
-    motesColor: '#c5d0de',
-    motesIntensity: 0.06,
-    motesScale: 110,
-    motesThreshold: 0.96,
-    motesSoftness: 0.4,
-    motesDriftSpeed: 0.012,
-    motesOffset: 10,
-    motesWidth: 24,
-    motesHeight: 14,
-  },
-  // Smoke Hollow — heavy low-lying banks pooled at the floor; trunks rise out clean, canopies sit above the soup like islands.
-  'Smoke Hollow': {
-    shaftEnabled: true,
-    motesEnabled: false,
-    stagEnabled: false,
-    canopyFarEnabled: true,
-    treeOpacity: 0.96,
-    treeWashIntensity: 0.9,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.4,
-    floorMistDensity: 1.7,
-    fogCardOpacity: 1.7,
-    mistCoolColor: '#8a8a96',
-    mistShadowColor: '#26262e',
-    treeInkColor: '#1f242c',
-    shaftColor: '#dcdee2',
-    shaftIntensity: 0.5,
-    shaftBrushScale: 4.5,
-    shaftBrushSpeed: 0.06,
-    shaftSplotchAmount: 0.45,
-    shaftBleedStrength: 1.3,
-    shaftBreathRate: 0.3,
-    shaftBreathAmplitude: 0.1,
-    shaftX: 4,
-    shaftCenterY: -3,
-    shaftZ: -95,
-    shaftHeight: 30,
-    shaftRadiusTop: 0.7,
-    shaftRadiusBottom: 6,
-    motesColor: '#aab0b8',
-    motesIntensity: 0.1,
-    motesScale: 80,
-    motesThreshold: 0.9,
-    motesSoftness: 0.5,
-    motesDriftSpeed: 0.016,
-    motesOffset: 8,
-    motesWidth: 26,
-    motesHeight: 14,
-  },
-  // Sumi-e Quietude — Hokusai/Sesshu ink wash on rice paper; no shaft, monochrome fog stains pool against deep ink trunks with the painted tree-line dissolving into the wash.
-  'Sumi-e Quietude': {
-    shaftEnabled: false,
-    motesEnabled: false,
-    stagEnabled: true,
-    canopyFarEnabled: true,
-    treeOpacity: 0.95,
-    treeWashIntensity: 2.2,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.5,
-    floorMistDensity: 1.6,
-    fogCardOpacity: 1.6,
-    mistCoolColor: '#cdd0d2',
-    mistShadowColor: '#26282d',
-    treeInkColor: '#0e1014',
-    shaftColor: '#ffffff',
-    shaftIntensity: 0.0,
-    shaftBrushScale: 4.0,
-    shaftBrushSpeed: 0.04,
-    shaftSplotchAmount: 0.5,
-    shaftBleedStrength: 0.0,
-    shaftBreathRate: 0.2,
-    shaftBreathAmplitude: 0.06,
-    shaftX: 0,
-    shaftCenterY: -1,
-    shaftZ: -100,
-    shaftHeight: 32,
-    shaftRadiusTop: 0.6,
-    shaftRadiusBottom: 5,
-    motesColor: '#cdd0d2',
-    motesIntensity: 0.0,
-    motesScale: 100,
-    motesThreshold: 0.95,
-    motesSoftness: 0.4,
-    motesDriftSpeed: 0.008,
-    motesOffset: 10,
-    motesWidth: 24,
-    motesHeight: 14,
-  },
-  // Mononoke Moss — Ghibli ancient-forest jade; mossy canopy at full density, billowing fog cards between trunks, kodama-spore motes.
-  'Mononoke Moss': {
-    shaftEnabled: true,
-    motesEnabled: true,
+  'Pale Trailhead': {
+    ...DISABLED_FOREST_EFFECTS,
     stagEnabled: true,
     canopyFarEnabled: true,
     treeOpacity: 0.9,
-    treeWashIntensity: 0.95,
-    canopyFarOpacity: 0.9,
-    mistDensityOverride: 0.7,
-    floorMistDensity: 1.2,
-    fogCardOpacity: 1.2,
-    mistCoolColor: '#7a9489',
-    mistShadowColor: '#243029',
-    treeInkColor: '#2c3a32',
-    shaftColor: '#d8e4c8',
-    shaftIntensity: 0.85,
-    shaftBrushScale: 4.5,
-    shaftBrushSpeed: 0.06,
-    shaftSplotchAmount: 0.45,
-    shaftBleedStrength: 0.85,
-    shaftBreathRate: 0.28,
-    shaftBreathAmplitude: 0.1,
-    shaftX: -8,
-    shaftCenterY: -1,
-    shaftZ: -95,
-    shaftHeight: 38,
-    shaftRadiusTop: 0.7,
-    shaftRadiusBottom: 6,
-    motesColor: '#c8d4b6',
-    motesIntensity: 0.22,
-    motesScale: 85,
-    motesThreshold: 0.88,
-    motesSoftness: 0.5,
-    motesDriftSpeed: 0.018,
-    motesOffset: 9,
-    motesWidth: 26,
-    motesHeight: 16,
+    treeWashIntensity: 0.35,
+    canopyFarOpacity: 0.52,
+    mistDensityOverride: 0.32,
+    mistCoolColor: '#a8bacb',
+    mistShadowColor: '#425160',
+    treeInkColor: '#344352',
+    backdropTintColor: '#496175',
+    backdropX: 0,
+    backdropY: 24,
+    backdropZ: -520,
+    backdropScale: 1120,
+  },
+  'Arctic Clearing': {
+    ...DISABLED_FOREST_EFFECTS,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.92,
+    treeWashIntensity: 0.55,
+    canopyFarOpacity: 0.46,
+    mistDensityOverride: 0.28,
+    mistCoolColor: '#c7e7ef',
+    mistShadowColor: '#315467',
+    treeInkColor: '#183746',
+    backdropTintColor: '#376675',
+    backdropX: -80,
+    backdropY: 14,
+    backdropZ: -560,
+    backdropScale: 980,
+  },
+  'Lichen Signal': {
+    ...DISABLED_FOREST_EFFECTS,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.96,
+    treeWashIntensity: 0.85,
+    canopyFarOpacity: 0.52,
+    mistDensityOverride: 0.46,
+    mistCoolColor: '#8fc7a1',
+    mistShadowColor: '#183325',
+    treeInkColor: '#10241a',
+    backdropTintColor: '#1f4a34',
+    backdropX: 50,
+    backdropY: 28,
+    backdropZ: -500,
+    backdropScale: 1200,
+  },
+  'Blue-Hour Passage': {
+    ...DISABLED_FOREST_EFFECTS,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.86,
+    treeWashIntensity: 1.2,
+    canopyFarOpacity: 0.58,
+    mistDensityOverride: 0.68,
+    mistCoolColor: '#667894',
+    mistShadowColor: '#171f2d',
+    treeInkColor: '#202b37',
+    backdropTintColor: '#253449',
+    backdropX: -70,
+    backdropY: 20,
+    backdropZ: -540,
+    backdropScale: 1180,
+  },
+  'Plum Distance': {
+    ...DISABLED_FOREST_EFFECTS,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.88,
+    treeWashIntensity: 1.35,
+    canopyFarOpacity: 0.54,
+    mistDensityOverride: 0.72,
+    mistCoolColor: '#8b7ab8',
+    mistShadowColor: '#19152d',
+    treeInkColor: '#171826',
+    backdropTintColor: '#2a2548',
+    backdropX: 70,
+    backdropY: 18,
+    backdropZ: -520,
+    backdropScale: 1100,
+  },
+  'Ink-Wash Grove': {
+    ...DISABLED_FOREST_EFFECTS,
+    stagEnabled: true,
+    canopyFarEnabled: true,
+    treeOpacity: 0.96,
+    treeWashIntensity: 2.0,
+    canopyFarOpacity: 0.5,
+    mistDensityOverride: 0.5,
+    mistCoolColor: '#c7cbca',
+    mistShadowColor: '#2a2d31',
+    treeInkColor: '#101418',
+    backdropTintColor: '#202327',
+    backdropX: 0,
+    backdropY: 34,
+    backdropZ: -580,
+    backdropScale: 1240,
   },
 } as const;
 
@@ -1072,6 +848,16 @@ function ForestSceneGroup({
           mistCoolColor: { value: defaultForestPreset.mistCoolColor, label: 'mist cool' },
           mistShadowColor: { value: defaultForestPreset.mistShadowColor, label: 'mist shadow' },
           treeInkColor: { value: defaultForestPreset.treeInkColor, label: 'tree ink' },
+          backdropTintColor: { value: defaultForestPreset.backdropTintColor, label: 'backdrop tint' },
+        },
+        { collapsed: true },
+      ),
+      'scene · backdrop': folder(
+        {
+          backdropX: { label: 'x', value: defaultForestPreset.backdropX, min: -120, max: 120, step: 1 },
+          backdropY: { label: 'y', value: defaultForestPreset.backdropY, min: -60, max: 40, step: 0.5 },
+          backdropZ: { label: 'z', value: defaultForestPreset.backdropZ, min: -800, max: -80, step: 5 },
+          backdropScale: { label: 'scale', value: defaultForestPreset.backdropScale, min: 140, max: 1500, step: 5 },
         },
         { collapsed: true },
       ),
@@ -1557,6 +1343,73 @@ function CampSceneGroup({
         scale={[controls.foregroundScale, controls.foregroundScale / foregroundAspect]}
         opacity={controls.foregroundOpacity}
       />
+    </group>
+  );
+}
+
+// =============================================================================
+// TRAIL FORK SCENE GROUP
+// First-person Y-fork: woodcut backdrop + arching branch + bird flyby.
+// Cursor-driven ink wetness on the backdrop foreshadows /off-trail's water
+// ripples. Single click hit-area in HomeClient sits over the stream region.
+// =============================================================================
+
+function TrailForkSceneGroup({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+  const groupRef = useRef<Group>(null);
+  const branchRef = useRef<Mesh>(null);
+  const lerpedP = useRef(0);
+  const mousePos = useRef(new Vector2(0, 0));
+
+  const sceneTex = useTexture('/trail-fork/trail-fork-scene.webp');
+  const branchTex = useTexture('/trail-fork/arch-branch.webp');
+
+  useEffect(() => {
+    const onMouse = (e: MouseEvent) => {
+      mousePos.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    window.addEventListener('mousemove', onMouse, { passive: true });
+    return () => window.removeEventListener('mousemove', onMouse);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      sceneTex.dispose();
+      branchTex.dispose();
+    };
+  }, [sceneTex, branchTex]);
+
+  useFrame((_state, delta) => {
+    lerpedP.current = MathUtils.damp(lerpedP.current, scrollProgress.get(), 4, delta);
+    const p = lerpedP.current;
+    const opacity = sceneOpacity('trailFork', p);
+
+    if (groupRef.current) {
+      groupRef.current.visible = opacity > 0;
+      if (!groupRef.current.visible) return;
+      applyGroupOpacity(groupRef.current, opacity);
+    }
+
+    // Branch micro-bend toward cursor — small Z rotation tracks cursor X.
+    if (branchRef.current) {
+      const targetTilt = mousePos.current.x * 0.05;
+      branchRef.current.rotation.z = MathUtils.damp(branchRef.current.rotation.z, targetTilt, 4, delta);
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      {/* Backdrop scene plane — Hasui woodblock illustration, rendered as-is. */}
+      <mesh position={[0, 0, -10]}>
+        <planeGeometry args={[32, 17.6]} />
+        <meshBasicMaterial map={sceneTex} transparent depthWrite={false} />
+      </mesh>
+
+      {/* Arching branch — base at right, foliage clump arches over the stream */}
+      <mesh ref={branchRef} position={[5, 4.5, -7]}>
+        <planeGeometry args={[20, 11.2]} />
+        <meshBasicMaterial map={branchTex} transparent depthWrite={false} />
+      </mesh>
     </group>
   );
 }
@@ -3189,6 +3042,7 @@ export default function UnifiedScene({ scrollProgress }: { scrollProgress: Motio
         <HeroSceneGroup scrollProgress={scrollProgress} />
         <ForestSceneGroup scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
         <CampSceneGroup scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
+        <TrailForkSceneGroup scrollProgress={scrollProgress} />
         <AlpineSceneGroup scrollProgress={scrollProgress} />
         <SummitSceneGroup scrollProgress={scrollProgress} />
 

@@ -1,3 +1,164 @@
+# Forest Ink-Wash Default Pass
+
+## Context
+
+The woodcut mask backdrop is now the active Forest background. The launch default should shift from the lighter `Pale Trailhead` look to `Ink-Wash Grove`, and the default backdrop should sit higher in frame so the section feels deeper inside the forest.
+
+## Plan
+
+- [x] 1. Set `Ink-Wash Grove` as the default Forest preset.
+- [x] 2. Move the `Ink-Wash Grove` backdrop upward enough to read as deeper forest on initial load.
+- [x] 3. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 4. Reload the homepage and check runtime logs.
+- [x] 5. Add a review note with the final default and verification.
+## Review
+
+- Set `Ink-Wash Grove` as the default Forest preset in `web/src/components/UnifiedScene.tsx`.
+- Moved the `Ink-Wash Grove` backdrop upward from `backdropY: 12` to `backdropY: 34` so the active woodcut mask sits higher and reads more like deep forest on initial load.
+- Left the other Forest presets unchanged.
+- Verification: `cd web && npm run lint` passes with 0 errors and the two pre-existing `GroveScene.tsx` warnings. `cd web && npm run typecheck` passes. Reloaded `http://localhost:3000/`; runtime logs show no new errors.
+
+
+---
+# Forest Woodcut Mask Backdrop Pass
+
+## Context
+
+The current spruce backdrop is finally visible, but the asset language is wrong: it reads like procedural icon trees, not the existing woodcut cutout vocabulary. The next version should reuse the authored woodcut tree assets as source forms, simplify them into a monochrome/alpha backdrop mask, and let the scene tint/fog carry the color.
+
+## Plan
+
+- [x] 1. Build a new non-destructive woodcut mask backdrop from existing cleaned tree assets, avoiding procedural triangle trees.
+- [x] 2. Keep the asset mostly monochrome/alpha so material tint and scene fog can do the coloring.
+- [x] 3. Add tint support to the backdrop material instead of baking blue color into the asset.
+- [x] 4. Wire `DeepForest` to the new mask backdrop and keep experimental fog/mote/shaft layers disabled.
+- [x] 5. Tune Forest preset backdrop opacity/placement for the mask asset.
+- [x] 6. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 7. Reload the homepage and check runtime logs.
+- [x] 8. Add a review note with the final asset path and verification.
+## Review
+
+- Added `web/public/forest/backdrop-woodcut-mask.webp`, a new monochrome/alpha backdrop built from the existing cleaned woodcut tree cutouts.
+- Removed the procedural triangle-tree vocabulary from the active backdrop path.
+- Rebuilt the mask after previewing the first version because the sequoia source introduced rectangular/block artifacts; the final mask uses spruce, aspen, and cherry cutout forms only.
+- Updated `CanopyLayer` in `DeepForest` to support material tinting via `meshBasicMaterial color`, so the white mask is colored by Forest preset values instead of baking blue into the asset.
+- Added `backdropTintColor` to all Forest presets and the `scene · color` Leva folder.
+- Wired `DeepForest` to `/forest/backdrop-woodcut-mask.webp`. Shafts, motes, floor mist, and fog cards remain disabled/commented out.
+- Verification: `cd web && npm run lint` passes with 0 errors and the two pre-existing `GroveScene.tsx` warnings. `cd web && npm run typecheck` passes. Reloaded `http://localhost:3000/`; runtime logs show no new errors. The new mask asset is served by the dev server with HTTP 200.
+
+
+---
+# Forest Visible Spruce Backdrop Pass
+
+## Context
+
+The spruce backdrop is calmer than the mixed-tree collage, but it still does not set the scene. In viewport it reads too low and too faint, while the mist/blob shader dominates. The asset needs a visible mid-height treeline band and the presets need enough backdrop opacity to survive the mist wash.
+
+## Plan
+
+- [x] 1. Regenerate the spruce backdrop with the far/mid spruce band higher in the texture and a quieter card-safe center.
+- [x] 2. Keep the top open and avoid dense collage detail, but make silhouettes visible in the middle of the Forest viewport.
+- [x] 3. Raise default backdrop opacity and y placement enough to read through the mist.
+- [x] 4. Keep shafts, motes, floor mist, and fog cards disabled.
+- [x] 5. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 6. Reload the homepage and check runtime logs.
+- [x] 7. Add a review note with the final tuning.
+## Review
+
+- Regenerated `web/public/forest/backdrop-spruce.webp` in place so the spruce band sits higher in the texture and has stronger mid-height alpha.
+- New asset stats: visible alpha now begins around y=419; upper-tree band average alpha is ~15 and mid band average alpha is ~46, so it has actual material in the viewport instead of only low-edge silhouettes.
+- Preserved the open top and reduced center density so it does not revert to the busy collage problem.
+- Raised Forest preset backdrop opacity values and moved the backdrop y placement upward across all six presets so the plate reads through the current mist shader.
+- Shafts, motes, floor mist, and fog cards remain disabled/commented out.
+- Verification: `cd web && npm run lint` passes with 0 errors and the two pre-existing `GroveScene.tsx` warnings. `cd web && npm run typecheck` passes. Reloaded `http://localhost:3000/`; runtime logs show no new errors.
+
+
+---
+# Forest Spruce Backdrop Pass
+
+## Context
+
+The recovered Forest backdrop now restores ambiance, but it is too busy because it collages detailed mixed tree cutouts across the whole viewport. The Forest background needs to act as atmosphere, not wallpaper. The next asset should use mostly spruce/conifer vocabulary, leave the top and card-safe middle quieter, and keep strong detail to the lower/edge areas.
+
+## Plan
+
+- [x] 1. Generate a new non-destructive spruce-only atmospheric backdrop asset.
+- [x] 2. Keep the asset sparse: transparent upper mist, pale far spruce band, restrained mid spruce band, darker lower edge anchors.
+- [x] 3. Wire `DeepForest` to the new spruce backdrop.
+- [x] 4. Lower Forest preset backdrop opacity values so the plate supports the mist instead of competing with content.
+- [x] 5. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 6. Reload the in-app browser on the homepage and check runtime logs.
+- [x] 7. Add a review note with asset path and verification.
+## Review
+
+- Added `web/public/forest/backdrop-spruce.webp`, a non-destructive spruce-only atmospheric backdrop.
+- Built the new plate as sparse conifer bands rather than a detailed mixed-tree collage: top stays almost transparent, far trees are pale, mid trees are restrained, and darker mass is pushed toward lower/edge areas.
+- Updated `DeepForest` to use `/forest/backdrop-spruce.webp` instead of the busier launch collage.
+- Lowered Forest preset backdrop opacities so the new plate supports the mist shader instead of competing with the cards.
+- Kept shafts, motes, floor mist, and fog cards disabled/commented out.
+- Verification: `cd web && npm run lint` passes with 0 errors and the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings. `cd web && npm run typecheck` passes. Reloaded the in-app browser to `http://localhost:3000/`; runtime logs show no new errors.
+
+
+---
+# Forest Ambiance Recovery Pass
+
+## Context
+
+The active Forest section lost scene-setting ambiance because `backdrop-clean.webp` only contains visible alpha in the bottom ~20% of the source image, and the new preset scale makes that remaining band too small to read. The floating dots are not active motes; `ForestMotes` is commented out. They are most likely stray alpha flecks from oversized tree cutout planes.
+
+## Plan
+
+- [x] 1. Generate a new launch backdrop plate from existing tree silhouettes with visible midground forest depth and a transparent/faded sky region.
+- [x] 2. Add a non-destructive cleaned tree asset variant that removes tiny disconnected alpha flecks from the current tree cutouts.
+- [x] 3. Wire Forest to the new backdrop and cleaned tree variants while keeping shafts, motes, floor mist, and fog cards disabled.
+- [x] 4. Update Forest preset backdrop placement defaults so the plate reads as a background scene, not a small bottom strip.
+- [x] 5. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 6. Reload the in-app browser and check runtime logs.
+- [x] 7. Add a review note with asset paths and verification.
+## Review
+
+- Added `web/public/forest/backdrop-launch.webp`, a new deterministic launch backdrop generated from the existing tree silhouettes. Its visible alpha starts around y=418 of 1536 instead of y=1221 like the over-cleaned backdrop, so it can actually set the Forest scene.
+- Added non-destructive cleaned tree variants:
+  - `web/public/tree_sequoia-clean.webp`
+  - `web/public/tree_spruce-clean.webp`
+  - `web/public/tree_cherry-clean.webp`
+  - `web/public/tree_aspen-clean.webp`
+- Removed thousands of tiny disconnected alpha components from those tree cutouts, which targets the stray floating flecks that were reading like unwanted motes.
+- Updated `DeepForest` to use `backdrop-launch.webp` and the cleaned tree variants. Shafts, motes, floor mist, and fog cards remain commented out.
+- Updated Forest preset backdrop defaults back to scenic scale/depth values around z=-500 to z=-580 and scale 980-1240, with moderate opacity per preset.
+- Expanded the Leva backdrop control ranges so those launch-scale values are tunable.
+- Verification: `cd web && npm run lint` passes with 0 errors and the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings. `cd web && npm run typecheck` passes. New assets are served by the dev server with HTTP 200. Reloaded `http://localhost:3000/`; runtime logs show no new errors. Browser screenshot capture timed out in the in-app browser after reload, so final visual approval still needs eyes in the open browser.
+
+
+---
+# Forest Preset Replacement Pass
+
+## Context
+
+The old Forest preset list was built for the previous over-composed stack: shaft, motes, floor mist, fog cards, backdrop, trees, and sprite. After launch simplification, most of those controls are intentionally inactive. The presets should be fully replaced with a smaller curated set that changes the active Forest look: stable mist, cleaned backdrop, tree ink/wash, tree/backdrop visibility, and elk presence.
+
+## Plan
+
+- [x] 1. Replace the 12 legacy Forest presets with 6 clearly distinct launch presets.
+- [x] 2. Keep all disabled experimental controls in each preset at safe off/zero values so selecting a preset never re-enables the old trippy stack.
+- [x] 3. Add minimal backdrop placement controls so presets can vary depth/spacing, not just color.
+- [x] 4. Wire the cleaned backdrop placement through `DeepForest`.
+- [x] 5. Keep default preset launch-safe and readable.
+- [x] 6. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 7. Reload the in-app browser and check runtime logs.
+- [x] 8. Add a review note with preset names and verification.
+## Review
+
+- Replaced the legacy 12-preset Forest list with 6 launch presets: Pale Trailhead, Arctic Clearing, Lichen Signal, Blue-Hour Passage, Plum Distance, and Ink-Wash Grove.
+- Kept every disabled experimental field in each preset at safe off/zero values: shafts, motes, floor mist, and fog cards do not re-enable when switching presets.
+- Added a small `scene · backdrop` Leva folder with x, y, z, and scale controls so presets can vary spacing and composition instead of only color.
+- Wired the cleaned `/forest/backdrop-clean.webp` plate in `DeepForest` to those placement controls while preserving its source aspect ratio.
+- Kept `Pale Trailhead` as the default launch-safe readable preset.
+- Verification: `cd web && npm run lint` passes with 0 errors and the two pre-existing `GroveScene.tsx` `no-explicit-any` warnings. `cd web && npm run typecheck` passes. Reloaded `http://localhost:3000/`; runtime logs show no new errors, only existing warnings about scroll container positioning, deprecated `THREE.Clock`, and missing Next image `sizes` props.
+
+
+---
+
 # Forest Hero Bleed + Wildlife Sprite Artifact Pass
 
 ## Context
@@ -37,6 +198,34 @@ The Forest section screenshot shows three separate visual issues. Initial suspic
   - `cd web && npm run build` passes.
   - `node scripts/check-asset-size.mjs` still fails on five pre-existing oversized assets unrelated to this pass: `camp/atmosphere/foreground.png`, `home-hero/02-mountains.webp`, `home-hero/05-mist.webp`, `home-hero/06-near-bank.webp`, and `summit/cloud-sea.png`.
   - Reloaded the in-app browser at `http://localhost:3000/`; runtime logs show no new errors. Automated screenshot capture timed out in the in-app browser, so final visual confirmation should be done in the open browser.
+
+---
+
+# Forest Launch Simplification Pass
+
+## Context
+
+After reviewing the browser comments, the Forest section still had too many overlapping visual systems for launch. The issue is not a single Leva value; the active stack had a mist backdrop, floor mist plane, light shaft, explicit motes, 15 depth-buffer fog cards, tree wash, a backdrop plate, and the elk sprite all compositing in the same scroll window. The result was unstable: trippy lines, confusing depth, and the sprite fighting the ground/fog layer.
+
+## Plan
+
+- [x] 1. Keep the experimental Forest layers in the file but remove them from the active launch render path.
+- [x] 2. Keep one stable fog source via the large `ForestMist` backdrop shader.
+- [x] 3. Keep the cleaned Forest backdrop plate and make it more visible in the camera range.
+- [x] 4. Keep the tree layers but reduce their wind movement and prevent them from writing depth.
+- [x] 5. Keep the elk sprite and force it to render above the simplified fog/background stack.
+- [x] 6. Run `cd web && npm run lint` and `cd web && npm run typecheck`.
+- [x] 7. Reload the in-app browser and check runtime logs.
+
+## Review
+
+- Commented out the active JSX for `ForestFloor`, `ForestShaft`, `ForestMotes`, and `FogPlanes` in `web/src/components/DeepForest.tsx`.
+- Removed active `useDepthBuffer` usage from `DeepForest` because the depth-card fog stack is not rendering in the launch path.
+- Kept `ForestMist` as the one stable fog layer.
+- Moved the cleaned backdrop plate closer and scaled it down so it has a better chance of reading as an actual background element instead of disappearing behind fog.
+- Reduced tree shader wind from `0.8` to `0.12` and set tree materials to `depthWrite={false}`.
+- Added a `depthTest` prop to `ScrollLinkedSprite` and set the Forest elk to `depthTest={false}` with `renderOrder={8}` so it does not get buried by the ground/fog stack.
+- Verification: `cd web && npm run lint` passes with 0 errors and the two pre-existing `GroveScene.tsx` warnings. `cd web && npm run typecheck` passes. Browser reload completed with no new runtime errors.
 
 ---
 
@@ -2373,3 +2562,63 @@ The Forest scene currently reads too spotty and dirty in the sky/fog. The ugly f
 - [x] 6. Remove the extra foreground/mid density tree layers from the default Forest preset and tighten Woodcut alpha discard to reduce stray dark texture dots.
 - [x] 7. Add a Forest tree ink color control and soften the default tree ink/wash so remaining asset artifacts are less visually harsh.
 - [ ] 8. Run focused verification from `web/`.
+
+---
+
+# Trail Fork Redesign — Y-Fork at Eye Level
+
+## Context
+
+Trail Fork is the weakest section of the site (audit confirmed: phantom scene group, no-op "Keep climbing" button, "Off trail" hotspot duplicates the existing Forest grove egg, 988KB static PNG, 9% of scroll for nothing). Replacing with a first-person POV at a Y-fork where the main dirt trail sweeps forward to an Alpine ridge while a creek/spur diverges left into shadow. The creek is the click target → navigates to `/off-trail`. The compass cursor (already wired in `CustomCursor.tsx:130-154` to point at nearest unfound egg in viewport) will rotate to point at the creek as the user enters the zone — that's the easter-egg moment.
+
+Two new assets generated and waiting in `~/Downloads`:
+- `Japanese_woodblock_print_in_the_202605031146.png` → hero scene illustration (Hasui woodblock, full composition baked in including stream, frame tree, mossy log, ferns, distant Alpine ridge)
+- `Single_overhanging_tree_branch_with_202605031147.png` → arching branch sprite (white background, ready for magick knockout)
+
+Reused: `bird_sprite.webp` already in `/public/` for the bird flyby beat.
+
+## Plan
+
+- [x] 1. Process assets via `magick` into `/web/public/trail-fork/`; stash sources in `/web/.source-assets/trail-fork/`; delete the old `signpost.png`.
+- [x] 2. Add `creek` egg to `EGG_REGISTRY` in `lib/eggs/eggRegistry.ts`; extend `EggId` and `EggZone` unions to include `'creek'` and `'trailFork'`.
+- [x] 3. Shrink `trailFork` window in `MODULE_TIMELINE` (`ownEnd 0.64 → 0.60`); restore the freed 4% to Alpine (`alpine.ownStart 0.64 → 0.60`, `alpine.enterEnd 0.69 → 0.65`).
+- [x] 4. Build new `<TrailForkSceneGroup />` in `UnifiedScene.tsx`: backdrop plane + arching branch (cursor-tracked Z rotation) + bird flyby (local scroll progress lerp).
+- [x] 5. Stream-area cursor ripple — used WoodcutMaterial's existing `uMouse`/`uRadius`/`uStrength` cursor-wetness uniforms on the backdrop, which produces the ink-bleed effect that pre-echoes `/off-trail`'s water shader. No new shader written.
+- [x] 6. Replace the HTML signpost section in `HomeClient.tsx`: removed `<Image>`, both `<button>` hotspots, `handleKeepClimbing`, `handleOffTrail`; added single transparent hit-area with `data-egg="creek"`, real cursor, `focus-visible` ring, keyboard-activatable, `aria-label="Follow the creek off-trail"`; new `handleCreek` writes `sh-egg-via='creek'`, marks egg found, fires `startTransition` with `#18181b`.
+- [x] 7. Update `/off-trail/page.tsx` egg-marking: reads `sh-egg-via` from sessionStorage; marks `creek` if present, `grove` otherwise (preserves direct-URL/back-button defaults).
+- [x] 8. Reduced-motion handling — `UnifiedScene` already short-circuits to a static fallback image when `prefers-reduced-motion: reduce` is set (`UnifiedScene.tsx:2956-2962`), so the entire 3D scene including the new TrailForkSceneGroup is bypassed for those users. No additional handling needed.
+- [x] 9. Guardrails: typecheck ✅, lint ✅ (only pre-existing GroveScene warnings), build ✅. Browser test deferred — see Review section.
+
+## Open sub-decision (flagged for Sam)
+
+Should visiting `/off-trail` mark **both** eggs found, or only the one used to enter? Recommend **only the one used** — preserves the other as a separate discovery for completionists, and keeps the compass cursor still pointing at the unfound one if the user re-traverses past it.
+
+**Resolution:** went with "only the one used." `/off-trail/page.tsx` reads a `sh-egg-via` sessionStorage flag set by the click handler (`'creek'` or absent → defaults to `'grove'` for legacy/direct-URL compat).
+
+## Review
+
+**Summary:** ripped out the phantom signpost section and replaced it with a Hasui-style first-person Y-fork scene. Main dirt trail sweeps to the alpine ridge; a creek diverges left into shadow. Clicking the creek navigates to `/off-trail`. The compass cursor (already wired to point at unfound eggs) automatically rotates toward the creek as it enters the viewport — that's the easter-egg moment, achieved by registering the creek as a new egg with zero new compass code.
+
+**Files changed:**
+- `web/public/trail-fork/trail-fork-scene.webp` — new (5.5MB, 2692×1476, woodblock illustration; cream sheet border shaved 30px)
+- `web/public/trail-fork/arch-branch.webp` — new (1.3MB, 2752×1536, sprite with white-knockout via magick fuzz 12%, horizontally flipped so foliage cluster arches over the stream side)
+- `web/public/trail-fork/signpost.png` — deleted (988KB)
+- `web/.source-assets/trail-fork/` — new directory, source PNGs stashed
+- `web/src/lib/eggs/eggRegistry.ts` — added `creek` egg + `trailFork` zone to the unions
+- `web/src/lib/moduleTimeline.ts` — `trailFork` window shrunk `0.55-0.64 → 0.55-0.60` (5%); `alpine.ownStart 0.64 → 0.60`, `alpine.enterEnd 0.69 → 0.65` (alpine grew by 4%)
+- `web/src/components/UnifiedScene.tsx` — replaced phantom camera bridge with paused eye-level pose `(0, 0, 8)`; added new `TrailForkSceneGroup` (~85 lines) with backdrop plane (WoodcutMaterial cursor wetness drives the ripple-pre-echo), arching branch sprite (subtle Z-rotation tracks cursor X), bird sprite (X position lerped by local scroll progress with sin-arc Y); group mounted between Camp and Alpine in the Canvas
+- `web/src/components/HomeClient.tsx` — removed `<Image>` signpost + both `<button>` hotspots + `handleKeepClimbing` no-op + `handleOffTrail`; section shrunk `145vh / 190vh → 80vh / 105vh` proportional to the new 5% window; single transparent click hit-area positioned over the stream region with `data-egg="creek"`, real cursor, `focus-visible` ring, keyboard-activatable; new `handleCreek` writes `sh-egg-via='creek'` flag and uses dark transition color matching `GroveMarker`
+- `web/src/app/off-trail/page.tsx` — egg-marking reads `sh-egg-via` flag; marks `creek` if via creek, defaults to `grove`
+
+**Verification:**
+- `cd web && npm run typecheck` ✅ clean
+- `cd web && npm run lint` ✅ 0 errors (2 pre-existing warnings in `GroveScene.tsx`, unrelated)
+- `cd web && npm run build` ✅ success in ~3s, all 14 routes including `/off-trail`
+- **Browser test: NOT performed.** Chrome MCP extension wasn't connected in this session, so this is unverified in-browser. Sam should manually scroll into the trail-fork zone and verify: (a) compass needle rotates to point at the creek as it enters viewport, (b) cursor proximity to the backdrop produces a visible woodcut ink-wetness effect over the stream area, (c) the branch tilts slightly tracking cursor X, (d) the bird flies across the upper canopy as you scroll through the zone, (e) clicking the stream region transitions to `/off-trail`, (f) `/off-trail`'s egg state shows `creek` as found (check `localStorage['found-eggs:v1']`).
+
+**Likely tuning needed in the browser** (not blocking, isolated tweaks in `TrailForkSceneGroup`):
+- Click hit-area position/size (`33vw × 55vh` left-pinned) may need adjusting once you see how the backdrop plane renders at your viewport.
+- Branch sprite position `(5, 4.5, -7)` and scale `(20, 11.2)` are first-pass guesses; nudge so the foliage visually overhangs the stream.
+- Bird flight path `[-12 → 10]` X with `sin(πt) × 1.2` Y arc; tune speed/path once seen.
+- Backdrop scale `(32, 17.6)` may need scaling up if you see plane edges at any camera position during enter/exit.
+- The Camp→TrailFork camera dive (Y 15→0, Z -10→8 over 2% scroll) is fast; if it feels jarring, soften by easing TrailFork's enter window or moving the TrailFork pose closer to Camp's end pose.

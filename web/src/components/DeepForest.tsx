@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react/display-name */
-import { useTexture, useDepthBuffer } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Texture, Mesh, Group, MathUtils, AdditiveBlending, DoubleSide, RepeatWrapping } from 'three';
 import { useRef, useMemo, useEffect, forwardRef } from 'react';
@@ -16,6 +16,7 @@ const ForestMistShader = 'forestMistShaderMaterial' as any;
 const ForestShaftShader = 'forestShaftShaderMaterial' as any;
 const ForestMotesShader = 'forestMotesShaderMaterial' as any;
 const FogCardShader = 'fogCardShaderMaterial' as any;
+const FOREST_BACKDROP_ASPECT = 2752 / 1536;
 
 const ForestTree = forwardRef(
   ({ textureUrl, position, scale, rotation = 0, controls, instantReveal = false }: any, externalRef: any) => {
@@ -64,7 +65,7 @@ const ForestTree = forwardRef(
       }
       if (materialRef.current) {
         materialRef.current.uTime = state.clock.elapsedTime;
-        materialRef.current.uWind = 0.8;
+        materialRef.current.uWind = 0.12;
         if (controls?.treeInkColor) {
           materialRef.current.uColorBase.set(controls.treeInkColor);
         }
@@ -86,7 +87,7 @@ const ForestTree = forwardRef(
     return (
       <mesh ref={meshRef} position={[offscreenX, position[1], position[2]]} rotation-z={rotation}>
         <planeGeometry args={scale} />
-        <WoodcutShader ref={materialRef} uTexture={tex} transparent={true} depthWrite={true} alphaTest={0.5} />
+        <WoodcutShader ref={materialRef} uTexture={tex} transparent={true} depthWrite={false} alphaTest={0.5} />
       </mesh>
     );
   },
@@ -211,12 +212,14 @@ function CanopyLayer({
   position,
   scale,
   opacity = 1,
+  tintColor = '#ffffff',
   repeatX = 1,
 }: {
   textureUrl: string;
   position: [number, number, number];
   scale: [number, number];
   opacity?: number;
+  tintColor?: string;
   repeatX?: number;
 }) {
   const tex = useTexture(textureUrl) as Texture;
@@ -240,7 +243,14 @@ function CanopyLayer({
   return (
     <mesh position={position} frustumCulled={false}>
       <planeGeometry args={scale} />
-      <meshBasicMaterial map={mapTex} transparent depthWrite={false} alphaTest={0.05} opacity={opacity} />
+      <meshBasicMaterial
+        map={mapTex}
+        color={tintColor}
+        transparent
+        depthWrite={false}
+        alphaTest={0.01}
+        opacity={opacity}
+      />
     </mesh>
   );
 }
@@ -514,12 +524,6 @@ export default function DeepForest({
   scrollVelocity?: React.MutableRefObject<number>;
   controls?: any;
 }) {
-  // Grab the depth buffer for soft particles. 1024 / continuous: a 256
-  // depth buffer captured once produced visible square fragments where fog
-  // cards intersect tree silhouettes, especially near the end of the scene
-  // where the camera has moved far from the original capture position.
-  const depthBuffer = useDepthBuffer({ size: 1024, frames: Infinity });
-
   const shaftPos: [number, number, number] = controls
     ? [controls.shaftX, controls.shaftCenterY, controls.shaftZ]
     : [0, -1, -90];
@@ -534,6 +538,12 @@ export default function DeepForest({
   const showStag = controls?.stagEnabled ?? true;
   const showBackdrop = controls?.canopyFarEnabled ?? true;
   const backdropOpacity = controls?.canopyFarOpacity ?? 1.0;
+  const backdropScale = controls?.backdropScale ?? 360;
+  const backdropPosition: [number, number, number] = [
+    controls?.backdropX ?? 0,
+    controls?.backdropY ?? -2,
+    controls?.backdropZ ?? -180,
+  ];
   const floorMistDensity = controls?.floorMistDensity ?? 0.8;
 
   return (
@@ -542,11 +552,12 @@ export default function DeepForest({
           Pushed back so the painted backdrop has fog-room behind it. */}
       <ForestMist scrollProgress={scrollProgress} position={[0, 10, -680]} scale={[1500, 900]} controls={controls} />
 
-      {/* Forest Floor - Grounding the scene (horizontal plane). Reuses
-          ForestMist via a separate mesh so we can rotate it flat. */}
+      {/* Launch simplification: keep a single stable mist plane instead of
+          the old floor/depth-card stack. Re-enable only if the assets are
+          rebuilt and the sprite no longer has to fight a ground occluder. */}
+      {/*
       <ForestFloor scrollProgress={scrollProgress} controls={controls} fixedDensity={floorMistDensity} />
 
-      {/* Painterly light shaft — Forest's wow shader gesture. */}
       {showShaft && (
         <ForestShaft
           scrollVelocity={scrollVelocity}
@@ -558,33 +569,30 @@ export default function DeepForest({
         />
       )}
 
-      {/* Foreground motes — supporting depth cue, camera-relative. */}
       {showMotes && (
         <ForestMotes scrollProgress={scrollProgress} offset={motesOffset} size={motesSize} controls={controls} />
       )}
 
-      {/* Volumetric Fog Cards driven by depth buffer */}
       <FogPlanes scrollProgress={scrollProgress} depthBuffer={depthBuffer} controls={controls} />
+      */}
 
-      {/* Painted forest backdrop — single distant atmospheric plate.
-          Replaces the old canopy-far + canopy-mid pair. Sits at z=-500
-          between the two old positions; the FogPlanes carry the depth
-          modulation that two stacked canopy layers used to fake. */}
+      {/* Painted forest backdrop — single distant atmospheric plate. */}
       {showBackdrop && (
         <CanopyLayer
-          textureUrl="/forest/backdrop-clean.webp"
-          position={[0, 6, -500]}
-          scale={[1100, 615]}
+          textureUrl="/forest/backdrop-woodcut-mask.webp"
+          position={backdropPosition}
+          scale={[backdropScale, backdropScale / FOREST_BACKDROP_ASPECT]}
           opacity={backdropOpacity}
+          tintColor={controls?.backdropTintColor ?? controls?.treeInkColor ?? '#344352'}
         />
       )}
 
       {/* Tree 4: Deep distance - The massive Sequoia anchoring the path (Left) */}
-      <ForestTree textureUrl="/tree_sequoia.webp" position={[-28, 2, -85]} scale={[65, 65]} controls={controls} />
+      <ForestTree textureUrl="/tree_sequoia-clean.webp" position={[-28, 2, -85]} scale={[65, 65]} controls={controls} />
 
       {/* Tree 3: Mid-distance - The sharp Spruce (Right) */}
       <ForestTree
-        textureUrl="/tree_spruce.webp"
+        textureUrl="/tree_spruce-clean.webp"
         position={[25, 5, -55]}
         scale={[50, 50]}
         rotation={-0.05}
@@ -593,7 +601,7 @@ export default function DeepForest({
 
       {/* Tree 2: Mid-foreground - The twisted Cherry Blossom (Left) */}
       <ForestTree
-        textureUrl="/tree_cherry.webp"
+        textureUrl="/tree_cherry-clean.webp"
         position={[-25, 5, -25]}
         scale={[60, 60]}
         rotation={0.05}
@@ -601,7 +609,7 @@ export default function DeepForest({
       />
 
       {/* Tree 1: Extreme foreground, framing the entrance - The stark Aspen (Right) */}
-      <ForestTree textureUrl="/tree_aspen.webp" position={[25, -2, 0]} scale={[45, 45]} controls={controls} />
+      <ForestTree textureUrl="/tree_aspen-clean.webp" position={[25, -2, 0]} scale={[45, 45]} controls={controls} />
 
       {/* The Animated Stag — walks through the deep midground. */}
       {showStag && (
@@ -620,6 +628,8 @@ export default function DeepForest({
           frameInsetPx={8}
           cycles={4}
           endBehavior="loop"
+          depthTest={false}
+          renderOrder={8}
           scrollProgress={scrollProgress}
         />
       )}

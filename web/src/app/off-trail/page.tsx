@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFoundEggs } from '@/lib/eggs/useFoundEggs';
+import type { EggId } from '@/lib/eggs/eggRegistry';
 import { useAppStore } from '@/store/useAppStore';
 
 // Full 3D scene — illustration planes at depth + water shader plane.
@@ -15,7 +16,11 @@ export default function OffTrailPage() {
   const router = useRouter();
 
   useEffect(() => {
-    useFoundEggs.getState().markFound('grove');
+    // Mark whichever egg the user used to arrive. Direct URL navigation
+    // (no flag) defaults to grove for legacy compatibility.
+    const via = window.sessionStorage.getItem('sh-egg-via') as EggId | null;
+    useFoundEggs.getState().markFound(via === 'creek' ? 'creek' : 'grove');
+    window.sessionStorage.removeItem('sh-egg-via');
   }, []);
 
   const handleBack = (e: React.MouseEvent) => {

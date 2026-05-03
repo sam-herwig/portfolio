@@ -52,13 +52,11 @@ function CaseStudyCamera({ scrollProgress }: { scrollProgress: React.RefObject<n
   const { camera } = useThree();
   useFrame(() => {
     const p = scrollProgress.current ?? 0;
-    // Hero zone: z 20->-28, y 0->4, rotX 0->0.15
-    const heroY = MathUtils.lerp(0, 4, p);
-    const heroZ = MathUtils.lerp(20, -28, p);
-    const heroRX = MathUtils.lerp(0, 0.15, p);
-
-    camera.position.set(0, heroY, heroZ);
-    camera.rotation.set(heroRX, 0, 0);
+    // Single hero plane at z=0; camera dollies gently forward across the
+    // hero zone so the plate breathes without parallaxing past geometry.
+    const heroZ = MathUtils.lerp(12, 8, p);
+    camera.position.set(0, 0, heroZ);
+    camera.rotation.set(0, 0, 0);
   });
   return null;
 }
@@ -109,9 +107,9 @@ export default function CaseStudyScene({ slug }: CaseStudySceneProps) {
       style={{ opacity: containerOpacity, transition: 'opacity 0.12s linear' }}
     >
       <Canvas
-        camera={{ position: [0, 0, 20], fov: 50 }}
+        camera={{ position: [0, 0, 12], fov: 50 }}
         dpr={[1, 1.5]}
-        gl={{ antialias: false, alpha: false }}
+        gl={{ antialias: false, alpha: true }}
         frameloop={isPaused ? 'demand' : 'always'}
       >
         <CaseStudyCamera scrollProgress={scrollProgressRef} />
