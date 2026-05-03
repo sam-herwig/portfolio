@@ -3,8 +3,9 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, useFBO, MeshTransmissionMaterial, Environment } from '@react-three/drei';
 import { Leva, useControls } from 'leva';
-import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BackSide, Group, Mesh, MeshDepthMaterial, type PerspectiveCamera, RGBADepthPacking } from 'three';
+import BlobBackdrop from '@/components/lab/BlobBackdrop';
 import DispersionMaterial, { makeDispersionUniforms } from '@/components/lab/DispersionMaterial';
 import { useMouseVelocity } from '@/lib/useMouseVelocity';
 
@@ -17,29 +18,6 @@ const MODE_LABEL: Record<Mode, string> = {
   rgb: '2 — 3-channel per-channel IOR',
   rygcbv: '3 — rygcbv 6-channel spectral split',
 };
-
-const Backdrop = forwardRef<Group>(function Backdrop(_, ref) {
-  return (
-    <group ref={ref} position={[0, 0, -2]}>
-      <mesh position={[-2.5, 0, 0]}>
-        <planeGeometry args={[1.5, 5]} />
-        <meshBasicMaterial color="#ff3366" />
-      </mesh>
-      <mesh position={[-0.85, 0, 0]}>
-        <planeGeometry args={[1.5, 5]} />
-        <meshBasicMaterial color="#33ccff" />
-      </mesh>
-      <mesh position={[0.85, 0, 0]}>
-        <planeGeometry args={[1.5, 5]} />
-        <meshBasicMaterial color="#c4f57a" />
-      </mesh>
-      <mesh position={[2.5, 0, 0]}>
-        <planeGeometry args={[1.5, 5]} />
-        <meshBasicMaterial color="#fafafa" />
-      </mesh>
-    </group>
-  );
-});
 
 interface DispersionTextProps {
   mode: Mode;
@@ -282,7 +260,7 @@ export default function DispersionLab() {
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 5, 5]} intensity={1.2} />
         <Environment preset="studio" />
-        <Backdrop ref={backdropRef} />
+        <BlobBackdrop ref={backdropRef} />
         <DispersionText mode={mode} backdropRef={backdropRef} />
         <OrbitControls />
       </Canvas>
