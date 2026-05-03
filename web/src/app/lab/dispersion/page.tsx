@@ -65,8 +65,9 @@ function DispersionText({ mode, backdropRef }: DispersionTextProps) {
     uniforms.uMode.value = mode === 'rygcbv' ? 1 : 0;
   }, [mode]);
 
-  useFrame(() => {
+  useFrame((state) => {
     uniforms.uVelocity.value = velocity.current.magnitude;
+    uniforms.uTime.value = state.clock.elapsedTime;
 
     if (!meshRef.current) return;
     if (mode === 'drei') return;

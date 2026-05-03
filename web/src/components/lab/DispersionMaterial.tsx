@@ -6,11 +6,24 @@ import CustomShaderMaterial from 'three-custom-shader-material';
 const vertexShader = /* glsl */ `
   varying vec3 vDispWorldPos;
   varying vec3 vDispWorldNormal;
+  uniform float uTime;
+  uniform float uBreath;
 
   void main() {
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    // 10% viscous undertone: barely-visible vertex breath. Smooth multi-
+    // axis low-frequency sin/cos field, displaced along the surface normal.
+    float t = uTime * 0.5;
+    float w1 = sin(position.x * 1.5 + t) * cos(position.y * 1.2 + t * 0.8);
+    float w2 = sin(position.y * 2.0 - t * 0.6) * cos(position.z * 1.0 + t * 0.4);
+    float breath = (w1 + w2) * 0.5;
+
+    vec3 displaced = position + normal * breath * uBreath;
+
+    vec4 worldPos = modelMatrix * vec4(displaced, 1.0);
     vDispWorldPos = worldPos.xyz;
     vDispWorldNormal = normalize(mat3(modelMatrix) * normal);
+
+    csm_Position = displaced;
   }
 `;
 
@@ -155,6 +168,8 @@ export interface DispersionUniforms {
   uCameraFar: { value: number };
   uAbsorption: { value: number };
   uAbsorptionColor: { value: Vector3 };
+  uTime: { value: number };
+  uBreath: { value: number };
 }
 
 export function makeDispersionUniforms(): DispersionUniforms {
@@ -174,6 +189,8 @@ export function makeDispersionUniforms(): DispersionUniforms {
     uCameraFar: { value: 1000 },
     uAbsorption: { value: 1.6 },
     uAbsorptionColor: { value: new Vector3(0.6, 0.4, 0.3) },
+    uTime: { value: 0 },
+    uBreath: { value: 0.012 },
   };
 }
 
