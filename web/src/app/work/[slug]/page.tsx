@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getProjectBySlug, getAllSlugs, getAdjacentProjects } from '@/data/projects';
+import { hasLab } from '@/data/labs';
 import BlockRenderer from '@/components/case-study/BlockRenderer';
 import CaseStudyHero from '@/components/case-study/CaseStudyHero';
 import NextProject from '@/components/case-study/NextProject';
@@ -100,6 +101,17 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
                     </li>
                   ))}
                 </ul>
+              )}
+              {hasLab(slug) && (
+                <div className="mt-12">
+                  <Link
+                    href={`/work/${slug}/lab`}
+                    className="group inline-flex items-baseline gap-3 text-xs uppercase tracking-[0.3em] text-foreground/60 hover:text-foreground"
+                    style={{ fontFamily: 'var(--font-geist-mono)' }}
+                  >
+                    Backstage notes <span className="transition-all group-hover:translate-x-1">→</span>
+                  </Link>
+                </div>
               )}
             </div>
           </div>
