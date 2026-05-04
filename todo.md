@@ -95,48 +95,53 @@ Stays the same: Next.js 16, React 19, Tailwind v4, ESLint/Prettier/Husky chain, 
 
 ## Implementation phases
 
-### Phase 0 — branch & scaffold (1 sitting)
-- Create `redesign/v2` branch from `staging`
-- Move existing `todo.md` → `todo.trail-archive.md`
-- Promote `redesign-plan.md` → `todo.md`
-- Aggressive deletion of KILL list
-- Install: `lenis`, `@14islands/r3f-scroll-rig`, `three-msdf-text-utils` or use `troika` direct, `gsap` (already), `three-custom-shader-material`
-- Verify Next.js 16 View Transitions config
+### Phase 0 — branch & scaffold ✅ shipped (commit `9c73245`)
+Trail theme stripped, theme-neutral scaffold compiles, archive branch pushed.
 
-### Phase 1 — signature material (1–2 sittings)
-- Bake Fraunces MSDF atlas (build script using `msdf-bmfont-web`)
-- Build custom dispersion shader: per-channel IOR (start), upgrade to rygcbv 6-channel
-- Back-face depth FBO pre-pass for thickness
-- Apply to drei `<Text>` via THREE-CustomShaderMaterial
-- Standalone test page: `/lab/dispersion`
+### Phase 1 — signature material ✅ shipped (commits `019ae78`–`11a180f`)
+- ✅ Fraunces TTF + drei Text3D + opentype.js typeface.json bake script
+- ✅ MeshTransmissionMaterial baseline for A/B
+- ✅ Custom per-channel IOR via three-custom-shader-material extending MeshPhysicalMaterial
+- ✅ rygcbv 6-channel spectral split (Petrick → Heckel) with 1/2/3 keyboard mode toggle
+- ✅ Cursor velocity coupling via useMouseVelocity + self-decaying rAF loop
+- ✅ Back-face thickness FBO + Beer-Lambert absorption (per-mesh material swap, no scene.overrideMaterial)
+- ✅ 10% viscous undertone (multi-axis sin/cos breath)
+- ✅ Leva live-tune panel (IOR, refract/fresnel/saturation/absorption/breath) + studio HDRI on all modes
+- ✅ Soft 5-blob radial-gradient backdrop replaces test-card stripes
+- 🟡 Validate against bar (Roman Jean-Elie / Codrops glass torus / Anatole) — *user visual review remaining*
 
-### Phase 2 — refractive cursor (1 sitting)
+### Phase 2 — refractive cursor (1 sitting) — *not started*
 - Title-layer render-to-RT
 - Cursor as small WebGL plane with same lens math, sampling RT
 - Smoothed cursor velocity → dispersion strength uniform
 - Magnetic snap to interactive elements via DOM event handoff
 
-### Phase 3 — homepage (1–2 sittings)
+### Phase 3 — homepage 3D + persistent canvas (1–2 sittings) — *not started*
 - Persistent Canvas in root layout
 - Lenis + ReactLenis + GSAP ScrollTrigger plumbing
-- Hero panel (3D type + cursor lens)
-- Selected Work grid (per-project tile material)
-- Contact panel
+- Hero panel: 3D dispersive type + cursor lens
+- Selected Work grid: per-project tile material with hover deformation
 - Scroll-progress numeric in corner
+- Next.js View Transitions API (Canvas wrapped in `viewTransitionName: 'none'`)
 
-### Phase 4 — case study template (1–2 sittings)
-- Migrate `projects.ts` content (data only, schema simplified)
-- Title panel with 3D type signature
-- Numbered-chapter body component
-- Inline metadata block
-- "Next Project" footer
+### Phase 4 — case study template ✅ shipped (commits `1c626be`–`ed51489`)
+- ✅ Schema migration: ChapterBlock replaces station/specimen/frieze/metric/masthead; openingQuote/signatureLandmark/TRAIL_STATIONS dropped
+- ✅ Per-project block migration (4 case studies, ~17 blocks each, all theme-neutral; year/role/client/deliverables filled with drafts to tighten)
+- ✅ Eight render components (`CaseStudyHero`, `ChapterMark`, `TextBlockRender`, `MediaBlockRender`, `VideoBlockRender`, `SpotlightSlot`, `BlockRenderer`, `NextProject`)
+- ✅ Spotlight registry (CraftedKitPipelineSpotlight, NewBelgiumSpotlight) wired via dynamic import + ssr:false
+- ✅ Instrument Serif font wired up via next/font
+- ✅ NextProject full-bleed reveal footer (per 2026 dominant pattern from research)
+- ✅ Reveal wrapper (framer-motion in-view fade + blur) on every block
+- ✅ Homepage: editorial 2-column grid w/ thumbnails, mono index/year strip, Fraunces title, Instrument subtitle
+- ✅ Dual-track `/work/[slug]/lab` sub-route for backstage notes (CraftedKit + New Belgium have content; others 404 — only depth-warranted projects get a lab)
+- ⚠ Note: year/role/client placeholders are *drafts* — verify before shipping public
 
-### Phase 5 — `/backstage` and polish (1 sitting)
-- Per-case-study `/backstage` route with shader breakdown + code snippets
-- 404 with the signature
-- Loading state
-- Footer
-- Easter eggs
+### Phase 5 — final polish (1 sitting) — *partial; remaining items*
+- ⏳ 404 with the dispersion signature
+- ⏳ Loading state
+- ⏳ Site footer (currently minimal copyright line on home only)
+- ⏳ Easter eggs
+- ⏳ Section name decision: `Selected Work` vs `Field Notes` / `Drops` / `Work / 12`
 
 ## Branch plan (RESOLVED)
 
