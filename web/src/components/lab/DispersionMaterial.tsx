@@ -120,9 +120,13 @@ const fragmentShader = /* glsl */ `
   }
 
   void main() {
+    // CSM injects this body into the same scope as MeshPhysicalMaterial's
+    // own shader chunks. Three's standard fragment already declares
+    // 'normal' and 'viewDir', so we prefix our locals with 'disp' to
+    // avoid redefinition collisions.
     vec2 uv = gl_FragCoord.xy / uResolution.xy;
-    vec3 normal = normalize(vDispWorldNormal);
-    vec3 viewDir = normalize(vDispWorldPos - cameraPosition);
+    vec3 dispNormal = normalize(vDispWorldNormal);
+    vec3 dispViewDir = normalize(vDispWorldPos - cameraPosition);
 
     // Cursor velocity scales refraction strength: at rest = calm glass,
     // on swipe = peak dispersion. uVelocity is the smoothed pointer
@@ -130,8 +134,8 @@ const fragmentShader = /* glsl */ `
     float power = uRefractPower * mix(0.3, 3.0, clamp(uVelocity * 0.6, 0.0, 1.0));
 
     vec3 col = uMode > 0.5
-      ? dispersion6(uv, viewDir, normal, power)
-      : dispersion3(uv, viewDir, normal, power);
+      ? dispersion6(uv, dispViewDir, dispNormal, power)
+      : dispersion3(uv, dispViewDir, dispNormal, power);
     col = sat(col, uSaturation);
 
     // Per-fragment thickness from back-face depth FBO.
@@ -144,7 +148,7 @@ const fragmentShader = /* glsl */ `
     vec3 transmission = exp(-uAbsorptionColor * thickness * uAbsorption);
     col *= transmission;
 
-    float NdotV = max(dot(normal, -viewDir), 0.0);
+    float NdotV = max(dot(dispNormal, -dispViewDir), 0.0);
     float fresnel = pow(1.0 - NdotV, uFresnelPower);
 
     vec3 finalColor = mix(col, vec3(1.0), fresnel * 0.25);
