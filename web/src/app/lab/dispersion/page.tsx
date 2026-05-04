@@ -260,11 +260,21 @@ export default function DispersionLab() {
         <br />
         <span className="text-foreground/40">{MODE_LABEL[mode]}</span>
       </div>
-      <div
-        className="pointer-events-none absolute bottom-6 left-6 z-10 text-[10px] uppercase tracking-[0.25em] text-foreground/40"
-        style={{ fontFamily: 'var(--font-geist-mono)' }}
-      >
-        1 · drei baseline &nbsp; 2 · 3-channel &nbsp; 3 · rygcbv
+      <div className="absolute bottom-6 left-6 z-10 flex gap-1.5" style={{ fontFamily: 'var(--font-geist-mono)' }}>
+        {(['drei', 'rgb', 'rygcbv'] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            className={`border px-3 py-1.5 text-[10px] uppercase tracking-[0.25em] transition-colors ${
+              mode === m
+                ? 'border-foreground/70 bg-foreground/10 text-foreground'
+                : 'border-foreground/20 text-foreground/55 hover:border-foreground/40 hover:text-foreground/80'
+            }`}
+            aria-pressed={mode === m}
+          >
+            {m === 'drei' ? '1 · drei' : m === 'rgb' ? '2 · 3-ch' : '3 · rygcbv'}
+          </button>
+        ))}
       </div>
       <Canvas camera={{ position: [0, 0, 5], fov: 35 }} dpr={[1, 2]}>
         <ambientLight intensity={0.6} />

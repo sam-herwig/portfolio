@@ -2,7 +2,7 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Center, Environment, Text3D, useFBO } from '@react-three/drei';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { BackSide, Group, Mesh, MeshDepthMaterial, type PerspectiveCamera, RGBADepthPacking } from 'three';
 import DispersionMaterial, { makeDispersionUniforms } from '@/components/lab/DispersionMaterial';
 import { useMouseVelocity } from '@/lib/useMouseVelocity';
@@ -91,13 +91,62 @@ function HeroText({ backdropRef }: { backdropRef: React.RefObject<Group | null> 
   );
 }
 
+function StaticHeroTitle() {
+  // Reduced-motion / mobile fallback. Static Fraunces title — same composition
+  // as the Canvas hero but no WebGL. The dispersion is the brand, but on
+  // reduced-motion or small screens we'd rather ship a fast, beautiful page
+  // than a janky 30fps showpiece.
+  return (
+    <div className="absolute inset-0 flex items-center justify-center px-8">
+      <h1
+        className="text-balance text-center text-6xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-7xl md:text-8xl lg:text-[10rem]"
+        style={{
+          fontFamily: 'var(--font-fraunces)',
+          fontVariationSettings: '"opsz" 144, "SOFT" 100, "WONK" 0',
+        }}
+      >
+        Sam Herwig
+      </h1>
+    </div>
+  );
+}
+
+// Gate the WebGL hero behind prefers-reduced-motion and a viewport-width
+// floor. SSR always serves the static fallback; the canvas hydrates in only
+// when the device can actually carry it. Using useSyncExternalStore avoids
+// the react-hooks/set-state-in-effect rule and gives a clean SSR snapshot.
+function subscribeMediaQueries(cb: () => void) {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  reduced.addEventListener('change', cb);
+  window.addEventListener('resize', cb);
+  return () => {
+    reduced.removeEventListener('change', cb);
+    window.removeEventListener('resize', cb);
+  };
+}
+
+function getCanvasEnabledSnapshot(): boolean {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return !reduced && window.innerWidth >= 768;
+}
+
+function getCanvasEnabledServerSnapshot(): boolean {
+  return false;
+}
+
 export default function HomeHero() {
   const backdropRef = useRef<Group>(null);
+  const enableCanvas = useSyncExternalStore(
+    subscribeMediaQueries,
+    getCanvasEnabledSnapshot,
+    getCanvasEnabledServerSnapshot,
+  );
 
   // Idle drift on the cursor velocity uniform so the dispersion never reads
   // as totally frozen on first paint — gives the type a faint living quality
   // before the user moves the mouse.
   useEffect(() => {
+    if (!enableCanvas) return;
     let raf = 0;
     let t = 0;
     const tick = () => {
@@ -107,22 +156,26 @@ export default function HomeHero() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [enableCanvas]);
 
   return (
     <section className="relative h-screen w-full overflow-hidden">
-      <Canvas
-        camera={{ position: [0, 0, 5], fov: 32 }}
-        dpr={[1, 2]}
-        gl={{ antialias: true, alpha: false }}
-        className="absolute inset-0"
-      >
-        <ambientLight intensity={0.55} />
-        <directionalLight position={[5, 5, 5]} intensity={1.1} />
-        <Environment preset="studio" />
-        <HeroBackdrop ref={backdropRef} />
-        <HeroText backdropRef={backdropRef} />
-      </Canvas>
+      {enableCanvas ? (
+        <Canvas
+          camera={{ position: [0, 0, 5], fov: 32 }}
+          dpr={[1, 2]}
+          gl={{ antialias: true, alpha: false }}
+          className="absolute inset-0"
+        >
+          <ambientLight intensity={0.55} />
+          <directionalLight position={[5, 5, 5]} intensity={1.1} />
+          <Environment preset="studio" />
+          <HeroBackdrop ref={backdropRef} />
+          <HeroText backdropRef={backdropRef} />
+        </Canvas>
+      ) : (
+        <StaticHeroTitle />
+      )}
 
       {/* HTML overlay — positions copy at the four corners, like an editorial
           spread. The 3D type handles the "brand". */}
