@@ -98,16 +98,17 @@ Stays the same: Next.js 16, React 19, Tailwind v4, ESLint/Prettier/Husky chain, 
 ### Phase 0 — branch & scaffold ✅ shipped (commit `9c73245`)
 Trail theme stripped, theme-neutral scaffold compiles, archive branch pushed.
 
-### Phase 1 — signature material ✅ shipped (commits `019ae78`–`11a180f`)
+### Phase 1 — signature material ✅ shipped (commits `019ae78`–`11a180f`, `e2c9aac`)
 - ✅ Fraunces TTF + drei Text3D + opentype.js typeface.json bake script
 - ✅ MeshTransmissionMaterial baseline for A/B
 - ✅ Custom per-channel IOR via three-custom-shader-material extending MeshPhysicalMaterial
-- ✅ rygcbv 6-channel spectral split (Petrick → Heckel) with 1/2/3 keyboard mode toggle
+- ✅ rygcbv 6-channel spectral split (Petrick → Heckel) with 1/2/3 keyboard mode toggle + visible button row
 - ✅ Cursor velocity coupling via useMouseVelocity + self-decaying rAF loop
 - ✅ Back-face thickness FBO + Beer-Lambert absorption (per-mesh material swap, no scene.overrideMaterial)
 - ✅ 10% viscous undertone (multi-axis sin/cos breath)
 - ✅ Leva live-tune panel (IOR, refract/fresnel/saturation/absorption/breath) + studio HDRI on all modes
 - ✅ Soft 5-blob radial-gradient backdrop replaces test-card stripes
+- ✅ Lab `← Index` nav link (no longer one-way)
 - 🟡 Validate against bar (Roman Jean-Elie / Codrops glass torus / Anatole) — *user visual review remaining*
 
 ### Phase 2 — refractive cursor (1 sitting) — *not started*
@@ -116,23 +117,26 @@ Trail theme stripped, theme-neutral scaffold compiles, archive branch pushed.
 - Smoothed cursor velocity → dispersion strength uniform
 - Magnetic snap to interactive elements via DOM event handoff
 
-### Phase 3 — homepage 3D + persistent canvas (1–2 sittings) — *not started*
-- Persistent Canvas in root layout
-- Lenis + ReactLenis + GSAP ScrollTrigger plumbing
-- Hero panel: 3D dispersive type + cursor lens
-- Selected Work grid: per-project tile material with hover deformation
-- Scroll-progress numeric in corner
-- Next.js View Transitions API (Canvas wrapped in `viewTransitionName: 'none'`)
+### Phase 3 — homepage 3D + persistent canvas (1–2 sittings) — *partial*
+- ✅ Hero panel: 3D dispersive type wired into homepage (commit `88506bc`) — *isolated canvas, not yet persistent*
+- ✅ Reduced-motion + mobile fallback (static Fraunces title under 768px or with prefers-reduced-motion via useSyncExternalStore)
+- ⏳ Persistent Canvas in root layout (current hero is per-page, will need promotion when Phase 2 cursor lands)
+- ⏳ Lenis + ReactLenis + GSAP ScrollTrigger plumbing
+- ⏳ Selected Work grid: per-project tile material with hover deformation
+- ⏳ Scroll-progress numeric in corner (case studies have a thin scroll-progress bar from audit pass — `commit f1bfb1b`)
+- ⏳ Next.js View Transitions API (Canvas wrapped in `viewTransitionName: 'none'`)
 
-### Phase 4 — case study template ✅ shipped (commits `1c626be`–`ed51489`)
+### Phase 4 — case study template ✅ shipped (commits `1c626be`–`ed51489`, `f1bfb1b`)
 - ✅ Schema migration: ChapterBlock replaces station/specimen/frieze/metric/masthead; openingQuote/signatureLandmark/TRAIL_STATIONS dropped
 - ✅ Per-project block migration (4 case studies, ~17 blocks each, all theme-neutral; year/role/client/deliverables filled with drafts to tighten)
-- ✅ Eight render components (`CaseStudyHero`, `ChapterMark`, `TextBlockRender`, `MediaBlockRender`, `VideoBlockRender`, `SpotlightSlot`, `BlockRenderer`, `NextProject`)
+- ✅ Nine render components (`CaseStudyHero`, `ChapterMark`, `TextBlockRender`, `MediaBlockRender`, `VideoBlockRender`, `SpotlightSlot`, `BlockRenderer`, `NextProject`, `ScrollProgress`)
 - ✅ Spotlight registry (CraftedKitPipelineSpotlight, NewBelgiumSpotlight) wired via dynamic import + ssr:false
 - ✅ Instrument Serif font wired up via next/font
 - ✅ NextProject full-bleed reveal footer (per 2026 dominant pattern from research)
 - ✅ Reveal wrapper (framer-motion in-view fade + blur) on every block
-- ✅ Homepage: editorial 2-column grid w/ thumbnails, mono index/year strip, Fraunces title, Instrument subtitle
+- ✅ Homepage: editorial 2-column grid w/ thumbnails, mono index/year strip, Fraunces title, Instrument subtitle (now with Reveal language to match case studies)
+- ✅ Case study hero: full-bleed banner image with title seated into bottom gradient + 4/8 editorial lede grid (audit pass — was a text-wall before)
+- ✅ Thin scroll progress bar pinned to top of `/work/[slug]`
 - ✅ Dual-track `/work/[slug]/lab` sub-route for backstage notes (CraftedKit + New Belgium have content; others 404 — only depth-warranted projects get a lab)
 - ⚠ Note: year/role/client placeholders are *drafts* — verify before shipping public
 
