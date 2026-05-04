@@ -6,6 +6,7 @@ import { hasLab } from '@/data/labs';
 import BlockRenderer from '@/components/case-study/BlockRenderer';
 import CaseStudyHero from '@/components/case-study/CaseStudyHero';
 import NextProject from '@/components/case-study/NextProject';
+import ScrollProgress from '@/components/case-study/ScrollProgress';
 
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }));
@@ -43,6 +44,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
 
   return (
     <main className="min-h-screen w-full">
+      <ScrollProgress />
       <nav className="absolute left-8 top-8 z-20 md:left-16">
         <Link
           href="/"

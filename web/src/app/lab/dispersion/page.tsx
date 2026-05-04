@@ -3,6 +3,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, useFBO, MeshTransmissionMaterial, Environment } from '@react-three/drei';
 import { Leva, useControls } from 'leva';
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BackSide, Group, Mesh, MeshDepthMaterial, type PerspectiveCamera, RGBADepthPacking } from 'three';
 import BlobBackdrop from '@/components/lab/BlobBackdrop';
@@ -244,17 +245,26 @@ export default function DispersionLab() {
   return (
     <main className="relative h-screen w-full bg-background">
       <Leva collapsed titleBar={{ title: 'Dispersion · Live tune' }} />
-      <div
-        className="pointer-events-none absolute left-6 top-6 z-10 text-xs uppercase tracking-[0.25em] text-foreground/60"
+      <Link
+        href="/"
+        className="absolute left-6 top-6 z-20 text-xs uppercase tracking-[0.3em] text-foreground/55 hover:text-foreground"
         style={{ fontFamily: 'var(--font-geist-mono)' }}
       >
-        Dispersion Lab · Mode: {MODE_LABEL[mode]}
+        ← Index
+      </Link>
+      <div
+        className="pointer-events-none absolute right-6 top-6 z-10 text-right text-[10px] uppercase tracking-[0.3em] text-foreground/55"
+        style={{ fontFamily: 'var(--font-geist-mono)' }}
+      >
+        Dispersion Lab
+        <br />
+        <span className="text-foreground/40">{MODE_LABEL[mode]}</span>
       </div>
       <div
         className="pointer-events-none absolute bottom-6 left-6 z-10 text-[10px] uppercase tracking-[0.25em] text-foreground/40"
         style={{ fontFamily: 'var(--font-geist-mono)' }}
       >
-        1 · drei baseline 2 · 3-channel 3 · rygcbv
+        1 · drei baseline &nbsp; 2 · 3-channel &nbsp; 3 · rygcbv
       </div>
       <Canvas camera={{ position: [0, 0, 5], fov: 35 }} dpr={[1, 2]}>
         <ambientLight intensity={0.6} />
