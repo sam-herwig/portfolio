@@ -1,12 +1,14 @@
 import type { ContentBlock } from '@/data/projects';
 import ChapterMark from './ChapterMark';
+import ChapterScreen from './ChapterScreen';
+import ChapterScreenPinned from './ChapterScreenPinned';
 import TextBlockRender from './TextBlockRender';
 import MediaBlockRender from './MediaBlockRender';
 import VideoBlockRender from './VideoBlockRender';
 import SpotlightSlot from './SpotlightSlot';
 import Reveal from './Reveal';
 
-export default function BlockRenderer({ block }: { block: ContentBlock }) {
+export default function BlockRenderer({ block, slug }: { block: ContentBlock; slug: string }) {
   switch (block.type) {
     case 'chapter':
       return (
@@ -29,6 +31,7 @@ export default function BlockRenderer({ block }: { block: ContentBlock }) {
             aspect={block.aspect}
             fullBleed={block.fullBleed}
             caption={block.caption}
+            slug={slug}
           />
         </Reveal>
       );
@@ -46,6 +49,20 @@ export default function BlockRenderer({ block }: { block: ContentBlock }) {
       );
     case 'spotlight-block':
       return <SpotlightSlot spotlightId={block.spotlightId} caption={block.caption} />;
+    case 'chapter-screen':
+      if (block.scrollMode === 'pinned-scrub') {
+        return (
+          <ChapterScreenPinned
+            number={block.number}
+            title={block.title}
+            eyebrow={block.eyebrow}
+            shaderId={block.shaderId}
+          />
+        );
+      }
+      return (
+        <ChapterScreen number={block.number} title={block.title} eyebrow={block.eyebrow} shaderId={block.shaderId} />
+      );
     default: {
       const _exhaustive: never = block;
       void _exhaustive;

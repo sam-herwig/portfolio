@@ -42,6 +42,15 @@
   }
 }
 
+@layer components {
+  .work-card {
+    transition: opacity 300ms ease;
+  }
+  .work-card-grid:has(.work-card:hover) .work-card:not(:hover) {
+    opacity: 0.3;
+  }
+}
+
 :focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;

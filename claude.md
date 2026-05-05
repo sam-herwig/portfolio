@@ -82,33 +82,37 @@ Automated enforcement chain — these are not advisory. Violations are blocked.
 
 ## Architecture: Scroll-Driven Module Timeline
 
-The homepage is a single long scroll divided into five "zones" that control both 2D content and 3D scene rendering. The critical architectural piece is the **Module Timeline Contract** (`src/lib/moduleTimeline.ts`).
+The homepage is a single long-scroll section pinned to the viewport, with a single Three.js Canvas behind four HTML overlays. A fragment shader renders all four module backgrounds (Hero / About / Work / Contact) and crossfades between them based on scroll progress.
+
+The critical architectural piece is the **Module Timeline Contract** (`src/lib/moduleTimeline.ts`) — the single source of truth for scroll windows. Both the HTML overlays AND the shader weights consume `MODULE_WINDOWS`; the shader receives `exitStart/exitEnd` as `vec2` uniforms so the JS and GLSL never drift.
 
 ### Module ownership windows (% of total scroll)
 
-| Module  | Range       | Content                        |
-|---------|-------------|--------------------------------|
-| Hero    | 0.00–0.22   | Interactive 3D hero            |
-| Forest  | 0.22–0.44   | Storytelling cards             |
-| Camp    | 0.44–0.64   | Video section                  |
-| Alpine  | 0.64–0.84   | Case study cards               |
-| Summit  | 0.84–1.00   | Footer                         |
+| Module   | Range       | HTML overlay                      | Shader mode                        |
+|----------|-------------|-----------------------------------|------------------------------------|
+| hero     | 0.00–0.32   | name + tagline                    | Optical Moiré                      |
+| about    | 0.16–0.56   | bio paragraph                     | Brushed Anisotropic Metal          |
+| work     | 0.40–0.80   | corner case-study cards           | Volumetric LIDAR Point-cloud       |
+| contact  | 0.64–1.00   | email CTA + studio link           | Fiber-Optic Cable Array            |
 
-Each module defines `enterStart/enterEnd` and `exitStart/exitEnd` sub-windows for crossfade transitions. Both the HTML overlay (`HomeClient.tsx`) and the 3D scene (`UnifiedScene.tsx`) consume these windows — **never hard-code scroll ranges in components**.
+Each module's enter/exit window is `0.16` wide (10% / scroll length × 16). Adjacent modules overlap on enter/exit — that overlap IS the crossfade region in both the overlay opacity and the shader weight blending.
 
-### Key patterns
+### Key components
 
-- **Single Canvas**: One unified Three.js Canvas (`UnifiedScene.tsx`) with modular scene groups — avoids multiple WebGL contexts.
-- **Opacity envelope**: Scene groups crossfade via `sceneOpacity()` / `applyGroupOpacity()` from `moduleTimeline.ts`. Content fades use Framer Motion `useTransform`.
-- **Content flow**: `HomeClient.tsx` drives scroll progress via Framer Motion `useScroll`, transforms it into per-module opacity/position values.
-- **Case study data**: Baked static data in `src/data/projects.ts` (no runtime CMS dependency).
+- **`HomeSceneRoot.tsx`** — top-level container. Owns the `useScroll` motion value, the long-scroll section (`600svh`), the sticky overlay layer, and the R3F Canvas.
+- **`BackgroundField.tsx`** — single fullscreen `<ScreenQuad>` with all four shader modes packed into one fragment. Mounted LAST inside the Canvas so its `useFrame` reads freshly-written text masks each frame.
+- **`scenes/TextMaskScene.tsx`** — one component, instantiated 4× (one per module). Renders module-named text into an offscreen `useFBO` and stores the resulting texture in `textMasks[module]` for the shader to sample as a reveal mask.
+- **`textMasks.ts`** — module-scoped `Record<Module, { texture }>` ref registry shared between TextMaskScene (writer) and BackgroundField (reader). No React state — direct mutable refs by design.
+- **`{Hero|About|Work|Contact}Overlay.tsx`** — HTML overlays. Each calls `useTransform` on the scroll progress to derive its own opacity from `sceneOpacity(v, MODULE_WINDOWS[name])`.
+
+### Color management gotcha
+
+Three's `outputColorSpace = SRGBColorSpace` (default in r152+) auto-converts `new Color('#xxxxxx')` uniforms to LINEAR space when uploaded to the shader. Custom `<shaderMaterial>` shaders are responsible for converting back to sRGB at output. `BackgroundField.tsx` ends with `pow(col, vec3(1.0/2.2))` — **do not remove this**, or all the Color-uniform-driven modes will render ~3× too dark and look invisible against the body bg.
 
 ### Custom systems
 
-- **Custom shaders**: `src/components/shaders/` — WoodcutMaterial, RefractionMaterial
-- **Custom cursor**: `CustomCursor.tsx` — velocity-reactive, zone-aware, hidden on touch devices
-- **Preloader**: `Preloader.tsx` — topographic altitude animation, gates on WebGL readiness
-- **Timeline debug**: `src/lib/timelineDebug.ts` — runtime HUD for module timing
+- **Dispersion lab**: `src/components/lab/DispersionMaterial.tsx` — RYGCBV per-channel IOR transmission material for `/lab/dispersion`.
+- **Soft blob backdrop**: `src/components/lab/BlobBackdrop.tsx` — fallback for `/lab` routes.
 
 ## Routing
 

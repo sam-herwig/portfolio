@@ -40,7 +40,25 @@ export interface ChapterBlock {
   eyebrow?: string;
 }
 
-export type ContentBlock = TextBlock | MediaBlock | VideoBlock | SpotlightBlock | ChapterBlock;
+export type ChapterShaderId =
+  | 'nb-prism'
+  | 'cc-braid'
+  | 'ck-pipeline'
+  | 'ck-silhouette'
+  | 'ck-grid'
+  | 'ck-node-receding';
+
+/** Full-bleed shader chapter break — replaces the text-only ChapterBlock for opted-in chapters. */
+export interface ChapterScreenBlock {
+  type: 'chapter-screen';
+  number: string;
+  title: string;
+  eyebrow?: string;
+  shaderId: ChapterShaderId;
+  scrollMode: 'reveal-dissolve' | 'pinned-scrub';
+}
+
+export type ContentBlock = TextBlock | MediaBlock | VideoBlock | SpotlightBlock | ChapterBlock | ChapterScreenBlock;
 
 /* ── Project interface ────────────────────────────────────── */
 
@@ -110,7 +128,14 @@ export const projects: Project[] = [
         heading: 'Five brands, one repo',
         body: 'A skeleton mascot and a 130-year-old Japanese brewery have no business looking alike, but they all ship from the same repo. The pitch was counterintuitive: stop running four teams, four build pipelines, four QA cycles. Collapse everything into one engine and let SCSS specificity do the brand work.',
       },
-      { type: 'chapter', number: '02', title: 'Mapping five identities onto one architecture' },
+      {
+        type: 'chapter-screen',
+        number: '02',
+        title: 'Mapping five identities onto one architecture',
+        eyebrow: 'Identity Prism',
+        shaderId: 'nb-prism',
+        scrollMode: 'reveal-dissolve',
+      },
       {
         type: 'text-block',
         heading: 'The architecture',
@@ -181,7 +206,7 @@ export const projects: Project[] = [
       {
         type: 'text-block',
         heading: 'Five brands, one deploy pipeline',
-        body: "Five brands run from one pipeline. When Voodoo Ranger's Juice Force campaign tripled traffic, the performance fix shipped to all five properties at once.",
+        body: "{{Five}} brands run from one pipeline. When Voodoo Ranger's Juice Force campaign tripled traffic, the performance fix shipped to all five properties at once.",
       },
     ],
     featured: true,
@@ -299,7 +324,14 @@ export const projects: Project[] = [
         heading: 'The toolkit',
         body: "Nuxt for the shell. Contentful CMS handling content updates without developer involvement. Custom project galleries with hover-state previews. A contact form that doesn't feel like a DMV visit.",
       },
-      { type: 'chapter', number: '03', title: 'Performance and motion, together' },
+      {
+        type: 'chapter-screen',
+        number: '03',
+        title: 'Performance and motion, together',
+        eyebrow: 'Perf-Motion Braid',
+        shaderId: 'cc-braid',
+        scrollMode: 'reveal-dissolve',
+      },
       {
         type: 'video-block',
         src: '/work/videos/cc-hero.mp4',
@@ -330,7 +362,7 @@ export const projects: Project[] = [
       {
         type: 'text-block',
         heading: 'What shipped',
-        body: "High 90s Lighthouse, animations fully intact, CMS the team runs on their own. Ended up being the agency's best new business driver for over a year.",
+        body: "{{High 90s}} Lighthouse, animations fully intact, CMS the team runs on their own. Ended up being the agency's best new business driver for over a year.",
       },
       {
         type: 'media-block',
@@ -374,7 +406,14 @@ export const projects: Project[] = [
         heading: 'A studio that sells what I do best',
         body: "I wanted to build a studio that sells what I do best — interactive web experiences using Three.js, custom shaders, and motion systems. Doing that solo is a volume problem. The question wasn't whether AI could write shader code. It was whether I could design a production system where specialist agents do the building and I stay in charge of the taste — a real gated pipeline, not a lights-out factory.",
       },
-      { type: 'chapter', number: '02', title: 'Building the pipeline that builds the work' },
+      {
+        type: 'chapter-screen',
+        number: '02',
+        title: 'Building the pipeline that builds the work',
+        eyebrow: 'Pipeline Silhouette',
+        shaderId: 'ck-silhouette',
+        scrollMode: 'reveal-dissolve',
+      },
       {
         type: 'text-block',
         heading: 'Four specialists and an orchestrator',
@@ -385,7 +424,14 @@ export const projects: Project[] = [
         heading: 'Human in the loop',
         body: 'Agents cannot skip a gate. At each one I choose the direction, score the references, set the motion budget, and approve the build on desktop and phone. The pipeline protects the craft; I protect the taste.',
       },
-      { type: 'chapter', number: '03', title: '15+ heroes, one production system' },
+      {
+        type: 'chapter-screen',
+        number: '03',
+        title: '15+ heroes, one production system',
+        eyebrow: 'Hero Catalog',
+        shaderId: 'ck-grid',
+        scrollMode: 'reveal-dissolve',
+      },
       {
         type: 'video-block',
         src: '/work/videos/craftedkit-organic-living.mp4',
@@ -396,7 +442,7 @@ export const projects: Project[] = [
       {
         type: 'text-block',
         heading: 'The output',
-        body: '15+ WebGL hero experiences live in the catalog, with more in the pipeline. Ferrofluid typography. Volumetric god rays. Particle fields. Each one is a real R3F component with proper resource disposal and responsive fallbacks.',
+        body: '{{15+}} WebGL hero experiences live in the catalog, with more in the pipeline. Ferrofluid typography. Volumetric god rays. Particle fields. Each one is a real R3F component with proper resource disposal and responsive fallbacks.',
       },
       {
         type: 'video-block',
@@ -419,14 +465,28 @@ export const projects: Project[] = [
         aspect: '16/9',
         caption: 'Reaction-diffusion field',
       },
-      { type: 'chapter', number: '04', title: 'The pipeline, drawn out' },
+      {
+        type: 'chapter-screen',
+        number: '04',
+        title: 'The pipeline, drawn out',
+        eyebrow: 'Pipeline Flow',
+        shaderId: 'ck-pipeline',
+        scrollMode: 'pinned-scrub',
+      },
       { type: 'spotlight-block', spotlightId: 'craftedkit-pipeline' },
       {
         type: 'text-block',
         heading: 'The diagram',
         body: 'Jackson → Gate → Chad → Gate → Kyle → Gate → Brad → Gate. Todd routes every mission; I sit at every gate. Every failure becomes a permanent rule the system carries forward.',
       },
-      { type: 'chapter', number: '05', title: 'One person, full production output' },
+      {
+        type: 'chapter-screen',
+        number: '05',
+        title: 'One person, full production output',
+        eyebrow: 'Output Lattice',
+        shaderId: 'ck-node-receding',
+        scrollMode: 'reveal-dissolve',
+      },
       {
         type: 'text-block',
         heading: 'What shipped',
@@ -440,6 +500,16 @@ export const projects: Project[] = [
 
 export function getFeaturedProjects(): Project[] {
   return projects.filter((p) => p.featured).sort((a, b) => a.order - b.order);
+}
+
+// First video-block src in a project's content, used as the inline preview on
+// the homepage Work cards. Returns null if the project has no video blocks.
+export function getProjectFeaturedVideo(project: Project): string | null {
+  if (!project.blocks) return null;
+  for (const block of project.blocks) {
+    if (block.type === 'video-block') return block.src;
+  }
+  return null;
 }
 
 export function getProjectBySlug(slug: string): Project | undefined {

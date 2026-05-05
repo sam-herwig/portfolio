@@ -1,22 +1,18 @@
-import Image from 'next/image';
 import type { Project } from '@/data/projects';
+import CaseStudyHeroShader from './CaseStudyHeroShader';
 
 export default function CaseStudyHero({ project }: { project: Project }) {
   return (
     <header className="relative w-full">
-      {/* Visual anchor — full-bleed banner with project thumbnail. The
-          dark gradient at the bottom seats the title into the image so the
-          hero reads as a single typographic poster, not a stack of two
-          unrelated blocks. */}
       <div className="relative h-[78vh] w-full overflow-hidden md:h-[88vh]">
-        <Image src={project.thumbnail} alt={project.title} fill priority sizes="100vw" className="object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/15 to-background" />
+        <CaseStudyHeroShader slug={project.slug} thumbnail={project.thumbnail} />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/20 via-transparent to-background" />
 
         <div className="absolute inset-0 flex items-end px-8 pb-16 md:px-16 md:pb-20">
           <div>
             <ul
-              className="mb-8 flex flex-wrap gap-x-8 gap-y-2 text-[11px] uppercase tracking-[0.4em] text-foreground/60"
-              style={{ fontFamily: 'var(--font-geist-mono)' }}
+              className="mb-8 flex flex-wrap gap-x-8 gap-y-2 text-[14px] tracking-[0.18em] text-foreground/60 md:text-[16px]"
+              style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
             >
               {project.year && <li>{project.year}</li>}
               {project.role && <li>{project.role}</li>}
@@ -41,8 +37,8 @@ export default function CaseStudyHero({ project }: { project: Project }) {
         <div className="grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-12 md:gap-12">
           <div className="md:col-span-4">
             <p
-              className="text-[11px] uppercase tracking-[0.35em] text-foreground/50"
-              style={{ fontFamily: 'var(--font-geist-mono)' }}
+              className="text-[14px] tracking-[0.18em] text-foreground/50"
+              style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
             >
               Overview
             </p>

@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import type { MediaBlock } from '@/data/projects';
+import DitheredImage from './DitheredImage';
 
 const ASPECT_CLASS: Record<NonNullable<MediaBlock['aspect']>, string> = {
   '16/9': 'aspect-[16/9]',
@@ -8,13 +8,17 @@ const ASPECT_CLASS: Record<NonNullable<MediaBlock['aspect']>, string> = {
   '1/1': 'aspect-square',
 };
 
-export default function MediaBlockRender({ src, alt, aspect = '16/9', fullBleed, caption }: Omit<MediaBlock, 'type'>) {
+interface Props extends Omit<MediaBlock, 'type'> {
+  slug: string;
+}
+
+export default function MediaBlockRender({ src, alt, aspect = '16/9', fullBleed, caption, slug }: Props) {
   const wrap = fullBleed ? 'w-full' : 'mx-auto max-w-[1400px] px-8 md:px-16';
 
   return (
     <figure className={`${wrap} py-12 md:py-16`}>
       <div className={`relative overflow-hidden rounded-sm bg-foreground/5 ${ASPECT_CLASS[aspect]}`}>
-        <Image src={src} alt={alt} fill sizes="(max-width: 768px) 100vw, 1400px" className="object-cover" />
+        <DitheredImage src={src} alt={alt} slug={slug} />
       </div>
       {caption && (
         <figcaption className="mt-4 max-w-[60ch] px-1 text-sm text-foreground/55 md:text-base">{caption}</figcaption>

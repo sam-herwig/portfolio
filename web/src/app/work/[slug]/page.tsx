@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { getProjectBySlug, getAllSlugs, getAdjacentProjects } from '@/data/projects';
 import { hasLab } from '@/data/labs';
 import BlockRenderer from '@/components/case-study/BlockRenderer';
+import CaseStudyCanvas from '@/components/case-study/CaseStudyCanvas';
+import CaseStudyDebugPanel from '@/components/case-study/CaseStudyDebugPanel';
 import CaseStudyHero from '@/components/case-study/CaseStudyHero';
 import NextProject from '@/components/case-study/NextProject';
 import ScrollProgress from '@/components/case-study/ScrollProgress';
@@ -45,6 +47,8 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   return (
     <main className="min-h-screen w-full">
       <ScrollProgress />
+      <CaseStudyCanvas />
+      <CaseStudyDebugPanel />
       <nav className="absolute left-8 top-8 z-20 md:left-16">
         <Link
           href="/"
@@ -58,7 +62,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
       <CaseStudyHero project={project} />
 
       {project.blocks?.map((block, i) => (
-        <BlockRenderer key={i} block={block} />
+        <BlockRenderer key={i} block={block} slug={slug} />
       ))}
 
       {project.deliverables && project.deliverables.length > 0 && (
@@ -66,8 +70,8 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
           <div className="grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-12 md:gap-12">
             <div className="md:col-span-4">
               <p
-                className="text-[11px] uppercase tracking-[0.35em] text-foreground/50"
-                style={{ fontFamily: 'var(--font-geist-mono)' }}
+                className="text-[14px] tracking-[0.18em] text-foreground/50"
+                style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
               >
                 Credits
               </p>
