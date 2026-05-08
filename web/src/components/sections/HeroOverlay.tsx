@@ -4,14 +4,9 @@ import { motion, useTransform, type MotionValue } from 'framer-motion';
 import PixelTitle from '@/components/sections/PixelTitle';
 import { MODULE_WINDOWS, sceneOpacity } from '@/lib/moduleTimeline';
 
-export default function HeroOverlay({ progress }: { progress: MotionValue<number> }) {
-  const opacity = useTransform(progress, (v) => sceneOpacity(v, MODULE_WINDOWS.hero));
-
+function HeroBody() {
   return (
-    <motion.div
-      style={{ opacity }}
-      className="pointer-events-none absolute bottom-0 left-0 top-1/2 z-10 flex w-full flex-col justify-between p-6 md:inset-y-0 md:top-0 md:w-1/2 md:p-16"
-    >
+    <>
       <div className="flex items-baseline justify-between">
         <p
           className="text-[11px] uppercase tracking-[0.4em] text-foreground/55"
@@ -30,7 +25,6 @@ export default function HeroOverlay({ progress }: { progress: MotionValue<number
       <div className="flex flex-1 items-center justify-start px-2">
         <PixelTitle
           text="Sam Herwig"
-          anim="sweep"
           mount
           className="text-5xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-8xl"
         />
@@ -41,7 +35,7 @@ export default function HeroOverlay({ progress }: { progress: MotionValue<number
           className="max-w-[40ch] text-lg italic leading-relaxed text-foreground/75 md:text-xl"
           style={{ fontFamily: 'var(--font-instrument)' }}
         >
-          3D web, motion, marketing builds. Currently shipping things at the limit of WebGL and taste.
+          3D web, motion systems, AI agent pipelines. Currently shipping things at the limit of WebGL and taste.
         </p>
         <p
           className="text-[10px] uppercase tracking-[0.4em] text-foreground/45"
@@ -50,6 +44,30 @@ export default function HeroOverlay({ progress }: { progress: MotionValue<number
           Scroll ↓
         </p>
       </div>
+    </>
+  );
+}
+
+export default function HeroOverlay({ progress }: { progress?: MotionValue<number> }) {
+  if (!progress) {
+    return (
+      <section className="relative flex min-h-[60svh] w-full flex-col justify-between gap-12 p-6 md:p-16">
+        <HeroBody />
+      </section>
+    );
+  }
+
+  return <HeroOverlayMotion progress={progress} />;
+}
+
+function HeroOverlayMotion({ progress }: { progress: MotionValue<number> }) {
+  const opacity = useTransform(progress, (v) => sceneOpacity(v, MODULE_WINDOWS.hero));
+  return (
+    <motion.div
+      style={{ opacity }}
+      className="pointer-events-none absolute bottom-0 left-0 top-1/2 z-10 flex w-full flex-col justify-between p-6 md:inset-y-0 md:top-0 md:w-1/2 md:p-16"
+    >
+      <HeroBody />
     </motion.div>
   );
 }

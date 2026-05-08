@@ -1,7 +1,5 @@
 import type { ContentBlock } from '@/data/projects';
 import ChapterMark from './ChapterMark';
-import ChapterScreen from './ChapterScreen';
-import ChapterScreenPinned from './ChapterScreenPinned';
 import TextBlockRender from './TextBlockRender';
 import MediaBlockRender from './MediaBlockRender';
 import VideoBlockRender from './VideoBlockRender';
@@ -49,20 +47,6 @@ export default function BlockRenderer({ block, slug }: { block: ContentBlock; sl
       );
     case 'spotlight-block':
       return <SpotlightSlot spotlightId={block.spotlightId} caption={block.caption} />;
-    case 'chapter-screen':
-      if (block.scrollMode === 'pinned-scrub') {
-        return (
-          <ChapterScreenPinned
-            number={block.number}
-            title={block.title}
-            eyebrow={block.eyebrow}
-            shaderId={block.shaderId}
-          />
-        );
-      }
-      return (
-        <ChapterScreen number={block.number} title={block.title} eyebrow={block.eyebrow} shaderId={block.shaderId} />
-      );
     default: {
       const _exhaustive: never = block;
       void _exhaustive;

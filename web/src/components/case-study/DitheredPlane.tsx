@@ -1,7 +1,7 @@
 'use client';
 
 import { useFrame } from '@react-three/fiber';
-import { useTexture } from '@react-three/drei';
+import { ScreenQuad, useTexture } from '@react-three/drei';
 import { useScroll, useSpring, useVelocity } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DataTexture, NearestFilter, RedFormat, RepeatWrapping, type ShaderMaterial, SRGBColorSpace } from 'three';
@@ -32,8 +32,8 @@ const VELOCITY_REFERENCE = 1500;
 const VERT = /* glsl */ `
   varying vec2 vUv;
   void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vUv = position.xy * 0.5 + 0.5;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
   }
 `;
 
@@ -143,9 +143,8 @@ export default function DitheredPlane({ src, slug }: Props) {
   });
 
   return (
-    <mesh>
-      <planeGeometry args={[1, 1]} />
+    <ScreenQuad>
       <shaderMaterial ref={matRef} vertexShader={VERT} fragmentShader={FRAG} uniforms={uniforms} transparent={false} />
-    </mesh>
+    </ScreenQuad>
   );
 }

@@ -1,10 +1,23 @@
 'use client';
 
-import { motion, useScroll, useSpring } from 'framer-motion';
+import { motion, useMotionValueEvent, useScroll, useSpring } from 'framer-motion';
+import { useEffect } from 'react';
+import { useSceneStore } from '@/lib/useSceneStore';
 
 export default function ScrollProgress() {
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 240, damping: 36, mass: 0.4 });
+
+  useMotionValueEvent(scrollYProgress, 'change', (v) => {
+    useSceneStore.getState().setScrollProgress(v);
+  });
+
+  useEffect(() => {
+    useSceneStore.getState().setScrollProgress(scrollYProgress.get());
+    return () => {
+      useSceneStore.getState().setScrollProgress(0);
+    };
+  }, [scrollYProgress]);
 
   return (
     <motion.div

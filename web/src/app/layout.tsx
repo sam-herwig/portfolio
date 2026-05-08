@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { GeistPixelGrid, GeistPixelSquare } from 'geist/font/pixel';
+import SceneCanvasClient from '@/components/SceneCanvasClient';
+import { SITE_URL } from '@/lib/siteUrl';
 import './globals.css';
 
 const fraunces = Fraunces({
@@ -32,8 +34,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Sam Herwig — Creative Engineer',
-  description: '3D web, motion, marketing builds. Currently shipping things at the limit of WebGL and taste.',
-  metadataBase: new URL('https://samherwig.dev'),
+  description: '3D web, motion systems, AI agent pipelines. Currently shipping things at the limit of WebGL and taste.',
+  metadataBase: new URL(SITE_URL),
   alternates: { canonical: '/' },
   icons: {
     icon: [
@@ -46,8 +48,9 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
   openGraph: {
     title: 'Sam Herwig — Creative Engineer',
-    description: '3D web, motion, marketing builds. Currently shipping things at the limit of WebGL and taste.',
-    url: 'https://samherwig.dev',
+    description:
+      '3D web, motion systems, AI agent pipelines. Currently shipping things at the limit of WebGL and taste.',
+    url: SITE_URL,
     siteName: 'Sam Herwig',
     type: 'website',
     locale: 'en_US',
@@ -55,10 +58,11 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Sam Herwig — Creative Engineer',
-    description: '3D web, motion, marketing builds. Currently shipping things at the limit of WebGL and taste.',
+    description:
+      '3D web, motion systems, AI agent pipelines. Currently shipping things at the limit of WebGL and taste.',
     creator: '@samherwig',
   },
-  authors: [{ name: 'Sam Herwig', url: 'https://samherwig.dev' }],
+  authors: [{ name: 'Sam Herwig', url: SITE_URL }],
   creator: 'Sam Herwig',
   category: 'portfolio',
 };
@@ -74,11 +78,24 @@ const personJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Person',
   name: 'Sam Herwig',
-  url: 'https://samherwig.dev',
+  url: SITE_URL,
   jobTitle: 'Creative Engineer',
   description: 'Creative engineer building scroll-driven WebGL experiences in Three.js and shaders.',
-  image: 'https://samherwig.dev/opengraph-image',
-  knowsAbout: ['Three.js', 'WebGL', 'GLSL', 'React', 'Next.js', 'Creative coding', 'Shader development'],
+  image: `${SITE_URL}/opengraph-image`,
+  knowsAbout: [
+    'Three.js',
+    'React Three Fiber',
+    'WebGL',
+    'GLSL',
+    'React',
+    'Next.js',
+    'TypeScript',
+    'Creative coding',
+    'Shader development',
+    'Frontend engineering',
+    'AI agent systems',
+    'Multi-agent orchestration',
+  ],
   worksFor: { '@type': 'Organization', name: 'CraftedKit', url: 'https://craftedkit.io' },
 };
 
@@ -98,6 +115,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Skip to content
         </a>
+        <SceneCanvasClient />
         {children}
       </body>
     </html>

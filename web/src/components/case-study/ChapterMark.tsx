@@ -2,31 +2,21 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { ChapterBlock } from '@/data/projects';
-import PixelTitle, { type PixelAnim } from '@/components/sections/PixelTitle';
+import PixelTitle from '@/components/sections/PixelTitle';
 
-const ANIM_BY_NUMBER: Record<string, PixelAnim> = {
-  '01': 'drop',
-  '02': 'sweep',
-  '03': 'wipe',
-  '04': 'sweep',
-  '05': 'sweep',
-};
+type Props = Omit<ChapterBlock, 'type'>;
 
-export default function ChapterMark({ number, title, eyebrow }: Omit<ChapterBlock, 'type'>) {
+export default function ChapterMark({ number, title, eyebrow }: Props) {
   const ref = useRef<HTMLElement>(null);
   const [triggered, setTriggered] = useState(false);
-  const anim = ANIM_BY_NUMBER[number] ?? 'drop';
 
   useEffect(() => {
-    if (triggered) return;
     const el = ref.current;
     if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setTriggered(true);
-          io.disconnect();
-        }
+        const entry = entries[0];
+        if (entry?.isIntersecting && !triggered) setTriggered(true);
       },
       { threshold: 0.35 },
     );
@@ -47,7 +37,6 @@ export default function ChapterMark({ number, title, eyebrow }: Omit<ChapterBloc
         )}
         <PixelTitle
           text={number}
-          anim={anim}
           variant="square"
           mount={triggered}
           as="div"

@@ -7,18 +7,20 @@ const ASPECT_CLASS: Record<NonNullable<VideoBlock['aspect']>, string> = {
   '21/9': 'aspect-[21/9]',
 };
 
-export default function VideoBlockRender({ src, poster, alt, aspect = '16/9', caption }: Omit<VideoBlock, 'type'>) {
+export default function VideoBlockRender({ src, poster, aspect = '16/9', caption }: Omit<VideoBlock, 'type'>) {
   return (
     <figure className="mx-auto max-w-[1400px] px-8 py-12 md:px-16 md:py-16">
       <div className={`relative overflow-hidden rounded-sm bg-foreground/5 ${ASPECT_CLASS[aspect]}`}>
         <video
           src={src}
           poster={poster}
-          aria-label={alt}
+          aria-hidden="true"
+          role="presentation"
           autoPlay
           muted
           loop
           playsInline
+          preload="metadata"
           className="h-full w-full object-cover"
         />
       </div>

@@ -1,16 +1,14 @@
 'use client';
 
-import { motion, useMotionValueEvent, useReducedMotion, useTransform, type MotionValue } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { motion, useMotionValueEvent, useTransform, type MotionValue } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import type { ModuleWindow } from '@/lib/moduleTimeline';
 
-export type PixelAnim = 'sweep' | 'drop' | 'wipe';
 export type PixelVariant = 'square' | 'grid';
 export type PixelTag = 'h1' | 'h2' | 'h3' | 'div' | 'span';
 
 interface Props {
   text: string;
-  anim: PixelAnim;
   variant?: PixelVariant;
   className?: string;
   // Drive intro progress from scroll within a scene window…
@@ -35,7 +33,6 @@ function fontVar(variant: PixelVariant) {
 
 export default function PixelTitle({
   text,
-  anim,
   variant = 'square',
   className,
   progress,
@@ -55,14 +52,8 @@ export default function PixelTitle({
   const Component = TAG_MAP[as];
 
   return (
-    <Component
-      className={className}
-      style={{ fontFamily: fontVar(variant), fontFeatureSettings: '"liga" 0' }}
-      aria-label={text}
-    >
-      {anim === 'sweep' && <SweepText text={text} intro={intro} mount={!!mount} />}
-      {anim === 'drop' && <DropText text={text} intro={intro} mount={!!mount} />}
-      {anim === 'wipe' && <WipeText text={text} intro={intro} mount={!!mount} />}
+    <Component className={className} style={{ fontFamily: fontVar(variant), fontFeatureSettings: '"liga" 0' }}>
+      <WipeText text={text} intro={intro} mount={!!mount} />
     </Component>
   );
 }
@@ -91,71 +82,11 @@ function useIntroT(intro: MotionValue<number>, mount: boolean, durationMs: numbe
   return t;
 }
 
-function SweepText({ text, intro, mount }: { text: string; intro: MotionValue<number>; mount: boolean }) {
-  const t = useIntroT(intro, mount, 1100);
-  const reduced = useReducedMotion();
-  // Quick fade-in over the first quarter so the title arrives, then the
-  // offset ghost decays through the remainder of the timeline.
-  const enter = Math.min(1, t / 0.25);
-  const eased = 1 - Math.pow(1 - t, 3);
-  const ghost = 1 - eased;
-  const rot = 0.6 * ghost;
-  const tx = 2 * ghost;
-  const ty = -1 * ghost;
-  // Offset layer fades out over the final 30% so the moiré beat dissolves
-  // before the two layers stack pixel-perfectly (which would just brighten the glyph).
-  const fadeOut = t < 0.7 ? 1 : Math.max(0, 1 - (t - 0.7) / 0.3);
-  const ghostOpacity = enter * fadeOut;
-
-  return (
-    <span aria-hidden style={{ position: 'relative', display: 'inline-block' }}>
-      <span style={{ display: 'inline-block', opacity: enter }}>{text}</span>
-      {!reduced && (
-        <span
-          style={{
-            position: 'absolute',
-            inset: 0,
-            mixBlendMode: 'screen',
-            pointerEvents: 'none',
-            color: 'inherit',
-            opacity: ghostOpacity,
-            transform: `rotate(${rot}deg) translate(${tx}px, ${ty}px)`,
-            transformOrigin: '50% 50%',
-            willChange: 'transform, opacity',
-          }}
-        >
-          {text}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function DropText({ text, intro, mount }: { text: string; intro: MotionValue<number>; mount: boolean }) {
-  const t = useIntroT(intro, mount, 900);
-  const chars = useMemo(() => text.split(''), [text]);
-  return (
-    <span aria-hidden style={{ display: 'inline-flex' }}>
-      {chars.map((c, i) => {
-        const u = Math.max(0, Math.min(1, (t - (i / chars.length) * 0.5) / 0.5));
-        const eased = 1 - Math.pow(1 - u, 3);
-        const ty = (1 - eased) * -40;
-        return (
-          <span key={i} style={{ display: 'inline-block', transform: `translateY(${ty}px)`, opacity: eased }}>
-            {c === ' ' ? ' ' : c}
-          </span>
-        );
-      })}
-    </span>
-  );
-}
-
 function WipeText({ text, intro, mount }: { text: string; intro: MotionValue<number>; mount: boolean }) {
   const t = useIntroT(intro, mount, 900);
   const eased = t * t * (3 - 2 * t);
   return (
     <span
-      aria-hidden
       style={{
         display: 'inline-block',
         clipPath: `inset(0 ${(1 - eased) * 100}% 0 0)`,

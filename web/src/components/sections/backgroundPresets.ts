@@ -1,199 +1,170 @@
 // Per-scene shader presets. Selected via Leva dropdowns in BackgroundField.
 // Values map to the Leva control names defined in BackgroundField.tsx.
 //
-// Preset library (5 per scene = 20 total) tuned to span tonal diversity:
-// quiet/loud, fast/slow, dense/sparse, organic/mechanical.
+// Hero presets feed the SDF shape morph (circle → triangle → square → hexagon)
+// across the hero scroll window. About presets feed a tessellated plus-grid
+// SDF morph (Plus → X → Diamond → Circle) with radial spatial stagger across
+// the about scroll window.
 
 export type HeroPreset = {
   heroRingThickness: number;
+  heroShapeRadius: number;
   heroDisturbanceLength: number;
   heroWarpSpeed: number;
-  heroWarpIdle: number;
+  heroWarpBase: number;
   heroWarpPeak: number;
-  heroWarpExit: number;
-  heroRadiusIdle: number;
-  heroRadiusPeak: number;
-  heroRadiusExit: number;
+  heroRotRate: number;
 };
 
 export const HERO_PRESETS: Record<string, HeroPreset> = {
-  Halo: {
-    heroRingThickness: 0.018,
+  Switchback: {
+    heroRingThickness: 0.01,
+    heroShapeRadius: 0.3,
     heroDisturbanceLength: 4.5,
     heroWarpSpeed: 0.12,
-    heroWarpIdle: 0.015,
+    heroWarpBase: 0.015,
     heroWarpPeak: 0.1,
-    heroWarpExit: 0.03,
-    heroRadiusIdle: 0.4,
-    heroRadiusPeak: 0.45,
-    heroRadiusExit: 0.85,
+    heroRotRate: 0.5,
   },
   Ferrofluid: {
     heroRingThickness: 0.075,
+    heroShapeRadius: 0.4,
     heroDisturbanceLength: 1.4,
     heroWarpSpeed: 0.09,
-    heroWarpIdle: 0.04,
+    heroWarpBase: 0.04,
     heroWarpPeak: 0.28,
-    heroWarpExit: 0.06,
-    heroRadiusIdle: 0.38,
-    heroRadiusPeak: 0.5,
-    heroRadiusExit: 0.7,
+    heroRotRate: 0.8,
   },
   Static: {
     heroRingThickness: 0.025,
+    heroShapeRadius: 0.45,
     heroDisturbanceLength: 0.6,
     heroWarpSpeed: 0.85,
-    heroWarpIdle: 0.06,
+    heroWarpBase: 0.06,
     heroWarpPeak: 0.16,
-    heroWarpExit: 0.1,
-    heroRadiusIdle: 0.45,
-    heroRadiusPeak: 0.5,
-    heroRadiusExit: 0.75,
+    heroRotRate: 0.3,
   },
   Dilation: {
     heroRingThickness: 0.045,
+    heroShapeRadius: 0.5,
     heroDisturbanceLength: 6.0,
     heroWarpSpeed: 0.05,
-    heroWarpIdle: 0.005,
+    heroWarpBase: 0.005,
     heroWarpPeak: 0.04,
-    heroWarpExit: 0.02,
-    heroRadiusIdle: 0.18,
-    heroRadiusPeak: 0.35,
-    heroRadiusExit: 1.2,
+    heroRotRate: 1.5,
   },
   Bloom: {
     heroRingThickness: 0.055,
+    heroShapeRadius: 0.45,
     heroDisturbanceLength: 2.2,
     heroWarpSpeed: 0.22,
-    heroWarpIdle: 0.01,
+    heroWarpBase: 0.01,
     heroWarpPeak: 0.34,
-    heroWarpExit: 0.02,
-    heroRadiusIdle: 0.3,
-    heroRadiusPeak: 0.55,
-    heroRadiusExit: 0.95,
+    heroRotRate: 1.2,
   },
 };
 
 export type AboutPreset = {
-  aboutPattern: number;
-  aboutLineWidth: number;
-  aboutWaveFreq: number;
-  aboutWaveSpeed: number;
-  aboutGridIdle: number;
-  aboutGridPeak: number;
-  aboutGridExit: number;
-  aboutWaveIdle: number;
-  aboutWavePeak: number;
-  aboutWaveExit: number;
+  aboutGridScale: number;
+  aboutStrokeWidth: number;
+  aboutRadialCenter: [number, number];
+  aboutStaggerStrength: number;
+  aboutWaveAmp: number;
+  aboutRotRate: number;
 };
 
-// aboutPattern: 0=Plus, 1=X, 2=Asterisk, 3=Triangle
 export const ABOUT_PRESETS: Record<string, AboutPreset> = {
-  Linen: {
-    aboutPattern: 0,
-    aboutLineWidth: 0.018,
-    aboutWaveFreq: 0.2,
-    aboutWaveSpeed: 0.08,
-    aboutGridIdle: 10,
-    aboutGridPeak: 16,
-    aboutGridExit: 22,
-    aboutWaveIdle: 0.02,
-    aboutWavePeak: 0.1,
-    aboutWaveExit: 0.18,
+  Ridgeline: {
+    aboutGridScale: 14,
+    aboutStrokeWidth: 0.07,
+    aboutRadialCenter: [-0.35, 0],
+    aboutStaggerStrength: 0.3,
+    aboutWaveAmp: 0.05,
+    aboutRotRate: 0.1,
   },
-  Swarm: {
-    aboutPattern: 2,
-    aboutLineWidth: 0.025,
-    aboutWaveFreq: 0.65,
-    aboutWaveSpeed: 0.55,
-    aboutGridIdle: 20,
-    aboutGridPeak: 30,
-    aboutGridExit: 14,
-    aboutWaveIdle: 0.3,
-    aboutWavePeak: 0.65,
-    aboutWaveExit: 0.5,
-  },
-  Origami: {
-    aboutPattern: 3,
-    aboutLineWidth: 0.085,
-    aboutWaveFreq: 0.45,
-    aboutWaveSpeed: 0.12,
-    aboutGridIdle: 5,
-    aboutGridPeak: 7,
-    aboutGridExit: 9,
-    aboutWaveIdle: 0.1,
-    aboutWavePeak: 0.55,
-    aboutWaveExit: 0.85,
-  },
-  Sonar: {
-    aboutPattern: 1,
-    aboutLineWidth: 0.014,
-    aboutWaveFreq: 0.18,
-    aboutWaveSpeed: 0.2,
-    aboutGridIdle: 6,
-    aboutGridPeak: 11,
-    aboutGridExit: 24,
-    aboutWaveIdle: 0.4,
-    aboutWavePeak: 0.85,
-    aboutWaveExit: 0.45,
-  },
-  Halftone: {
-    aboutPattern: 0,
-    aboutLineWidth: 0.012,
-    aboutWaveFreq: 0.1,
-    aboutWaveSpeed: 0.05,
-    aboutGridIdle: 28,
-    aboutGridPeak: 36,
-    aboutGridExit: 44,
-    aboutWaveIdle: 0.0,
-    aboutWavePeak: 0.04,
-    aboutWaveExit: 0.1,
+  Bench: {
+    aboutGridScale: 8,
+    aboutStrokeWidth: 0.1,
+    aboutRadialCenter: [-0.35, 0],
+    aboutStaggerStrength: 0.45,
+    aboutWaveAmp: 0.06,
+    aboutRotRate: 0.1,
   },
 };
 
-export type WorkPreset = {
-  workDitherBias: number;
-  workContrast: number;
-  workDitherIdle: number;
-  workDitherPeak: number;
-  workDitherExit: number;
+// Work — three procedural modes (no imagery). Each preset selects a workMode
+// (0 = Spread, 1 = Stack, 2 = Index) and tunes that mode's knob set. Leva only
+// touches the keys present in the preset, so unrelated mode knobs are left
+// alone when switching presets — matches existing Hero/About behavior.
+//
+// Spread  — contact-sheet ledger of indexed card-frames (siblings About).
+// Stack   — horizontal ridgeline of bar-spines, FBM breath (siblings Hero).
+// Index   — one large card SDF morphing landscape→portrait→square→grid (siblings Hero).
+export type SpreadPreset = {
+  workMode: 0;
+  workGridCols: number;
+  workGridRows: number;
+  workCardPadding: number;
+  workStrokeWidth: number;
+  workRadialCenter: [number, number];
+  workStaggerStrength: number;
+  workRotRate: number;
 };
+
+export type StackPreset = {
+  workMode: 1;
+  workBarCount: number;
+  workBarGap: number;
+  workBaseHeight: number;
+  workVarianceIdle: number;
+  workVariancePeak: number;
+  workVarianceExit: number;
+  workBreathSpeed: number;
+};
+
+export type IndexPreset = {
+  workMode: 2;
+  workCardSize: number;
+  workRingThickness: number;
+  workWarpScale: number;
+  workWarpSpeed: number;
+  workWarpBase: number;
+  workWarpPeak: number;
+  workSubGridDensity: number;
+};
+
+export type WorkPreset = SpreadPreset | StackPreset | IndexPreset;
 
 export const WORK_PRESETS: Record<string, WorkPreset> = {
-  Newsprint: {
-    workDitherBias: 0.0,
-    workContrast: 1.2,
-    workDitherIdle: 9,
-    workDitherPeak: 3,
-    workDitherExit: 11,
+  Spread: {
+    workMode: 0,
+    workGridCols: 6,
+    workGridRows: 4,
+    workCardPadding: 0.06,
+    workStrokeWidth: 0.012,
+    workRadialCenter: [-0.5, 0.5],
+    workStaggerStrength: 0.55,
+    workRotRate: 0.0,
   },
-  Macro: {
-    workDitherBias: 0.0,
-    workContrast: 1.5,
-    workDitherIdle: 14,
-    workDitherPeak: 8,
-    workDitherExit: 16,
+  Stack: {
+    workMode: 1,
+    workBarCount: 40,
+    workBarGap: 0.07,
+    workBaseHeight: 0.47,
+    workVarianceIdle: 0.31,
+    workVariancePeak: 0.6,
+    workVarianceExit: 0.45,
+    workBreathSpeed: 0.46,
   },
-  Ghost: {
-    workDitherBias: -0.18,
-    workContrast: 0.9,
-    workDitherIdle: 6,
-    workDitherPeak: 2,
-    workDitherExit: 7,
-  },
-  Bleach: {
-    workDitherBias: 0.18,
-    workContrast: 1.7,
-    workDitherIdle: 5,
-    workDitherPeak: 2,
-    workDitherExit: 6,
-  },
-  Reveal: {
-    workDitherBias: 0.0,
-    workContrast: 1.6,
-    workDitherIdle: 18,
-    workDitherPeak: 1.5,
-    workDitherExit: 18,
+  Index: {
+    workMode: 2,
+    workCardSize: 0.34,
+    workRingThickness: 0.008,
+    workWarpScale: 1.4,
+    workWarpSpeed: 0.18,
+    workWarpBase: 0.005,
+    workWarpPeak: 0.06,
+    workSubGridDensity: 9.0,
   },
 };
 
@@ -231,10 +202,10 @@ export const CONTACT_PRESETS: Record<string, ContactPreset> = {
     contactOffsetPeak: 0.0,
     contactOffsetExit: -0.4,
   },
-  'Quiet Crossing': {
-    contactStripeScale: 30,
+  Crossing: {
+    contactStripeScale: 19,
     contactLineWidth: 0.08,
-    contactRotSpeed: 0.015,
+    contactRotSpeed: 0.01,
     contactOffsetIdle: 0.18,
     contactOffsetPeak: 0.0,
     contactOffsetExit: 0.0,
@@ -251,10 +222,14 @@ export const CONTACT_PRESETS: Record<string, ContactPreset> = {
 
 // Curated multi-scene combos. Each combo names one preset per scene.
 export const COMBO_PRESETS: Record<string, { hero: string; about: string; work: string; contact: string }> = {
-  Recommended: { hero: 'Halo', about: 'Linen', work: 'Newsprint', contact: 'Quiet Crossing' },
-  Loud: { hero: 'Ferrofluid', about: 'Swarm', work: 'Reveal', contact: 'Spirograph' },
-  Editorial: { hero: 'Dilation', about: 'Halftone', work: 'Ghost', contact: 'Pinpoint' },
-  Print: { hero: 'Bloom', about: 'Origami', work: 'Bleach', contact: 'Awning' },
+  Recommended: { hero: 'Switchback', about: 'Ridgeline', work: 'Stack', contact: 'Crossing' },
+  Loud: { hero: 'Ferrofluid', about: 'Bench', work: 'Stack', contact: 'Spirograph' },
+  Editorial: { hero: 'Dilation', about: 'Ridgeline', work: 'Index', contact: 'Pinpoint' },
+  Print: { hero: 'Bloom', about: 'Bench', work: 'Spread', contact: 'Awning' },
+  // Spread + slow Dilation hero + editorial Pinpoint contact — quiet catalog read.
+  Ledger: { hero: 'Dilation', about: 'Ridgeline', work: 'Spread', contact: 'Pinpoint' },
+  // Stack + Bench about + Awning contact — horizon-emphasizing shelved-work read.
+  Archive: { hero: 'Switchback', about: 'Bench', work: 'Stack', contact: 'Awning' },
 };
 
 export const HERO_PRESET_NAMES = Object.keys(HERO_PRESETS);

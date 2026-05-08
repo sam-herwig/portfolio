@@ -154,7 +154,7 @@ export default function CraftedKitPipelineSpotlight({ caption }: { caption?: str
   return (
     <figure className="relative mx-auto max-w-6xl">
       <div ref={outerRef} className="relative h-[250vh]">
-        <div className="sticky top-0 flex h-screen items-center justify-center">
+        <div className="sticky top-[100vw] flex h-[calc(100svh-100vw)] items-center justify-center md:top-0 md:h-screen">
           <div className="w-full">
             <PipelineFrame
               activeIdx={activeIdx}
@@ -192,28 +192,38 @@ function PipelineFrame({
   reduced: boolean;
 }) {
   return (
-    <div className="relative border border-foreground/20 bg-background/60 p-5 md:p-10 shadow-[0_8px_48px_-12px_rgba(0,0,0,0.15)]">
-      <p className="mb-5 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">
+    <div className="relative border border-foreground/20 bg-background/60 p-3 shadow-[0_8px_48px_-12px_rgba(0,0,0,0.15)] md:p-10">
+      <p className="mb-5 hidden text-center font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40 md:block">
         Interactive Specimen — The Pipeline
       </p>
       {/* Todd — pinned conductor */}
-      <motion.div style={{ opacity: toddOpacity }} className="mb-6 flex justify-center">
-        <div className="flex items-center gap-3 rounded-full border border-foreground/30 bg-background px-5 py-2">
+      <motion.div style={{ opacity: toddOpacity }} className="mb-3 flex justify-center md:mb-6">
+        <div className="flex items-center gap-3 rounded-full border border-foreground/30 bg-background px-4 py-1.5 md:px-5 md:py-2">
           <span aria-hidden className="block h-1.5 w-1.5 rounded-full bg-foreground" />
-          <span className="font-instrument text-lg italic text-foreground">Todd</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-foreground/50">Orchestrator</span>
+          <span className="font-instrument text-base italic text-foreground md:text-lg">Todd</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-foreground/50 md:text-[10px]">
+            Orchestrator
+          </span>
         </div>
       </motion.div>
 
-      {/* Ribbon: vertical on mobile, horizontal on md+ */}
-      <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-0">
+      {/* Beat ribbon — desktop only: full horizontal ribbon, all cells visible */}
+      <div className="hidden md:flex md:flex-row md:items-center md:gap-0">
         {BEATS.map((beat, i) => (
           <BeatCell key={beat.step} beat={beat} index={i} activeIdx={activeIdx} />
         ))}
       </div>
 
+      {/* Beat zone — mobile only: single active cell, others hidden, swaps as
+          scroll advances. Same idiom the annotation panel below uses. */}
+      <div className="relative h-16 md:hidden">
+        {BEATS.map((beat, i) => (
+          <MobileBeatCell key={beat.step} beat={beat} index={i} activeIdx={activeIdx} />
+        ))}
+      </div>
+
       {/* Annotation panel — absolute-stacked crossfade */}
-      <div className="relative mt-6 min-h-[200px] border-t border-foreground/10 pt-6 md:min-h-[180px]">
+      <div className="relative mt-4 min-h-[160px] border-t border-foreground/10 pt-4 md:mt-6 md:min-h-[180px] md:pt-6">
         <motion.div style={{ opacity: introOpacity }} className="absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">The Pipeline</p>
           <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">
@@ -234,7 +244,7 @@ function PipelineFrame({
       {/* Counts strip — fades in on the final beat */}
       <motion.div
         style={{ opacity: countsOpacity }}
-        className="mt-6 grid grid-cols-2 gap-y-4 border-t border-foreground/10 pt-5 md:grid-cols-4 md:gap-y-0"
+        className="mt-4 grid grid-cols-4 gap-y-3 border-t border-foreground/10 pt-4 md:mt-6 md:gap-y-0 md:pt-5"
       >
         {COUNTS.map((c) => (
           <div key={c.label} className="flex flex-col items-center text-center">
@@ -279,6 +289,38 @@ function BeatCell({ beat, index, activeIdx }: { beat: Beat; index: number; activ
       <div className="relative h-10 w-10 md:h-12 md:w-12" aria-label={beat.title}>
         <motion.div style={{ scale, borderColor }} className="absolute inset-0 rotate-45 border bg-background" />
         <span className="absolute inset-0 flex items-center justify-center font-mono text-[8px] font-semibold uppercase tracking-[0.15em] text-foreground/70 md:text-[9px]">
+          HITL
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
+// Mobile-only: single active beat. All cells stack absolutely in the same row,
+// only the cell whose index matches `activeIdx` is visible. Crossfades as scroll
+// advances — same idiom as `BeatAnnotation` below.
+function MobileBeatCell({ beat, index, activeIdx }: { beat: Beat; index: number; activeIdx: MotionValue<number> }) {
+  const opacity = useTransform(activeIdx, (v): number => (v === index ? 1 : 0));
+
+  if (beat.kind === 'agent') {
+    return (
+      <motion.div style={{ opacity }} className="pointer-events-none absolute inset-x-0 top-0">
+        <div className="flex items-center justify-between border border-foreground/70 bg-background px-4 py-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-foreground/50">{beat.step}</span>
+          <span className="font-instrument text-2xl italic text-foreground">{beat.title}</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-foreground/55">{beat.role}</span>
+        </div>
+      </motion.div>
+    );
+  }
+  return (
+    <motion.div
+      style={{ opacity }}
+      className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center py-1"
+    >
+      <div className="relative h-12 w-12" aria-label={beat.title}>
+        <div className="absolute inset-0 rotate-45 border border-foreground/70 bg-background" />
+        <span className="absolute inset-0 flex items-center justify-center font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-foreground/70">
           HITL
         </span>
       </div>

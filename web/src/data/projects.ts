@@ -40,25 +40,7 @@ export interface ChapterBlock {
   eyebrow?: string;
 }
 
-export type ChapterShaderId =
-  | 'nb-prism'
-  | 'cc-braid'
-  | 'ck-pipeline'
-  | 'ck-silhouette'
-  | 'ck-grid'
-  | 'ck-node-receding';
-
-/** Full-bleed shader chapter break — replaces the text-only ChapterBlock for opted-in chapters. */
-export interface ChapterScreenBlock {
-  type: 'chapter-screen';
-  number: string;
-  title: string;
-  eyebrow?: string;
-  shaderId: ChapterShaderId;
-  scrollMode: 'reveal-dissolve' | 'pinned-scrub';
-}
-
-export type ContentBlock = TextBlock | MediaBlock | VideoBlock | SpotlightBlock | ChapterBlock | ChapterScreenBlock;
+export type ContentBlock = TextBlock | MediaBlock | VideoBlock | SpotlightBlock | ChapterBlock;
 
 /* ── Project interface ────────────────────────────────────── */
 
@@ -92,7 +74,7 @@ export interface Project {
 export const projects: Project[] = [
   {
     title: 'New Belgium & Friends',
-    subtitle: 'One Engine. Four Brands. Zero Redundancy.',
+    subtitle: 'One Engine. Five Brands. Zero Redundancy.',
     slug: 'new-belgium',
     year: '2022',
     role: 'Lead Front-End Engineer',
@@ -112,14 +94,14 @@ export const projects: Project[] = [
       { name: 'New Belgium', tag: 'Flagship', url: 'https://www.newbelgium.com/' },
       { name: 'Fat Tire', tag: 'Amber Ale', url: 'https://www.fattire.com/' },
       { name: 'Voodoo Ranger', tag: 'Imperial IPA', url: 'https://www.voodooranger.com/' },
-      { name: 'Lightstrike', tag: 'Lemon Lime', url: 'https://www.lightstrikebeer.com/' },
+      { name: 'Lightstrike', tag: 'Hard Refresher', url: 'https://www.drinklightstrike.com/' },
       { name: 'Kirin Ichiban', tag: 'Partnership', url: 'https://www.kirinichibanusa.com/' },
     ],
     thumbnail: '/work/voodoo-ranger.webp',
     gallery: ['/work/voodoo-ranger.webp', '/work/fat-tire.webp', '/work/lightstrike.webp', '/work/kirin.webp'],
     overview: {
       headline: "A Shared Module System Powering New Belgium's Entire Brand Portfolio",
-      body: 'Four beer brands — one front-end architecture. I built a shared component system on Optimizely that gives Voodoo Ranger, Fat Tire, Lightstrike, and Kirin USA full visual autonomy without duplicating code across four codebases.',
+      body: 'Five beer brands — one front-end architecture. I built a shared component system on Optimizely that gives New Belgium, Voodoo Ranger, Fat Tire, Lightstrike, and Kirin USA full visual autonomy without duplicating code across five codebases.',
     },
     blocks: [
       { type: 'chapter', number: '01', title: 'The Brief' },
@@ -129,12 +111,10 @@ export const projects: Project[] = [
         body: 'A skeleton mascot and a 130-year-old Japanese brewery have no business looking alike, but they all ship from the same repo. The pitch was counterintuitive: stop running four teams, four build pipelines, four QA cycles. Collapse everything into one engine and let SCSS specificity do the brand work.',
       },
       {
-        type: 'chapter-screen',
+        type: 'chapter',
         number: '02',
         title: 'Mapping five identities onto one architecture',
         eyebrow: 'Identity Prism',
-        shaderId: 'nb-prism',
-        scrollMode: 'reveal-dissolve',
       },
       {
         type: 'text-block',
@@ -325,12 +305,10 @@ export const projects: Project[] = [
         body: "Nuxt for the shell. Contentful CMS handling content updates without developer involvement. Custom project galleries with hover-state previews. A contact form that doesn't feel like a DMV visit.",
       },
       {
-        type: 'chapter-screen',
+        type: 'chapter',
         number: '03',
         title: 'Performance and motion, together',
         eyebrow: 'Perf-Motion Braid',
-        shaderId: 'cc-braid',
-        scrollMode: 'reveal-dissolve',
       },
       {
         type: 'video-block',
@@ -369,7 +347,7 @@ export const projects: Project[] = [
         src: '/work/cc-404-cat.webp',
         alt: 'Custom 404 page featuring my cat',
         aspect: '16/9',
-        caption: "I also put my cat on the 404 page. She's the best one.",
+        caption: 'I also put my cat on the 404 page',
       },
     ],
     featured: true,
@@ -377,72 +355,44 @@ export const projects: Project[] = [
   },
   {
     title: 'CraftedKit',
-    subtitle: 'A Solo-Built Studio Powered by AI Agent Pipelines',
+    subtitle: 'An Interactive Web Studio Shipping High-Craft WebGL',
     slug: 'craftedkit',
     year: '2026',
     role: 'Founder · Solo Production',
     client: 'CraftedKit (own studio)',
-    deliverables: ['Studio Site', 'Production Pipeline', 'WebGL Catalog'],
-    tags: [
-      'Three.js / R3F',
-      'GLSL Shaders',
-      'Multi-Agent AI',
-      'Next.js',
-      'TypeScript',
-      'WebGL',
-      'Pipeline Architecture',
-    ],
+    deliverables: ['Studio Site', 'WebGL Catalog', 'Hero Components'],
+    tags: ['Three.js / R3F', 'GLSL Shaders', 'Custom Materials', 'Next.js', 'TypeScript', 'WebGL', 'Motion Systems'],
     projectUrl: 'https://craftedkit.io',
-    thumbnail: '/images/diagrams/agent-pipeline.png',
-    gallery: ['/images/diagrams/agent-pipeline.png', '/images/diagrams/methodology.png'],
+    thumbnail: '/work/craftedkit-organic-living.webp',
+    gallery: ['/work/craftedkit-organic-living.webp'],
     overview: {
-      headline: '15+ WebGL Heroes Shipped Through a Four-Gate AI Pipeline I Run by Hand',
-      body: 'CraftedKit is an interactive web studio I built from scratch — the site, the products, and the production system that manufactures them. A four-agent pipeline with four human gates: specialists do the work, I decide what ships.',
+      headline: '15+ Hero-Grade WebGL Experiences for an Interactive Web Studio',
+      body: 'CraftedKit is the interactive web studio I run — shipping production-ready WebGL hero experiences for brands, studios, and product teams. The catalog spans Three.js scenes, custom GLSL shaders, and motion systems, every piece scoped to drop straight into a real codebase.',
     },
     blocks: [
       { type: 'chapter', number: '01', title: 'The Brief' },
       {
         type: 'text-block',
-        heading: 'A studio that sells what I do best',
-        body: "I wanted to build a studio that sells what I do best — interactive web experiences using Three.js, custom shaders, and motion systems. Doing that solo is a volume problem. The question wasn't whether AI could write shader code. It was whether I could design a production system where specialist agents do the building and I stay in charge of the taste — a real gated pipeline, not a lights-out factory.",
+        heading: 'A studio for high-craft web',
+        body: "I wanted a studio that ships the kind of work I'd want to make myself — interactive web experiences with real depth: Three.js, custom shaders, motion systems, and the engineering underneath that makes them production-ready. The output is the proof. Brands, studios, and product teams pick from a catalog that's already built to ship.",
       },
       {
-        type: 'chapter-screen',
+        type: 'chapter',
         number: '02',
-        title: 'Building the pipeline that builds the work',
-        eyebrow: 'Pipeline Silhouette',
-        shaderId: 'ck-silhouette',
-        scrollMode: 'reveal-dissolve',
-      },
-      {
-        type: 'text-block',
-        heading: 'Four specialists and an orchestrator',
-        body: 'Four specialist Claude agents — Jackson (research), Chad (design), Kyle (build), Brad (QA) — coordinated by Todd, an orchestrator. Each mission passes through four human-in-the-loop gates I sit at personally: Mission Approval, Creative Review A, Creative Review B, and Ship.',
-      },
-      {
-        type: 'text-block',
-        heading: 'Human in the loop',
-        body: 'Agents cannot skip a gate. At each one I choose the direction, score the references, set the motion budget, and approve the build on desktop and phone. The pipeline protects the craft; I protect the taste.',
-      },
-      {
-        type: 'chapter-screen',
-        number: '03',
-        title: '15+ heroes, one production system',
-        eyebrow: 'Hero Catalog',
-        shaderId: 'ck-grid',
-        scrollMode: 'reveal-dissolve',
+        title: 'The catalog',
+        eyebrow: 'Hero Showcase',
       },
       {
         type: 'video-block',
         src: '/work/videos/craftedkit-organic-living.mp4',
         alt: 'Organic Living Material shader hero',
         aspect: '21/9',
-        caption: 'Organic Living Material — one of 15+ WebGL heroes in the catalog',
+        caption: 'Organic Living Material',
       },
       {
         type: 'text-block',
         heading: 'The output',
-        body: '{{15+}} WebGL hero experiences live in the catalog, with more in the pipeline. Ferrofluid typography. Volumetric god rays. Particle fields. Each one is a real R3F component with proper resource disposal and responsive fallbacks.',
+        body: '{{15+}} WebGL hero experiences live in the catalog, with more in production. Ferrofluid typography. Volumetric god rays. Particle fields. Reaction-diffusion. Each one is a real R3F component with proper resource disposal and responsive fallbacks.',
       },
       {
         type: 'video-block',
@@ -466,31 +416,21 @@ export const projects: Project[] = [
         caption: 'Reaction-diffusion field',
       },
       {
-        type: 'chapter-screen',
-        number: '04',
-        title: 'The pipeline, drawn out',
-        eyebrow: 'Pipeline Flow',
-        shaderId: 'ck-pipeline',
-        scrollMode: 'pinned-scrub',
-      },
-      { type: 'spotlight-block', spotlightId: 'craftedkit-pipeline' },
-      {
-        type: 'text-block',
-        heading: 'The diagram',
-        body: 'Jackson → Gate → Chad → Gate → Kyle → Gate → Brad → Gate. Todd routes every mission; I sit at every gate. Every failure becomes a permanent rule the system carries forward.',
-      },
-      {
-        type: 'chapter-screen',
-        number: '05',
-        title: 'One person, full production output',
-        eyebrow: 'Output Lattice',
-        shaderId: 'ck-node-receding',
-        scrollMode: 'reveal-dissolve',
+        type: 'chapter',
+        number: '03',
+        title: 'Built to ship',
+        eyebrow: 'Engineering Rigor',
       },
       {
         type: 'text-block',
-        heading: 'What shipped',
-        body: 'I run the whole studio solo. Specialist agents do the building; I review each mission at every gate, on desktop and phone, before anything ships.',
+        heading: 'Production-ready by default',
+        body: 'Every hero in the catalog is a real R3F component, not a demo. Resource disposal, responsive fallbacks, motion budgets, and a defined perf envelope. They drop into a Next.js codebase the same way any other component does. Built solo, AI-augmented production where it speeds the craft — never replaces it.',
+      },
+      { type: 'chapter', number: '04', title: 'What shipped' },
+      {
+        type: 'text-block',
+        heading: 'The studio in one line',
+        body: 'A live studio site, a growing hero catalog, and a real production rhythm — solo, end to end. Hire the studio for a hero, hire me for the engineering.',
       },
     ],
     featured: true,

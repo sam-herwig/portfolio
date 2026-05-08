@@ -13,7 +13,7 @@ interface Props extends Omit<MediaBlock, 'type'> {
 }
 
 export default function MediaBlockRender({ src, alt, aspect = '16/9', fullBleed, caption, slug }: Props) {
-  const wrap = fullBleed ? 'w-full' : 'mx-auto max-w-[1400px] px-8 md:px-16';
+  const wrap = fullBleed ? 'w-full' : 'w-full px-8 md:px-16';
 
   return (
     <figure className={`${wrap} py-12 md:py-16`}>

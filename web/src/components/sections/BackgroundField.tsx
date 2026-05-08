@@ -3,10 +3,9 @@
 import { ScreenQuad } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
-import { useEffect, useMemo, useRef } from 'react';
-import { DataTexture, LinearFilter, LinearSRGBColorSpace, RGBAFormat, TextureLoader, type Texture } from 'three';
-import { getFeaturedProjects } from '@/data/projects';
+import { useEffect, useRef } from 'react';
 import { MODULE_WINDOWS } from '@/lib/moduleTimeline';
+import { useSceneStore } from '@/lib/useSceneStore';
 import {
   ABOUT_PRESET_NAMES,
   ABOUT_PRESETS,
@@ -19,13 +18,6 @@ import {
   WORK_PRESET_NAMES,
   WORK_PRESETS,
 } from './backgroundPresets';
-
-const WORK_THUMBNAILS = getFeaturedProjects()
-  .slice(0, 4)
-  .map((p) => p.thumbnail);
-
-const placeholderTex = new DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, RGBAFormat);
-placeholderTex.needsUpdate = true;
 
 const VERTEX = /* glsl */ `
   varying vec2 vUv;
@@ -51,53 +43,67 @@ const FRAGMENT = /* glsl */ `
   uniform vec2 uAboutExit;
   uniform vec2 uWorkExit;
 
-  // Hero — Dancing Fluid Ring (B&W)
-  // Scroll arc: idle (s=0) → peak (s=uHeroExit.x) → exit (s=uHeroExit.y)
+  // Hero — SDF Shape Morph (B&W)
+  // 4 keypoints across hero window: circle → triangle → square → hexagon.
+  // Linger-then-whoosh easing on the morph; FBM warp dissolves shape mid-segment
+  // and crystallizes it at each keypoint via a tent activity signal.
   uniform float uHeroRingThickness;
+  uniform float uHeroShapeRadius;
   uniform float uHeroWarpScale;
   uniform float uHeroWarpSpeed;
-  uniform float uHeroWarpIdle;
-  uniform float uHeroWarpPeak;
-  uniform float uHeroWarpExit;
-  uniform float uHeroRadiusIdle;
-  uniform float uHeroRadiusPeak;
-  uniform float uHeroRadiusExit;
+  uniform float uHeroWarpBase;   // warp at keypoints
+  uniform float uHeroWarpPeak;   // additional warp at mid-segment
+  uniform float uHeroRotRate;    // total rotation across hero window (radians)
 
-  // About — Animated Line Grid (B&W)
-  // Scroll arc: idle (s=0.16) → peak (s=uAboutExit.x) → exit (s=uAboutExit.y)
-  // Pattern: 0=Plus (H+V), 1=X (diagonal), 2=Asterisk (Plus+X), 3=Triangle (3 axes)
-  uniform int uAboutPattern;
-  uniform float uAboutLineWidth;
-  uniform float uAboutWaveFreq;
-  uniform float uAboutWaveSpeed;
-  uniform float uAboutGridIdle;
-  uniform float uAboutGridPeak;
-  uniform float uAboutGridExit;
-  uniform float uAboutWaveIdle;
-  uniform float uAboutWavePeak;
-  uniform float uAboutWaveExit;
+  // About — Plus-Grid SDF Mosaic (B&W)
+  // Tessellated cells, each containing a glyph that morphs through 4 keypoints
+  // (Plus → X → Diamond → Circle) with linger-then-whoosh easing — mirrors
+  // hero's SDF morph idiom. Per-cell radial phase offset propagates the morph
+  // wave outward from a focal point (uAboutRadialCenter), so cells near the
+  // focal point lead and cells at the periphery lag.
+  uniform float uAboutGridScale;
+  uniform float uAboutStrokeWidth;
+  uniform vec2  uAboutRadialCenter;
+  uniform float uAboutStaggerStrength;
+  uniform float uAboutWaveAmp;
+  uniform float uAboutRotRate;
 
-  // Work — Bayer-Dithered Project Reel (B&W)
-  // Crossfades the four featured project thumbnails as you scroll the work
-  // window (s=0.4 → s=0.8). Per-image aspect ratio drives cover-fit UV.
-  uniform sampler2D uWorkTex0;
-  uniform sampler2D uWorkTex1;
-  uniform sampler2D uWorkTex2;
-  uniform sampler2D uWorkTex3;
-  uniform float uWorkAR0;
-  uniform float uWorkAR1;
-  uniform float uWorkAR2;
-  uniform float uWorkAR3;
-  uniform float uWorkDitherIdle;    // dither pixel scale at scroll-start
-  uniform float uWorkDitherPeak;    // dither pixel scale mid-window (sharpest)
-  uniform float uWorkDitherExit;    // dither pixel scale at scroll-end
-  uniform float uWorkDitherBias;    // shifts the threshold (lighter / darker)
-  uniform float uWorkContrast;      // luminance multiplier before threshold
+  // Work — three procedural modes, switched by uWorkMode (0/1/2). All B&W,
+  // all single-fragment-pass, all driven by the same scroll-window envelope
+  // the rest of the modules use. Each mode owns its own knob set:
+  //   0 = Spread — contact-sheet ledger of card-frames (siblings About).
+  //   1 = Stack  — horizontal ridgeline of bar-spines (siblings Hero).
+  //   2 = Index  — single card SDF morphing through formats (siblings Hero).
+  uniform int uWorkMode;
+
+  // Spread mode
+  uniform float uWorkGridCols;
+  uniform float uWorkGridRows;
+  uniform float uWorkCardPadding;
+  uniform float uWorkStrokeWidth;
+  uniform vec2  uWorkRadialCenter;
+  uniform float uWorkStaggerStrength;
+  uniform float uWorkRotRate;
+
+  // Stack mode
+  uniform float uWorkBarCount;
+  uniform float uWorkBarGap;
+  uniform float uWorkBaseHeight;
+  uniform float uWorkVarianceIdle;
+  uniform float uWorkVariancePeak;
+  uniform float uWorkVarianceExit;
+  uniform float uWorkBreathSpeed;
+
+  // Index mode
+  uniform float uWorkCardSize;
+  uniform float uWorkRingThickness;
+  uniform float uWorkWarpScale;
+  uniform float uWorkWarpSpeed;
+  uniform float uWorkWarpBase;
+  uniform float uWorkWarpPeak;
+  uniform float uWorkSubGridDensity;
 
   // Contact — Two Lattices Aligning (B&W)
-  // Two stripe fields counter-rotate about a slow global precession; the
-  // angular offset between them is scroll-driven (idle → peak → exit) so
-  // moiré chaos at scene entry resolves into a single clean grid by scroll-end.
   uniform float uContactStripeScale;
   uniform float uContactLineWidth;
   uniform float uContactRotSpeed;
@@ -106,6 +112,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uContactOffsetExit;
 
   uniform float uVignette;
+  uniform float uCrossfadeWidth;
   uniform int uDebugMode;
 
   float vHash(vec2 p) {
@@ -122,8 +129,6 @@ const FRAGMENT = /* glsl */ `
     return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
   }
 
-  // 4-octave FBM. Sampling on a unit-circle parameterization keeps the field
-  // periodic around the ring (no seam at ±π).
   float fbm(vec2 p) {
     float v = 0.0;
     float a = 0.5;
@@ -135,37 +140,67 @@ const FRAGMENT = /* glsl */ `
     return v;
   }
 
-  // Linear ramp matching sceneOpacity in moduleTimeline.ts so HTML overlays and
-  // shader weights stay in lockstep across crossfades.
   float linstep(float a, float b, float x) {
     return clamp((x - a) / max(b - a, 1e-6), 0.0, 1.0);
   }
 
-  // Hero — Dancing Fluid Ring: domain-warped polar annulus, pure greyscale.
-  // Scroll splits the hero window into two acts: emerge (0 → exit.x) and
-  // release (exit.x → exit.y). Both warp amplitude and radius travel
-  // idle → peak → exit along that path, smoothstep-eased.
-  vec3 modeHero(vec2 p, float t) {
-    float r = length(p);
-    vec2 n = r > 1e-4 ? p / r : vec2(1.0, 0.0);
+  // === Easing for the morph timeline ===
+  // Linger-then-whoosh: 15% plateau at each end, cubic ease through middle 70%.
+  float linger(float lt) {
+    return smoothstep(0.15, 0.85, lt);
+  }
 
-    float t1 = smoothstep(0.0, uHeroExit.x, uScroll);
-    float t2 = smoothstep(uHeroExit.x, uHeroExit.y, uScroll);
-    float warpAmount = mix(mix(uHeroWarpIdle, uHeroWarpPeak, t1), uHeroWarpExit, t2);
-    float ringRadius = mix(mix(uHeroRadiusIdle, uHeroRadiusPeak, t1), uHeroRadiusExit, t2);
+  // Tent activity signal: 0 at keypoints, 1 mid-segment, zero derivative at
+  // endpoints (smoother than a parabola — keypoints feel truly resolved).
+  float tent(float lt) {
+    return smoothstep(0.0, 0.5, lt) * smoothstep(1.0, 0.5, lt);
+  }
 
-    // Two warp samples at different scales/phases for fluid asymmetry.
-    vec2 warpCoord = n * uHeroWarpScale + vec2(t * uHeroWarpSpeed, t * uHeroWarpSpeed * 0.37);
-    float warpA = fbm(warpCoord) - 0.5;
-    float warpB = fbm(n * uHeroWarpScale * 1.7 - vec2(t * uHeroWarpSpeed * 0.6, 0.0)) - 0.5;
-    float warp = (warpA + warpB * 0.6) * warpAmount;
+  // === 2D SDFs (Inigo Quilez canon, iquilezles.org/articles/distfunctions2d) ===
+  float sdCircle(vec2 p, float r) {
+    return length(p) - r;
+  }
 
-    float radius = ringRadius + warp;
-    float d = abs(r - radius) - uHeroRingThickness;
-    float fw = max(fwidth(d) * 1.2, 0.001);
-    float ring = 1.0 - smoothstep(0.0, fw, d);
+  // Equilateral triangle, point-up (vertical symmetry axis through apex).
+  float sdEquilateralTriangle(vec2 p, float r) {
+    const float k = 1.7320508; // sqrt(3)
+    p.x = abs(p.x) - r;
+    p.y = p.y + r / k;
+    if (p.x + k * p.y > 0.0) p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+    p.x -= clamp(p.x, -2.0 * r, 0.0);
+    return -length(p) * sign(p.y);
+  }
 
-    return vec3(ring);
+  float sdBox(vec2 p, vec2 b) {
+    vec2 d = abs(p) - b;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+  }
+
+  // Regular hexagon, flat-top by default. We rotate input by 30° before calling
+  // to align it pointy-top so the vertical axis of symmetry matches circle/
+  // triangle/square — keeps the morph reading as symmetric pulse, not wobble.
+  float sdHexagon(vec2 p, float r) {
+    const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
+    p = abs(p);
+    p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
+    p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
+    return length(p) * sign(p.y);
+  }
+
+  // Plus / cross — union of two perpendicular boxes.
+  float sdPlus(vec2 p, float armLen, float armWidth) {
+    return min(sdBox(p, vec2(armLen, armWidth)), sdBox(p, vec2(armWidth, armLen)));
+  }
+
+  // X — Plus rotated 45°.
+  float sdX(vec2 p, float armLen, float armWidth) {
+    vec2 q = vec2(p.x + p.y, p.x - p.y) * 0.7071;
+    return sdPlus(q, armLen, armWidth);
+  }
+
+  // Filled diamond (rotated square). L1 norm SDF.
+  float sdDiamond(vec2 p, float halfDiag) {
+    return abs(p.x) + abs(p.y) - halfDiag;
   }
 
   // Anti-aliased line at integer offsets along a 1D coord (cell space).
@@ -174,149 +209,325 @@ const FRAGMENT = /* glsl */ `
     return 1.0 - smoothstep(halfW, halfW + fw, dist);
   }
 
-  // About — Animated Line Grid: orthogonal grid whose lines wave slowly along
-  // their orthogonal axis. Scroll drives grid density + wave amplitude along
-  // an idle → peak → exit arc spanning About's full visibility window.
+  // === Hero — SDF Shape Morph ===
+  // Maps uScroll across [0, uHeroExit.y] to a 4-keypoint timeline (3 segments).
+  // Each segment lingers at its endpoints and whooshes through the middle;
+  // FBM warp amplitude follows a tent (calm at keypoints, turbulent mid-morph).
+  // Subtle scroll-driven rotation is paced by the same morph timing.
+  vec3 modeHero(vec2 p, float t) {
+    float halfCF = uCrossfadeWidth * 0.5;
+    float heroMid = (uHeroExit.x + uHeroExit.y) * 0.5;
+    float visEnd = heroMid + halfCF;
+    float t01 = clamp(uScroll / max(visEnd, 1e-4), 0.0, 1.0);
+    float seg = t01 * 3.0;
+    float i = min(floor(seg), 2.0);
+    float lt = clamp(seg - i, 0.0, 1.0);
+    float ta = tent(lt);
+    float morphMix = linger(lt);
+
+    // Rotation tracks the morph cadence: each segment contributes uHeroRotRate/3.
+    float rotProgress = (i + linger(lt)) / 3.0;
+    float angle = uHeroRotRate * rotProgress;
+    float ca = cos(angle);
+    float sa = sin(angle);
+    vec2 pr = mat2(ca, -sa, sa, ca) * p;
+
+    // Evaluate all 4 SDFs unconditionally — branchless segment select below
+    // is cheaper than predicated branches on the GPU.
+    float r = uHeroShapeRadius;
+    float d0 = sdCircle(pr, r);
+    float d1 = sdEquilateralTriangle(pr, r);
+    float d2 = sdBox(pr, vec2(r));
+    // Hexagon: rotate input 30° to convert flat-top → pointy-top.
+    float ch = 0.86602540; // cos(30°)
+    float sh = 0.5;        // sin(30°)
+    vec2 phex = mat2(ch, -sh, sh, ch) * pr;
+    float d3 = sdHexagon(phex, r);
+
+    // Branchless segment endpoint pick via step() masks.
+    float m0 = step(i, 0.5);
+    float m1 = step(0.5, i) * step(i, 1.5);
+    float m2 = step(1.5, i);
+    float dA = m0 * d0 + m1 * d1 + m2 * d2;
+    float dB = m0 * d1 + m1 * d2 + m2 * d3;
+
+    float d = mix(dA, dB, morphMix);
+
+    // FBM warp added directly to distance — between keypoints the SDF "fronts"
+    // dissolve into turbulent ripples; at keypoints (ta → 0) the shape returns
+    // to its clean polygon edge.
+    float warpAmp = uHeroWarpBase + uHeroWarpPeak * ta;
+    vec2 warpCoord = pr * uHeroWarpScale + vec2(t * uHeroWarpSpeed, t * uHeroWarpSpeed * 0.37);
+    float warpA = fbm(warpCoord) - 0.5;
+    float warpB = fbm(pr * uHeroWarpScale * 1.7 - vec2(t * uHeroWarpSpeed * 0.6, 0.0)) - 0.5;
+    d += (warpA + warpB * 0.6) * warpAmp;
+
+    float fw = max(fwidth(d) * 1.2, 0.001);
+    float ring = 1.0 - smoothstep(0.0, fw, abs(d) - uHeroRingThickness);
+    return vec3(ring);
+  }
+
+  // === About — Plus-Grid SDF Mosaic ===
+  // Tessellated cells via domain repetition. Each cell hosts a glyph that
+  // morphs through 4 SDF keypoints (Plus → X → Diamond → Circle) with the
+  // same linger/tent cadence hero uses. A per-cell radial phase offset
+  // propagates the morph wave outward from uAboutRadialCenter, so cells
+  // near the focal point lead the morph and peripheral cells lag.
   vec3 modeAbout(vec2 p, float t) {
-    float t1 = smoothstep(0.16, uAboutExit.x, uScroll);
-    float t2 = smoothstep(uAboutExit.x, uAboutExit.y, uScroll);
-    float gridScale = mix(mix(uAboutGridIdle, uAboutGridPeak, t1), uAboutGridExit, t2);
-    float waveAmp   = mix(mix(uAboutWaveIdle, uAboutWavePeak, t1), uAboutWaveExit, t2);
+    float halfCF = uCrossfadeWidth * 0.5;
+    float heroMid = (uHeroExit.x + uHeroExit.y) * 0.5;
+    float aboutMid = (uAboutExit.x + uAboutExit.y) * 0.5;
+    float aboutStart = heroMid - halfCF;
+    float aboutEnd = aboutMid + halfCF;
+    float globalT01 = clamp((uScroll - aboutStart) / max(aboutEnd - aboutStart, 1e-4), 0.0, 1.0);
 
-    vec2 q = p * gridScale;
+    // Subtle progressive grid rotation across the about window.
+    float globalAngle = uAboutRotRate * globalT01;
+    float gca = cos(globalAngle);
+    float gsa = sin(globalAngle);
+    vec2 pr = mat2(gca, -gsa, gsa, gca) * p;
 
-    // Two cross-coupled traveling waves displace the grid coordinates, so
-    // lines wave along their orthogonal axis — slow breathing mesh.
-    vec2 warp = vec2(
-      sin(q.y * uAboutWaveFreq + t * uAboutWaveSpeed) * waveAmp,
-      cos(q.x * uAboutWaveFreq * 1.1 + t * uAboutWaveSpeed * 0.83) * waveAmp
+    // Domain repetition.
+    vec2 cell = pr * uAboutGridScale;
+    vec2 cellId = floor(cell);
+    vec2 cellP = fract(cell) - 0.5;
+
+    // Per-cell radial phase. cellCenter is in canvas-local (pre-scale) coords
+    // so uAboutRadialCenter is consistent with the screen, not the grid.
+    vec2 cellCenter = (cellId + 0.5) / uAboutGridScale;
+    float radial = length(cellCenter - uAboutRadialCenter);
+    float phase = radial * uAboutStaggerStrength;
+
+    // Rescale per-cell timeline so peripheral cells still finish within
+    // the global window. Worst-case radial ≈ 1.0 → maxPhase = staggerStrength.
+    float maxPhase = uAboutStaggerStrength;
+    float cellT01 = clamp(
+      (globalT01 - phase) / max(1.0 - maxPhase, 1e-3),
+      0.0, 1.0
     );
-    vec2 qw = q + warp;
 
-    float halfW = uAboutLineWidth * 0.5;
-    float fw = max(max(fwidth(qw.x), fwidth(qw.y)), 0.001);
+    // 3 segments across 4 keypoints (Plus → X → Diamond → Circle).
+    float seg = cellT01 * 3.0;
+    float i = min(floor(seg), 2.0);
+    float lt = clamp(seg - i, 0.0, 1.0);
+    float ta = tent(lt);
+    float morphMix = linger(lt);
 
-    float grid = 0.0;
-    if (uAboutPattern == 0) {
-      // Plus — orthogonal H + V
-      grid = max(gridLine(qw.x, halfW, fw), gridLine(qw.y, halfW, fw));
-    } else if (uAboutPattern == 1) {
-      // X — 45°-rotated lattice (diagonal cross intersections)
-      vec2 rot = vec2(qw.x + qw.y, qw.x - qw.y) * 0.7071;
-      grid = max(gridLine(rot.x, halfW, fw), gridLine(rot.y, halfW, fw));
-    } else if (uAboutPattern == 2) {
-      // Asterisk — Plus + X (eight-pointed)
-      vec2 rot = vec2(qw.x + qw.y, qw.x - qw.y) * 0.7071;
-      float plus = max(gridLine(qw.x, halfW, fw), gridLine(qw.y, halfW, fw));
-      float ex   = max(gridLine(rot.x, halfW, fw), gridLine(rot.y, halfW, fw));
-      grid = max(plus, ex);
-    } else {
-      // Triangle — three line directions at 0°, 60°, 120°
-      mat2 r60  = mat2( 0.5, 0.86602540, -0.86602540,  0.5);
-      mat2 r120 = mat2(-0.5, 0.86602540, -0.86602540, -0.5);
-      float l1 = gridLine(qw.y,            halfW, fw);
-      float l2 = gridLine((r60  * qw).y,   halfW, fw);
-      float l3 = gridLine((r120 * qw).y,   halfW, fw);
-      grid = max(max(l1, l2), l3);
-    }
+    // Subtle per-cell wave warp, gated by tent (clean keypoints, turbulent
+    // mid-morph). Per-cell phase seed gives organic variation across the field.
+    vec2 phaseSeed = cellId * 0.31;
+    vec2 wp = cellP + vec2(
+      sin(t * 0.5 + phaseSeed.x) * uAboutWaveAmp * ta,
+      cos(t * 0.4 + phaseSeed.y) * uAboutWaveAmp * ta
+    );
 
-    return vec3(grid);
+    // Glyph dimensions in cell-local space (cellP ∈ [-0.5, 0.5]).
+    const float armLen = 0.4;
+    const float halfDiag = 0.4;
+    const float radius = 0.4;
+    float strokeW = uAboutStrokeWidth;
+
+    // Evaluate all 4 SDFs unconditionally — branchless segment select below.
+    float d0 = sdPlus(wp, armLen, strokeW);
+    float d1 = sdX(wp, armLen, strokeW);
+    float d2 = sdDiamond(wp, halfDiag);
+    float d3 = sdCircle(wp, radius);
+
+    float m0 = step(i, 0.5);
+    float m1 = step(0.5, i) * step(i, 1.5);
+    float m2 = step(1.5, i);
+    float dA = m0 * d0 + m1 * d1 + m2 * d2;
+    float dB = m0 * d1 + m1 * d2 + m2 * d3;
+
+    float d = mix(dA, dB, morphMix);
+
+    // Filled glyph with analytic AA edge.
+    float fw = max(fwidth(d) * 1.2, 0.001);
+    float glyph = 1.0 - smoothstep(-fw, fw, d);
+
+    return vec3(glyph);
   }
 
-  // 4x4 ordered Bayer threshold matrix, [0..15] / 16 → [0..1).
-  float bayer4(vec2 fragCoord) {
-    int x = int(mod(fragCoord.x, 4.0));
-    int y = int(mod(fragCoord.y, 4.0));
-    int idx = y * 4 + x;
-    float v = 0.0;
-    if (idx == 0)       v =  0.0;
-    else if (idx == 1)  v =  8.0;
-    else if (idx == 2)  v =  2.0;
-    else if (idx == 3)  v = 10.0;
-    else if (idx == 4)  v = 12.0;
-    else if (idx == 5)  v =  4.0;
-    else if (idx == 6)  v = 14.0;
-    else if (idx == 7)  v =  6.0;
-    else if (idx == 8)  v =  3.0;
-    else if (idx == 9)  v = 11.0;
-    else if (idx == 10) v =  1.0;
-    else if (idx == 11) v =  9.0;
-    else if (idx == 12) v = 15.0;
-    else if (idx == 13) v =  7.0;
-    else if (idx == 14) v = 13.0;
-    else                v =  5.0;
-    return v / 16.0;
-  }
-
-  // Map screen UV to image UV with CSS-cover semantics — image fills frame,
-  // overflow on the longer axis is symmetrically cropped.
-  vec2 coverUV(vec2 uv, float screenAR, float imgAR) {
-    vec2 scale = imgAR > screenAR
-      ? vec2(screenAR / imgAR, 1.0)
-      : vec2(1.0, imgAR / screenAR);
-    return 0.5 + (uv - 0.5) * scale;
-  }
-
-  // Work — Bayer-Dithered Project Grid (2×2): each thumbnail occupies one
-  // screen quadrant matching its corner card (TL=0, TR=1, BL=2, BR=3).
-  // Scroll arc drives dither chunkiness across the work window: chunky on
-  // entry → fine in the middle → chunky on exit.
-  vec3 modeWork(vec2 p, float t) {
-    float winStart = uHeroExit.y;        // 0.32 — work first becomes visible
-    float winEnd   = uWorkExit.y;        // 0.80 — work fully gone
+  // Shared work-window scroll envelope. Returns vec3(globalT01, t1, t2) where
+  // globalT01 spans aboutMid → workMid+halfCF, t1 ramps idle→peak in the
+  // first half, t2 ramps peak→exit in the second half. Mirrors the
+  // about/work transitional window the previous dither modeWork used so the
+  // new modes inherit identical timing.
+  vec3 workEnvelope() {
+    float halfCF = uCrossfadeWidth * 0.5;
+    float aboutMid = (uAboutExit.x + uAboutExit.y) * 0.5;
+    float workMid  = (uWorkExit.x + uWorkExit.y) * 0.5;
+    float winStart = aboutMid - halfCF;
+    float winEnd   = workMid + halfCF;
     float winMid   = (winStart + winEnd) * 0.5;
+    float gT01 = clamp((uScroll - winStart) / max(winEnd - winStart, 1e-4), 0.0, 1.0);
     float t1 = smoothstep(winStart, winMid, uScroll);
     float t2 = smoothstep(winMid, winEnd, uScroll);
-    float ditherScale = mix(mix(uWorkDitherIdle, uWorkDitherPeak, t1), uWorkDitherExit, t2);
-
-    // Quadrant pick. Layout:  TL TR
-    //                         BL BR
-    // vUv.y is 0 at the bottom of NDC; corner cards index in DOM space
-    // (top-left = 0, top-right = 1, bottom-left = 2, bottom-right = 3).
-    vec2 q = vUv * 2.0;
-    int qx = q.x < 1.0 ? 0 : 1;
-    int qy = q.y >= 1.0 ? 0 : 1;            // top half (vUv.y >= 0.5) → 0
-    int idx = qy * 2 + qx;
-    vec2 quadrantUV = fract(q);
-
-    float quadrantAR = uResolution.x / uResolution.y;
-    float imgAR =
-      idx == 0 ? uWorkAR0 :
-      idx == 1 ? uWorkAR1 :
-      idx == 2 ? uWorkAR2 : uWorkAR3;
-    vec2 sampleUV = coverUV(quadrantUV, quadrantAR, imgAR);
-
-    vec3 col =
-      idx == 0 ? texture2D(uWorkTex0, sampleUV).rgb :
-      idx == 1 ? texture2D(uWorkTex1, sampleUV).rgb :
-      idx == 2 ? texture2D(uWorkTex2, sampleUV).rgb :
-                 texture2D(uWorkTex3, sampleUV).rgb;
-
-    // Perceptual luminance, contrast-stretched, then 1-bit Bayer threshold.
-    float lum = dot(col, vec3(0.299, 0.587, 0.114));
-    lum = clamp((lum - 0.5) * uWorkContrast + 0.5, 0.0, 1.0);
-    vec2 ditherCoord = floor(gl_FragCoord.xy / max(ditherScale, 1.0));
-    float threshold = bayer4(ditherCoord) + uWorkDitherBias;
-    float bw = step(threshold, lum);
-
-    return vec3(bw);
+    return vec3(gT01, t1, t2);
   }
 
-  // Contact — Two Lattices Aligning: two stripe fields counter-rotate about a
-  // slow global precession. Their angular offset is scroll-driven, so moiré
-  // interference at scene entry resolves into a single clean lattice as the
-  // user reaches the bottom of the page.
+  // === Work mode 0 — Spread ===
+  // Tessellated card-frame grid (cols × rows) where each cell hosts a small
+  // ledger glyph that morphs bullet → fold → tag → check across the work
+  // window. Per-cell radial phase from uWorkRadialCenter propagates the morph
+  // diagonally — same idiom as the About plus-grid mosaic.
+  vec3 modeWorkSpread(vec2 p, float t) {
+    vec3 env = workEnvelope();
+    float globalT01 = env.x;
+
+    // Optional whole-field rotation (subtle drift).
+    float ang = uWorkRotRate * globalT01;
+    vec2 pr = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * p;
+
+    // Cell tessellation. Normalize pr by aspect on x so uWorkGridCols reads
+    // as visible column count (pr is aspect-multiplied in main()). pr.y is
+    // already in [-0.5, 0.5] so uWorkGridRows is direct.
+    float aspect = uResolution.x / max(uResolution.y, 1.0);
+    vec2 cell = vec2((pr.x / max(aspect, 1e-3)) * uWorkGridCols, pr.y * uWorkGridRows);
+    vec2 cellId = floor(cell);
+    vec2 cellP = fract(cell) - 0.5;
+
+    // Per-cell radial phase. cellCenter normalized to roughly [-0.5, 0.5]^2
+    // canvas space so uWorkRadialCenter reads as a screen-space focal point.
+    vec2 cellCenter = (cellId + 0.5) / vec2(uWorkGridCols, uWorkGridRows);
+    float radial = length(cellCenter - uWorkRadialCenter);
+    float phase = radial * uWorkStaggerStrength;
+    float cellT01 = clamp(
+      (globalT01 - phase) / max(1.0 - uWorkStaggerStrength, 1e-3),
+      0.0, 1.0
+    );
+
+    // Card-frame ring: sdBox subtracted from a slightly larger sdBox.
+    vec2 frameHalf = vec2(0.5 - uWorkCardPadding);
+    float frameOuter = sdBox(cellP, frameHalf);
+    float frameInner = sdBox(cellP, frameHalf - vec2(uWorkStrokeWidth));
+    float frameStroke = max(-frameOuter, frameInner);
+    float fwF = max(fwidth(frameStroke) * 1.2, 0.001);
+    float frame = 1.0 - smoothstep(0.0, fwF, abs(frameStroke));
+
+    // Ledger glyph anchored at left side of cell (like a list bullet).
+    vec2 g = cellP - vec2(-0.28, 0.0);
+
+    // 3 segments across 4 keypoints: bullet → fold → tag → check.
+    float seg = cellT01 * 3.0;
+    float i = min(floor(seg), 2.0);
+    float lt = clamp(seg - i, 0.0, 1.0);
+    float morphMix = linger(lt);
+
+    float dBullet = sdCircle(g, 0.04);
+    float dFold   = sdBox(g, vec2(0.07, 0.018));
+    float dTag    = sdDiamond(g, 0.07);
+    float dCheck  = sdPlus(g, 0.07, 0.018);
+
+    float m0 = step(i, 0.5);
+    float m1 = step(0.5, i) * step(i, 1.5);
+    float m2 = step(1.5, i);
+    float dA = m0 * dBullet + m1 * dFold   + m2 * dTag;
+    float dB = m0 * dFold   + m1 * dTag    + m2 * dCheck;
+    float dG = mix(dA, dB, morphMix);
+
+    float fwG = max(fwidth(dG) * 1.2, 0.001);
+    float glyph = 1.0 - smoothstep(-fwG, fwG, dG);
+
+    return vec3(max(frame, glyph));
+  }
+
+  // === Work mode 1 — Stack ===
+  // Horizontal ridgeline of vertical bar-spines, heights driven by per-bar
+  // hash + FBM breath, gated by the idle/peak/exit variance envelope. A few
+  // outlier bars rise on exit (the case studies stepping out of the catalog).
+  vec3 modeWorkStack(vec2 p, float t) {
+    vec3 env = workEnvelope();
+    float t1 = env.y;
+    float t2 = env.z;
+
+    // Normalize x by aspect so uWorkBarCount reads as visible bar count
+    // (p.x is already aspect-multiplied in main()).
+    float aspect = uResolution.x / max(uResolution.y, 1.0);
+    float n = max(uWorkBarCount, 1.0);
+    float u = (p.x / max(aspect, 1e-3) + 0.5) * n; // 0..n across visible width
+    float bar = floor(u);
+    float local = fract(u);
+    float gap = clamp(uWorkBarGap, 0.0, 0.45);
+    float inBar = step(gap, local) * step(local, 1.0 - gap);
+
+    float seed = vHash(vec2(bar, 17.0));
+    float variance = mix(mix(uWorkVarianceIdle, uWorkVariancePeak, t1), uWorkVarianceExit, t2);
+    float breath = fbm(vec2(bar * 0.7, t * uWorkBreathSpeed)) - 0.5;
+    float h = uWorkBaseHeight + variance * (seed - 0.5) + variance * 0.4 * breath;
+
+    // Outlier accent on exit: the top ~8% of bars rise sharply.
+    float outlier = step(0.92, seed) * t2 * 0.18;
+    h += outlier;
+
+    float topY = -0.5 + clamp(h, 0.0, 0.95);
+    float fw = max(fwidth(p.y) * 1.5, 0.001);
+    float fill = 1.0 - smoothstep(topY - fw, topY + fw, p.y);
+    return vec3(fill * inBar);
+  }
+
+  // === Work mode 2 — Index ===
+  // Single dominant card SDF that morphs through 4 format keypoints across
+  // the work window: landscape → portrait → square → contact-sheet (square +
+  // an internal grid of stripes). FBM warp on the edge using Hero's library.
+  vec3 modeWorkIndex(vec2 p, float t) {
+    vec3 env = workEnvelope();
+    float globalT01 = env.x;
+
+    float seg = globalT01 * 3.0;
+    float i = min(floor(seg), 2.0);
+    float lt = clamp(seg - i, 0.0, 1.0);
+    float ta = tent(lt);
+    float morphMix = linger(lt);
+
+    float s = uWorkCardSize;
+    float dLand = sdBox(p, vec2(s, s * 0.6));
+    float dPort = sdBox(p, vec2(s * 0.6, s));
+    float dSqr  = sdBox(p, vec2(s * 0.78));
+    float dGrid = sdBox(p, vec2(s * 0.92, s * 0.62));
+
+    float m0 = step(i, 0.5);
+    float m1 = step(0.5, i) * step(i, 1.5);
+    float m2 = step(1.5, i);
+    float dA = m0 * dLand + m1 * dPort + m2 * dSqr;
+    float dB = m0 * dPort + m1 * dSqr  + m2 * dGrid;
+    float d = mix(dA, dB, morphMix);
+
+    // FBM warp injected into distance — calm at keypoints, turbulent mid-segment.
+    float warpAmp = uWorkWarpBase + uWorkWarpPeak * ta;
+    vec2 warpCoord = p * uWorkWarpScale + vec2(t * uWorkWarpSpeed, t * uWorkWarpSpeed * 0.43);
+    float w = (fbm(warpCoord) - 0.5);
+    d += w * warpAmp;
+
+    float fw = max(fwidth(d) * 1.2, 0.001);
+    float ring = 1.0 - smoothstep(0.0, fw, abs(d) - uWorkRingThickness);
+
+    // On the final keypoint, subdivide the card with vertical stripes — turns
+    // the square into a contact-sheet/grid format. Only inside the card body.
+    float inside = 1.0 - smoothstep(-fw, fw, d);
+    float stripeFW = max(fwidth(p.x) * 1.5, 0.001);
+    float stripe = gridLine(p.x * uWorkSubGridDensity, 0.04, stripeFW);
+    float gridReveal = step(1.5, i) * morphMix * stripe * inside;
+
+    return vec3(max(ring, gridReveal));
+  }
+
+  vec3 modeWork(vec2 p, float t) {
+    if (uWorkMode == 1) return modeWorkStack(p, t);
+    if (uWorkMode == 2) return modeWorkIndex(p, t);
+    return modeWorkSpread(p, t);
+  }
+
   vec3 modeContact(vec2 p, float t) {
-    // Contact owns the canvas from uWorkExit.y (0.8) to s=1.0; alignment
-    // moment lands near the end of scroll, with a brief release phase past it.
-    float winStart = uWorkExit.y;            // 0.80
-    float winMid   = mix(winStart, 1.0, 0.7); // alignment moment
+    float halfCF = uCrossfadeWidth * 0.5;
+    float workMid = (uWorkExit.x + uWorkExit.y) * 0.5;
+    float winStart = workMid - halfCF;
+    float winMid   = mix(winStart, 1.0, 0.7);
     float winEnd   = 1.0;
     float t1 = smoothstep(winStart, winMid, uScroll);
     float t2 = smoothstep(winMid, winEnd, uScroll);
     float offset = mix(mix(uContactOffsetIdle, uContactOffsetPeak, t1), uContactOffsetExit, t2);
 
-    // Both grids precess together; only the offset between them matters for moiré.
     float globalAngle = t * uContactRotSpeed;
     float a1 = globalAngle - offset * 0.5;
     float a2 = globalAngle + offset * 0.5;
@@ -335,8 +546,6 @@ const FRAGMENT = /* glsl */ `
     return vec3(max(line1, line2));
   }
 
-  // Custom <shaderMaterial> bypasses the colorspace_fragment chunk so we encode
-  // linear→sRGB ourselves to match outputColorSpace=SRGBColorSpace.
   vec3 sRGBEncode(vec3 c) {
     vec3 cutoff = vec3(lessThanEqual(c, vec3(0.0031308)));
     vec3 lower = c * 12.92;
@@ -348,22 +557,23 @@ const FRAGMENT = /* glsl */ `
     vec2 p = vUv - 0.5;
     p.x *= uResolution.x / uResolution.y;
 
-    // Debug mode 1 — verify vUv plumbing. Should show a red→yellow→green→black quad gradient.
     if (uDebugMode == 1) { gl_FragColor = vec4(vUv.x, vUv.y, 0.0, 1.0); return; }
-
-    // Debug mode 2 — verify uScroll. Solid color: red increases as scroll increases.
     if (uDebugMode == 2) { gl_FragColor = vec4(uScroll, 1.0 - uScroll, 0.0, 1.0); return; }
 
     float s = uScroll;
-    float wHero    = 1.0 - linstep(uHeroExit.x, uHeroExit.y, s);
-    float wAbout   = linstep(uHeroExit.x, uHeroExit.y, s) * (1.0 - linstep(uAboutExit.x, uAboutExit.y, s));
-    float wWork    = linstep(uAboutExit.x, uAboutExit.y, s) * (1.0 - linstep(uWorkExit.x, uWorkExit.y, s));
-    float wContact = linstep(uWorkExit.x, uWorkExit.y, s);
+    float halfCF = uCrossfadeWidth * 0.5;
+    float heroMid = (uHeroExit.x + uHeroExit.y) * 0.5;
+    float aboutMid = (uAboutExit.x + uAboutExit.y) * 0.5;
+    float workMid = (uWorkExit.x + uWorkExit.y) * 0.5;
+    float heroExit = linstep(heroMid - halfCF, heroMid + halfCF, s);
+    float aboutExit = linstep(aboutMid - halfCF, aboutMid + halfCF, s);
+    float workExit = linstep(workMid - halfCF, workMid + halfCF, s);
+    float wHero    = 1.0 - heroExit;
+    float wAbout   = heroExit * (1.0 - aboutExit);
+    float wWork    = aboutExit * (1.0 - workExit);
+    float wContact = workExit;
 
-    // Debug mode 3 — visualize weights. R=hero, G=about, B=work, mix-of-all = contact.
     if (uDebugMode == 3) { gl_FragColor = vec4(wHero, wAbout, wWork + wContact, 1.0); return; }
-
-    // Debug mode 4 — force 100% hero everywhere.
     if (uDebugMode == 4) { gl_FragColor = vec4(modeHero(p, uTime), 1.0); return; }
 
     vec3 col = vec3(0.0);
@@ -399,83 +609,60 @@ const uniforms = {
     value: [MODULE_WINDOWS.work.exitStart, MODULE_WINDOWS.work.exitEnd] as [number, number],
   },
 
-  uHeroRingThickness: { value: 0.035 },
-  uHeroWarpScale: { value: 1.4 },
-  uHeroWarpSpeed: { value: 0.18 },
-  uHeroWarpIdle: { value: 0.02 },
-  uHeroWarpPeak: { value: 0.18 },
-  uHeroWarpExit: { value: 0.04 },
-  uHeroRadiusIdle: { value: 0.42 },
-  uHeroRadiusPeak: { value: 0.48 },
-  uHeroRadiusExit: { value: 0.65 },
+  uHeroRingThickness: { value: 0.01 },
+  uHeroShapeRadius: { value: 0.3 },
+  uHeroWarpScale: { value: 1.0 / 4.5 },
+  uHeroWarpSpeed: { value: 0.12 },
+  uHeroWarpBase: { value: 0.015 },
+  uHeroWarpPeak: { value: 0.1 },
+  uHeroRotRate: { value: 0.5 },
 
-  uAboutPattern: { value: 0 },
-  uAboutLineWidth: { value: 0.04 },
-  uAboutWaveFreq: { value: 0.3 },
-  uAboutWaveSpeed: { value: 0.15 },
-  uAboutGridIdle: { value: 8.0 },
-  uAboutGridPeak: { value: 12.0 },
-  uAboutGridExit: { value: 18.0 },
-  uAboutWaveIdle: { value: 0.05 },
-  uAboutWavePeak: { value: 0.4 },
-  uAboutWaveExit: { value: 0.65 },
+  uAboutGridScale: { value: 14.0 },
+  uAboutStrokeWidth: { value: 0.07 },
+  uAboutRadialCenter: { value: [-0.35, 0.0] as [number, number] },
+  uAboutStaggerStrength: { value: 0.3 },
+  uAboutWaveAmp: { value: 0.05 },
+  uAboutRotRate: { value: 0.1 },
 
-  uWorkTex0: { value: placeholderTex as Texture },
-  uWorkTex1: { value: placeholderTex as Texture },
-  uWorkTex2: { value: placeholderTex as Texture },
-  uWorkTex3: { value: placeholderTex as Texture },
-  uWorkAR0: { value: 16.0 / 9.0 },
-  uWorkAR1: { value: 16.0 / 9.0 },
-  uWorkAR2: { value: 16.0 / 9.0 },
-  uWorkAR3: { value: 16.0 / 9.0 },
-  uWorkDitherIdle: { value: 8.0 },
-  uWorkDitherPeak: { value: 3.0 },
-  uWorkDitherExit: { value: 10.0 },
-  uWorkDitherBias: { value: 0.0 },
-  uWorkContrast: { value: 1.1 },
+  uWorkMode: { value: 1 },
 
-  uContactStripeScale: { value: 16.0 },
-  uContactLineWidth: { value: 0.18 },
-  uContactRotSpeed: { value: 0.06 },
+  uWorkGridCols: { value: 6.0 },
+  uWorkGridRows: { value: 4.0 },
+  uWorkCardPadding: { value: 0.06 },
+  uWorkStrokeWidth: { value: 0.012 },
+  uWorkRadialCenter: { value: [-0.5, 0.5] as [number, number] },
+  uWorkStaggerStrength: { value: 0.55 },
+  uWorkRotRate: { value: 0.0 },
+
+  uWorkBarCount: { value: 40.0 },
+  uWorkBarGap: { value: 0.07 },
+  uWorkBaseHeight: { value: 0.47 },
+  uWorkVarianceIdle: { value: 0.31 },
+  uWorkVariancePeak: { value: 0.6 },
+  uWorkVarianceExit: { value: 0.45 },
+  uWorkBreathSpeed: { value: 0.46 },
+
+  uWorkCardSize: { value: 0.34 },
+  uWorkRingThickness: { value: 0.008 },
+  uWorkWarpScale: { value: 1.4 },
+  uWorkWarpSpeed: { value: 0.18 },
+  uWorkWarpBase: { value: 0.005 },
+  uWorkWarpPeak: { value: 0.06 },
+  uWorkSubGridDensity: { value: 9.0 },
+
+  uContactStripeScale: { value: 19.0 },
+  uContactLineWidth: { value: 0.08 },
+  uContactRotSpeed: { value: 0.01 },
   uContactOffsetIdle: { value: 0.18 },
   uContactOffsetPeak: { value: 0.0 },
-  uContactOffsetExit: { value: 0.04 },
+  uContactOffsetExit: { value: 0.0 },
 
   uVignette: { value: 0.55 },
+  uCrossfadeWidth: { value: 0.03 },
   uDebugMode: { value: 0 },
 };
 
-export default function BackgroundField({ scrollRef }: { scrollRef: React.MutableRefObject<number> }) {
-  // Load the four featured project thumbnails once. We bypass Three's auto
-  // sRGB decode (LinearSRGBColorSpace) so the dither operates on perceptual
-  // values, then the shared sRGBEncode tail handles output gamma.
-  const loader = useMemo(() => new TextureLoader(), []);
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all(WORK_THUMBNAILS.map((url) => loader.loadAsync(url))).then((textures) => {
-      if (cancelled) return;
-      const slots: Array<keyof typeof uniforms> = ['uWorkTex0', 'uWorkTex1', 'uWorkTex2', 'uWorkTex3'];
-      const ars: Array<keyof typeof uniforms> = ['uWorkAR0', 'uWorkAR1', 'uWorkAR2', 'uWorkAR3'];
-      textures.forEach((tex, i) => {
-        tex.colorSpace = LinearSRGBColorSpace;
-        tex.minFilter = LinearFilter;
-        tex.magFilter = LinearFilter;
-        tex.needsUpdate = true;
-        (uniforms[slots[i]] as { value: Texture }).value = tex;
-        const img = tex.image as { width?: number; height?: number } | undefined;
-        if (img?.width && img?.height) {
-          (uniforms[ars[i]] as { value: number }).value = img.width / img.height;
-        }
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [loader]);
-
-  // setRef holds Leva's imperative `set` so preset onChange handlers can
-  // cascade into the per-uniform controls. We can't reference `set` inside the
-  // useControls input directly (chicken-and-egg), so we read through the ref.
+export default function BackgroundField() {
   const setRef = useRef<((values: Record<string, unknown>) => void) | null>(null);
 
   const [controls, set] = useControls('Background', () => ({
@@ -489,8 +676,6 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
             if (ctx.initial || name === '(custom)' || !setRef.current) return;
             const combo = COMBO_PRESETS[name];
             if (!combo) return;
-            // Apply preset selectors AND their values directly — leva's `set`
-            // does not trigger nested onChange handlers, so we flatten here.
             setRef.current({
               heroPreset: combo.hero,
               aboutPreset: combo.about,
@@ -509,7 +694,7 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
     Hero: folder(
       {
         heroPreset: {
-          value: 'Halo',
+          value: 'Switchback',
           options: HERO_PRESET_NAMES,
           label: 'preset',
           onChange: (name: string, _path: string, _ctx: { initial: boolean }) => {
@@ -518,18 +703,15 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
             if (preset) setRef.current(preset);
           },
         },
-        heroRingThickness: { value: 0.018, min: 0.002, max: 0.2, step: 0.001 },
-        // Higher = longer, more spread-out warp bumps; lower = busy/chaotic.
+        heroRingThickness: { value: 0.01, min: 0.002, max: 0.2, step: 0.001 },
+        heroShapeRadius: { value: 0.3, min: 0.1, max: 0.9, step: 0.005 },
         heroDisturbanceLength: { value: 4.5, min: 0.2, max: 12.0, step: 0.05 },
         heroWarpSpeed: { value: 0.12, min: 0.0, max: 1.5, step: 0.01 },
-        ScrollArc: folder(
+        ShapeArc: folder(
           {
-            heroWarpIdle: { value: 0.015, min: 0.0, max: 0.4, step: 0.005 },
-            heroWarpPeak: { value: 0.1, min: 0.0, max: 0.4, step: 0.005 },
-            heroWarpExit: { value: 0.03, min: 0.0, max: 0.4, step: 0.005 },
-            heroRadiusIdle: { value: 0.4, min: 0.05, max: 0.95, step: 0.005 },
-            heroRadiusPeak: { value: 0.45, min: 0.05, max: 0.95, step: 0.005 },
-            heroRadiusExit: { value: 0.85, min: 0.05, max: 1.4, step: 0.005 },
+            heroWarpBase: { value: 0.015, min: 0.0, max: 0.4, step: 0.005 },
+            heroWarpPeak: { value: 0.1, min: 0.0, max: 0.5, step: 0.005 },
+            heroRotRate: { value: 0.5, min: -3.14, max: 3.14, step: 0.01 },
           },
           { collapsed: true },
         ),
@@ -539,7 +721,7 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
     About: folder(
       {
         aboutPreset: {
-          value: 'Linen',
+          value: 'Ridgeline',
           options: ABOUT_PRESET_NAMES,
           label: 'preset',
           onChange: (name: string, _path: string, _ctx: { initial: boolean }) => {
@@ -548,21 +730,14 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
             if (preset) setRef.current(preset);
           },
         },
-        aboutPattern: {
-          value: 0,
-          options: { Plus: 0, X: 1, Asterisk: 2, Triangle: 3 },
-        },
-        aboutLineWidth: { value: 0.018, min: 0.005, max: 0.4, step: 0.001 },
-        aboutWaveFreq: { value: 0.2, min: 0.0, max: 3.0, step: 0.01 },
-        aboutWaveSpeed: { value: 0.08, min: 0.0, max: 1.5, step: 0.01 },
-        AboutScrollArc: folder(
+        aboutGridScale: { value: 14.0, min: 1.0, max: 60.0, step: 0.5 },
+        aboutStrokeWidth: { value: 0.07, min: 0.01, max: 0.3, step: 0.005 },
+        AboutMorph: folder(
           {
-            aboutGridIdle: { value: 10, min: 1.0, max: 60.0, step: 0.5 },
-            aboutGridPeak: { value: 16, min: 1.0, max: 60.0, step: 0.5 },
-            aboutGridExit: { value: 22, min: 1.0, max: 80.0, step: 0.5 },
-            aboutWaveIdle: { value: 0.02, min: 0.0, max: 2.0, step: 0.01 },
-            aboutWavePeak: { value: 0.1, min: 0.0, max: 2.0, step: 0.01 },
-            aboutWaveExit: { value: 0.18, min: 0.0, max: 2.0, step: 0.01 },
+            aboutRadialCenter: { value: [-0.35, 0.0] as [number, number], step: 0.05 },
+            aboutStaggerStrength: { value: 0.3, min: 0.0, max: 1.0, step: 0.01 },
+            aboutWaveAmp: { value: 0.05, min: 0.0, max: 0.3, step: 0.005 },
+            aboutRotRate: { value: 0.1, min: -1.0, max: 1.0, step: 0.01 },
           },
           { collapsed: true },
         ),
@@ -572,7 +747,7 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
     Work: folder(
       {
         workPreset: {
-          value: 'Newsprint',
+          value: 'Stack',
           options: WORK_PRESET_NAMES,
           label: 'preset',
           onChange: (name: string, _path: string, _ctx: { initial: boolean }) => {
@@ -581,13 +756,44 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
             if (preset) setRef.current(preset);
           },
         },
-        workDitherBias: { value: 0.0, min: -0.5, max: 0.5, step: 0.01 },
-        workContrast: { value: 1.2, min: 0.3, max: 3.0, step: 0.05 },
-        WorkScrollArc: folder(
+        workMode: {
+          value: 1,
+          options: { Spread: 0, Stack: 1, Index: 2 },
+          label: 'mode',
+        },
+        WorkSpread: folder(
           {
-            workDitherIdle: { value: 9, min: 1.0, max: 24.0, step: 0.5 },
-            workDitherPeak: { value: 3, min: 1.0, max: 24.0, step: 0.5 },
-            workDitherExit: { value: 11, min: 1.0, max: 24.0, step: 0.5 },
+            workGridCols: { value: 6, min: 2, max: 16, step: 1 },
+            workGridRows: { value: 4, min: 1, max: 12, step: 1 },
+            workCardPadding: { value: 0.06, min: 0.0, max: 0.3, step: 0.005 },
+            workStrokeWidth: { value: 0.012, min: 0.002, max: 0.08, step: 0.001 },
+            workRadialCenter: { value: [-0.5, 0.5] as [number, number], step: 0.05 },
+            workStaggerStrength: { value: 0.55, min: 0.0, max: 1.0, step: 0.01 },
+            workRotRate: { value: 0.0, min: -1.5, max: 1.5, step: 0.01 },
+          },
+          { collapsed: true },
+        ),
+        WorkStack: folder(
+          {
+            workBarCount: { value: 40, min: 6, max: 80, step: 1 },
+            workBarGap: { value: 0.07, min: 0.0, max: 0.45, step: 0.01 },
+            workBaseHeight: { value: 0.47, min: 0.05, max: 0.95, step: 0.01 },
+            workVarianceIdle: { value: 0.31, min: 0.0, max: 0.8, step: 0.01 },
+            workVariancePeak: { value: 0.6, min: 0.0, max: 0.8, step: 0.01 },
+            workVarianceExit: { value: 0.45, min: 0.0, max: 0.8, step: 0.01 },
+            workBreathSpeed: { value: 0.46, min: 0.0, max: 2.0, step: 0.01 },
+          },
+          { collapsed: true },
+        ),
+        WorkIndex: folder(
+          {
+            workCardSize: { value: 0.34, min: 0.1, max: 0.6, step: 0.005 },
+            workRingThickness: { value: 0.008, min: 0.001, max: 0.05, step: 0.001 },
+            workWarpScale: { value: 1.4, min: 0.2, max: 6.0, step: 0.05 },
+            workWarpSpeed: { value: 0.18, min: 0.0, max: 1.5, step: 0.01 },
+            workWarpBase: { value: 0.005, min: 0.0, max: 0.3, step: 0.005 },
+            workWarpPeak: { value: 0.06, min: 0.0, max: 0.4, step: 0.005 },
+            workSubGridDensity: { value: 9, min: 2, max: 30, step: 0.5 },
           },
           { collapsed: true },
         ),
@@ -597,7 +803,7 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
     Contact: folder(
       {
         contactPreset: {
-          value: 'Quiet Crossing',
+          value: 'Crossing',
           options: CONTACT_PRESET_NAMES,
           label: 'preset',
           onChange: (name: string, _path: string, _ctx: { initial: boolean }) => {
@@ -606,9 +812,9 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
             if (preset) setRef.current(preset);
           },
         },
-        contactStripeScale: { value: 30, min: 2.0, max: 80.0, step: 0.5 },
+        contactStripeScale: { value: 19, min: 2.0, max: 80.0, step: 0.5 },
         contactLineWidth: { value: 0.08, min: 0.02, max: 0.5, step: 0.005 },
-        contactRotSpeed: { value: 0.015, min: 0.0, max: 0.6, step: 0.005 },
+        contactRotSpeed: { value: 0.01, min: 0.0, max: 0.6, step: 0.005 },
         ContactScrollArc: folder(
           {
             contactOffsetIdle: { value: 0.18, min: -0.6, max: 0.6, step: 0.005 },
@@ -623,6 +829,7 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
     Frame: folder(
       {
         vignette: { value: 0.55, min: 0, max: 1, step: 0.05 },
+        crossfadeWidth: { value: 0.03, min: 0.0, max: 0.16, step: 0.005, label: 'crossfade' },
       },
       { collapsed: true },
     ),
@@ -637,38 +844,51 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
     ),
   }));
 
-  // Make set() available to onChange closures defined inside the hook.
   useEffect(() => {
     setRef.current = set as (values: Record<string, unknown>) => void;
   }, [set]);
 
   useEffect(() => {
     uniforms.uHeroRingThickness.value = controls.heroRingThickness;
+    uniforms.uHeroShapeRadius.value = controls.heroShapeRadius;
     uniforms.uHeroWarpScale.value = 1.0 / Math.max(controls.heroDisturbanceLength, 0.0001);
     uniforms.uHeroWarpSpeed.value = controls.heroWarpSpeed;
-    uniforms.uHeroWarpIdle.value = controls.heroWarpIdle;
+    uniforms.uHeroWarpBase.value = controls.heroWarpBase;
     uniforms.uHeroWarpPeak.value = controls.heroWarpPeak;
-    uniforms.uHeroWarpExit.value = controls.heroWarpExit;
-    uniforms.uHeroRadiusIdle.value = controls.heroRadiusIdle;
-    uniforms.uHeroRadiusPeak.value = controls.heroRadiusPeak;
-    uniforms.uHeroRadiusExit.value = controls.heroRadiusExit;
+    uniforms.uHeroRotRate.value = controls.heroRotRate;
 
-    uniforms.uAboutPattern.value = controls.aboutPattern;
-    uniforms.uAboutLineWidth.value = controls.aboutLineWidth;
-    uniforms.uAboutWaveFreq.value = controls.aboutWaveFreq;
-    uniforms.uAboutWaveSpeed.value = controls.aboutWaveSpeed;
-    uniforms.uAboutGridIdle.value = controls.aboutGridIdle;
-    uniforms.uAboutGridPeak.value = controls.aboutGridPeak;
-    uniforms.uAboutGridExit.value = controls.aboutGridExit;
-    uniforms.uAboutWaveIdle.value = controls.aboutWaveIdle;
-    uniforms.uAboutWavePeak.value = controls.aboutWavePeak;
-    uniforms.uAboutWaveExit.value = controls.aboutWaveExit;
+    uniforms.uAboutGridScale.value = controls.aboutGridScale;
+    uniforms.uAboutStrokeWidth.value = controls.aboutStrokeWidth;
+    uniforms.uAboutRadialCenter.value = controls.aboutRadialCenter as [number, number];
+    uniforms.uAboutStaggerStrength.value = controls.aboutStaggerStrength;
+    uniforms.uAboutWaveAmp.value = controls.aboutWaveAmp;
+    uniforms.uAboutRotRate.value = controls.aboutRotRate;
 
-    uniforms.uWorkDitherIdle.value = controls.workDitherIdle;
-    uniforms.uWorkDitherPeak.value = controls.workDitherPeak;
-    uniforms.uWorkDitherExit.value = controls.workDitherExit;
-    uniforms.uWorkDitherBias.value = controls.workDitherBias;
-    uniforms.uWorkContrast.value = controls.workContrast;
+    uniforms.uWorkMode.value = controls.workMode;
+
+    uniforms.uWorkGridCols.value = controls.workGridCols;
+    uniforms.uWorkGridRows.value = controls.workGridRows;
+    uniforms.uWorkCardPadding.value = controls.workCardPadding;
+    uniforms.uWorkStrokeWidth.value = controls.workStrokeWidth;
+    uniforms.uWorkRadialCenter.value = controls.workRadialCenter as [number, number];
+    uniforms.uWorkStaggerStrength.value = controls.workStaggerStrength;
+    uniforms.uWorkRotRate.value = controls.workRotRate;
+
+    uniforms.uWorkBarCount.value = controls.workBarCount;
+    uniforms.uWorkBarGap.value = controls.workBarGap;
+    uniforms.uWorkBaseHeight.value = controls.workBaseHeight;
+    uniforms.uWorkVarianceIdle.value = controls.workVarianceIdle;
+    uniforms.uWorkVariancePeak.value = controls.workVariancePeak;
+    uniforms.uWorkVarianceExit.value = controls.workVarianceExit;
+    uniforms.uWorkBreathSpeed.value = controls.workBreathSpeed;
+
+    uniforms.uWorkCardSize.value = controls.workCardSize;
+    uniforms.uWorkRingThickness.value = controls.workRingThickness;
+    uniforms.uWorkWarpScale.value = controls.workWarpScale;
+    uniforms.uWorkWarpSpeed.value = controls.workWarpSpeed;
+    uniforms.uWorkWarpBase.value = controls.workWarpBase;
+    uniforms.uWorkWarpPeak.value = controls.workWarpPeak;
+    uniforms.uWorkSubGridDensity.value = controls.workSubGridDensity;
 
     uniforms.uContactStripeScale.value = controls.contactStripeScale;
     uniforms.uContactLineWidth.value = controls.contactLineWidth;
@@ -678,12 +898,22 @@ export default function BackgroundField({ scrollRef }: { scrollRef: React.Mutabl
     uniforms.uContactOffsetExit.value = controls.contactOffsetExit;
 
     uniforms.uVignette.value = controls.vignette;
+    uniforms.uCrossfadeWidth.value = controls.crossfadeWidth;
     uniforms.uDebugMode.value = controls.debugMode;
   }, [controls]);
 
-  useFrame((state) => {
+  // Damped scroll for the shader: lerp displayed scroll toward the actual
+  // scrollYProgress at a frame-rate-independent rate. Prevents flick-scroll
+  // viewers from snapping past keypoints in the hero/about morph timelines.
+  // HTML overlays continue to read raw scroll for opacity sync.
+  const displayedScrollRef = useRef(0);
+  useFrame((state, dt) => {
+    const target = useSceneStore.getState().scrollProgress;
+    const factor = 1.0 - Math.exp(-6.0 * dt);
+    displayedScrollRef.current += (target - displayedScrollRef.current) * factor;
+
     uniforms.uTime.value = state.clock.elapsedTime;
-    uniforms.uScroll.value = scrollRef.current;
+    uniforms.uScroll.value = displayedScrollRef.current;
     uniforms.uResolution.value = [state.size.width, state.size.height];
   });
 
