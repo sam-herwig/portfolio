@@ -1,10 +1,10 @@
 'use client';
 
-import { motion, useMotionValueEvent, useTransform, type MotionValue } from 'framer-motion';
+import { motion, useMotionValueEvent, useReducedMotion, useTransform, type MotionValue } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import type { ModuleWindow } from '@/lib/moduleTimeline';
 
-export type PixelAnim = 'scramble' | 'typewriter' | 'drop' | 'wipe';
+export type PixelAnim = 'sweep' | 'drop' | 'wipe';
 export type PixelVariant = 'square' | 'grid';
 export type PixelTag = 'h1' | 'h2' | 'h3' | 'div' | 'span';
 
@@ -28,8 +28,6 @@ const TAG_MAP = {
   div: motion.div,
   span: motion.span,
 } as const;
-
-const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789▓▒░#@%&*';
 
 function fontVar(variant: PixelVariant) {
   return variant === 'grid' ? 'var(--font-geist-pixel-grid)' : 'var(--font-geist-pixel-square)';
@@ -62,8 +60,7 @@ export default function PixelTitle({
       style={{ fontFamily: fontVar(variant), fontFeatureSettings: '"liga" 0' }}
       aria-label={text}
     >
-      {anim === 'scramble' && <ScrambleText text={text} mount={!!mount} intro={intro} />}
-      {anim === 'typewriter' && <TypewriterText text={text} intro={intro} mount={!!mount} />}
+      {anim === 'sweep' && <SweepText text={text} intro={intro} mount={!!mount} />}
       {anim === 'drop' && <DropText text={text} intro={intro} mount={!!mount} />}
       {anim === 'wipe' && <WipeText text={text} intro={intro} mount={!!mount} />}
     </Component>
@@ -94,33 +91,42 @@ function useIntroT(intro: MotionValue<number>, mount: boolean, durationMs: numbe
   return t;
 }
 
-function ScrambleText({ text, mount, intro }: { text: string; mount: boolean; intro: MotionValue<number> }) {
-  const t = useIntroT(intro, mount, 1400);
-  const chars = useMemo(() => text.split(''), [text]);
-  return (
-    <span aria-hidden>
-      {chars.map((c, i) => {
-        const charT = Math.max(0, Math.min(1, (t - (i / chars.length) * 0.5) / 0.5));
-        const settled = charT >= 1;
-        const display =
-          c === ' ' ? ' ' : settled ? c : SCRAMBLE_CHARS[(i * 9 + Math.floor(t * 60)) % SCRAMBLE_CHARS.length];
-        return (
-          <span key={i} style={{ opacity: charT < 0.05 ? 0 : 1 }}>
-            {display}
-          </span>
-        );
-      })}
-    </span>
-  );
-}
+function SweepText({ text, intro, mount }: { text: string; intro: MotionValue<number>; mount: boolean }) {
+  const t = useIntroT(intro, mount, 1100);
+  const reduced = useReducedMotion();
+  // Quick fade-in over the first quarter so the title arrives, then the
+  // offset ghost decays through the remainder of the timeline.
+  const enter = Math.min(1, t / 0.25);
+  const eased = 1 - Math.pow(1 - t, 3);
+  const ghost = 1 - eased;
+  const rot = 0.6 * ghost;
+  const tx = 2 * ghost;
+  const ty = -1 * ghost;
+  // Offset layer fades out over the final 30% so the moiré beat dissolves
+  // before the two layers stack pixel-perfectly (which would just brighten the glyph).
+  const fadeOut = t < 0.7 ? 1 : Math.max(0, 1 - (t - 0.7) / 0.3);
+  const ghostOpacity = enter * fadeOut;
 
-function TypewriterText({ text, intro, mount }: { text: string; intro: MotionValue<number>; mount: boolean }) {
-  const t = useIntroT(intro, mount, 900);
-  const visible = Math.round(t * text.length);
   return (
-    <span aria-hidden>
-      <span>{text.slice(0, visible)}</span>
-      <span style={{ opacity: t > 0 && t < 1 ? 1 : 0 }}>▌</span>
+    <span aria-hidden style={{ position: 'relative', display: 'inline-block' }}>
+      <span style={{ display: 'inline-block', opacity: enter }}>{text}</span>
+      {!reduced && (
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            mixBlendMode: 'screen',
+            pointerEvents: 'none',
+            color: 'inherit',
+            opacity: ghostOpacity,
+            transform: `rotate(${rot}deg) translate(${tx}px, ${ty}px)`,
+            transformOrigin: '50% 50%',
+            willChange: 'transform, opacity',
+          }}
+        >
+          {text}
+        </span>
+      )}
     </span>
   );
 }

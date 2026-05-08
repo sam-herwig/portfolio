@@ -6,10 +6,10 @@ import PixelTitle, { type PixelAnim } from '@/components/sections/PixelTitle';
 
 const ANIM_BY_NUMBER: Record<string, PixelAnim> = {
   '01': 'drop',
-  '02': 'scramble',
+  '02': 'sweep',
   '03': 'wipe',
-  '04': 'typewriter',
-  '05': 'scramble',
+  '04': 'sweep',
+  '05': 'sweep',
 };
 
 export default function ChapterMark({ number, title, eyebrow }: Omit<ChapterBlock, 'type'>) {

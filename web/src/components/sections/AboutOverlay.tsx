@@ -22,7 +22,7 @@ export default function AboutOverlay({ progress }: { progress: MotionValue<numbe
       <div className="flex flex-col items-start gap-6 md:max-w-[60ch]">
         <PixelTitle
           text="About"
-          anim="typewriter"
+          anim="sweep"
           progress={progress}
           window={MODULE_WINDOWS.about}
           className="text-5xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-7xl"

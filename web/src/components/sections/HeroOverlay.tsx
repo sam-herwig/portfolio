@@ -30,7 +30,7 @@ export default function HeroOverlay({ progress }: { progress: MotionValue<number
       <div className="flex flex-1 items-center justify-start px-2">
         <PixelTitle
           text="Sam Herwig"
-          anim="scramble"
+          anim="sweep"
           mount
           className="text-5xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-8xl"
         />
