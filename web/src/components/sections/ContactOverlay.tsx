@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useTransform, type MotionValue } from 'framer-motion';
+import { m, useTransform, type MotionValue } from 'framer-motion';
 import PixelTitle from '@/components/sections/PixelTitle';
 import { MODULE_WINDOWS, overlayOpacity } from '@/lib/moduleTimeline';
 
@@ -19,17 +19,17 @@ function ContactInner({
         mount={!progress}
         progress={progress}
         window={MODULE_WINDOWS.contact}
-        className="text-5xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-7xl"
+        className="text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-7xl"
       />
       <p
-        className="text-balance text-2xl italic leading-snug text-foreground/85 md:text-4xl"
+        className="text-balance text-lg italic leading-snug text-foreground/85 sm:text-2xl md:text-4xl"
         style={{ fontFamily: 'var(--font-instrument)' }}
       >
         Got a project, role, or collaboration that needs WebGL, motion, or AI pipelines —
       </p>
       <a
         href="mailto:sam@samherwig.dev"
-        className="text-balance text-3xl font-medium tracking-tight text-foreground transition-opacity hover:opacity-70 md:text-5xl lg:text-6xl"
+        className="text-balance text-2xl font-medium tracking-tight text-foreground transition-opacity hover:opacity-70 sm:text-3xl md:text-5xl lg:text-6xl"
         style={{
           fontFamily: 'var(--font-fraunces)',
           fontVariationSettings: '"opsz" 144, "SOFT" 100, "WONK" 0',
@@ -62,9 +62,9 @@ function ContactInner({
       </p>
 
       {pointerEvents ? (
-        <motion.div style={{ pointerEvents }} className="flex flex-col items-start gap-6 md:max-w-[60ch]">
+        <m.div style={{ pointerEvents }} className="flex flex-col items-start gap-6 md:max-w-[60ch]">
           {innerContent}
-        </motion.div>
+        </m.div>
       ) : (
         <div className="flex flex-col items-start gap-6 md:max-w-[60ch]">{innerContent}</div>
       )}
@@ -97,11 +97,11 @@ function ContactOverlayMotion({ progress }: { progress: MotionValue<number> }) {
   const pointerEvents = useTransform(opacity, (v) => (v > 0.5 ? 'auto' : 'none'));
 
   return (
-    <motion.div
+    <m.div
       style={{ opacity }}
       className="pointer-events-none absolute bottom-1/2 right-0 top-0 z-10 flex w-full flex-col justify-between p-6 md:inset-y-0 md:bottom-0 md:w-1/2 md:p-16"
     >
       <ContactInner progress={progress} pointerEvents={pointerEvents} />
-    </motion.div>
+    </m.div>
   );
 }

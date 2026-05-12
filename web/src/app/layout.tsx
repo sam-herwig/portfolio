@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { GeistPixelGrid, GeistPixelSquare } from 'geist/font/pixel';
+import MotionProvider from '@/components/MotionProvider';
 import SceneCanvasClient from '@/components/SceneCanvasClient';
 import { SITE_URL } from '@/lib/siteUrl';
 import './globals.css';
@@ -115,8 +116,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Skip to content
         </a>
-        <SceneCanvasClient />
-        {children}
+        <MotionProvider>
+          <SceneCanvasClient />
+          {children}
+        </MotionProvider>
       </body>
     </html>
   );

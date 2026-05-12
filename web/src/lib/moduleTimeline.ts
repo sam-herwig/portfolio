@@ -1,5 +1,3 @@
-import type { Object3D } from 'three';
-
 export type Module = 'hero' | 'about' | 'work' | 'contact';
 
 export interface ModuleWindow {
@@ -32,22 +30,12 @@ export const MODULE_WINDOWS: Record<Module, ModuleWindow> = {
   contact: { enterStart: 0.6667, enterEnd: 0.7778, exitStart: 1.0, exitEnd: 1.0 },
 };
 
-export function sceneOpacity(progress: number, w: ModuleWindow): number {
+function sceneOpacity(progress: number, w: ModuleWindow): number {
   if (progress <= w.enterStart) return w.enterStart === w.enterEnd ? 1 : 0;
   if (progress < w.enterEnd) return (progress - w.enterStart) / (w.enterEnd - w.enterStart);
   if (progress <= w.exitStart) return 1;
   if (progress < w.exitEnd) return 1 - (progress - w.exitStart) / (w.exitEnd - w.exitStart);
   return 0;
-}
-
-// Local progress within the module's full window (enterStart..exitEnd) as 0..1.
-// Drives in-scene effects (per-glyph reveal, scroll warp, drift) so each
-// scene's animation timeline is local to its own window, not the global scroll.
-export function moduleProgress(progress: number, w: ModuleWindow): number {
-  const start = w.enterStart;
-  const end = w.exitEnd;
-  if (end <= start) return progress >= end ? 1 : 0;
-  return Math.max(0, Math.min(1, (progress - start) / (end - start)));
 }
 
 // Per-module canvas slot rectangles, in viewport %. Drives the geometry of
@@ -61,14 +49,14 @@ export interface CanvasSlot {
   h: number;
 }
 
-export const MODULE_CANVAS_SLOT_DESKTOP: Record<Module, CanvasSlot> = {
+const MODULE_CANVAS_SLOT_DESKTOP: Record<Module, CanvasSlot> = {
   hero: { top: 0, left: 50, w: 50, h: 100 },
   about: { top: 0, left: 0, w: 100, h: 58 },
   work: { top: 0, left: 0, w: 100, h: 100 },
   contact: { top: 0, left: 0, w: 50, h: 100 },
 };
 
-export const MODULE_CANVAS_SLOT_MOBILE: Record<Module, CanvasSlot> = {
+const MODULE_CANVAS_SLOT_MOBILE: Record<Module, CanvasSlot> = {
   hero: { top: 0, left: 0, w: 100, h: 50 },
   about: { top: 50, left: 0, w: 100, h: 50 },
   work: { top: 0, left: 0, w: 100, h: 50 },
@@ -92,12 +80,12 @@ const FULLSCREEN_SLOT: CanvasSlot = { top: 0, left: 0, w: 100, h: 100 };
 //   [111.4, 128.0] letters dissolve out   (per-preset)
 //   [124.2, 147.2] rect contracts fullscreen → to-slot
 //   [144.6, 160.0] to-overlay fades in
-export const OVERLAY_OUT_END = 0.096;
-export const RECT_EXPAND_START = 0.08;
-export const RECT_EXPAND_END = 0.224;
-export const RECT_CONTRACT_START = 0.776;
-export const RECT_CONTRACT_END = 0.92;
-export const OVERLAY_IN_START = 0.904;
+const OVERLAY_OUT_END = 0.096;
+const RECT_EXPAND_START = 0.08;
+const RECT_EXPAND_END = 0.224;
+const RECT_CONTRACT_START = 0.776;
+const RECT_CONTRACT_END = 0.92;
+const OVERLAY_IN_START = 0.904;
 
 function lerpSlot(a: CanvasSlot, b: CanvasSlot, t: number): CanvasSlot {
   return {
@@ -142,35 +130,6 @@ export function canvasSlot(progress: number, isMobile: boolean): CanvasSlot {
   return current;
 }
 
-export type Transition = 'hero-about' | 'about-work' | 'work-contact' | null;
-
-export interface TransitionState {
-  active: Transition;
-  progress: number;
-  from: Module | null;
-  to: Module | null;
-}
-
-const TRANSITIONS: { key: Exclude<Transition, null>; from: Module; to: Module }[] = [
-  { key: 'hero-about', from: 'hero', to: 'about' },
-  { key: 'about-work', from: 'about', to: 'work' },
-  { key: 'work-contact', from: 'work', to: 'contact' },
-];
-
-// Resolve which inter-scene transition is active at a given scroll value, with
-// 0..1 progress inside that window. Both scenes share the window via the
-// MODULE_WINDOWS contract, so we read the outgoing scene's exit window.
-export function getTransitionState(progress: number): TransitionState {
-  for (const t of TRANSITIONS) {
-    const w = MODULE_WINDOWS[t.from];
-    if (progress >= w.exitStart && progress <= w.exitEnd && w.exitEnd > w.exitStart) {
-      const p = (progress - w.exitStart) / (w.exitEnd - w.exitStart);
-      return { active: t.key, progress: p, from: t.from, to: t.to };
-    }
-  }
-  return { active: null, progress: 0, from: null, to: null };
-}
-
 function smoothstep01(x: number): number {
   const t = Math.max(0, Math.min(1, x));
   return t * t * (3 - 2 * t);
@@ -196,21 +155,4 @@ export function overlayOpacity(progress: number, w: ModuleWindow): number {
     return 0;
   }
   return sceneOpacity(progress, w);
-}
-
-interface MaybeMaterial {
-  opacity?: number;
-  transparent?: boolean;
-}
-
-export function applyGroupOpacity(group: Object3D, opacity: number) {
-  group.traverse((obj) => {
-    const mesh = obj as Object3D & { material?: MaybeMaterial | MaybeMaterial[] };
-    if (!mesh.material) return;
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    mats.forEach((m) => {
-      m.opacity = opacity;
-      m.transparent = true;
-    });
-  });
 }

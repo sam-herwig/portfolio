@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { motion, useScroll, useTransform, useReducedMotion, type MotionValue } from 'framer-motion';
+import { m, useScroll, useTransform, useReducedMotion, type MotionValue } from 'framer-motion';
 
 /**
  * Sticky 250vh scroll-driven pipeline. Todd pinned as conductor. 9 beats —
@@ -197,15 +197,15 @@ function PipelineFrame({
         Interactive Specimen — The Pipeline
       </p>
       {/* Todd — pinned conductor */}
-      <motion.div style={{ opacity: toddOpacity }} className="mb-3 flex justify-center md:mb-6">
+      <m.div style={{ opacity: toddOpacity }} className="mb-3 flex justify-center md:mb-6">
         <div className="flex items-center gap-3 rounded-full border border-foreground/30 bg-background px-4 py-1.5 md:px-5 md:py-2">
-          <span aria-hidden className="block h-1.5 w-1.5 rounded-full bg-foreground" />
+          <span aria-hidden className="block size-1.5 rounded-full bg-foreground" />
           <span className="font-instrument text-base italic text-foreground md:text-lg">Todd</span>
           <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-foreground/50 md:text-[10px]">
             Orchestrator
           </span>
         </div>
-      </motion.div>
+      </m.div>
 
       {/* Beat ribbon — desktop only: full horizontal ribbon, all cells visible */}
       <div className="hidden md:flex md:flex-row md:items-center md:gap-0">
@@ -224,7 +224,7 @@ function PipelineFrame({
 
       {/* Annotation panel — absolute-stacked crossfade */}
       <div className="relative mt-4 min-h-[160px] border-t border-foreground/10 pt-4 md:mt-6 md:min-h-[180px] md:pt-6">
-        <motion.div style={{ opacity: introOpacity }} className="absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
+        <m.div style={{ opacity: introOpacity }} className="absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">The Pipeline</p>
           <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">
             One brief in. One pull request out.
@@ -232,7 +232,7 @@ function PipelineFrame({
           <p className="mt-3 font-instrument text-base leading-relaxed text-foreground/70 md:text-lg">
             Four specialist agents. Four human gates I sit at personally. Todd routes every mission.
           </p>
-        </motion.div>
+        </m.div>
 
         {BEATS.map((beat, i) => (
           <BeatAnnotation key={beat.step} beat={beat} index={i} activeIdx={activeIdx} />
@@ -242,7 +242,7 @@ function PipelineFrame({
       </div>
 
       {/* Counts strip — fades in on the final beat */}
-      <motion.div
+      <m.div
         style={{ opacity: countsOpacity }}
         className="mt-4 grid grid-cols-4 gap-y-3 border-t border-foreground/10 pt-4 md:mt-6 md:gap-y-0 md:pt-5"
       >
@@ -252,7 +252,7 @@ function PipelineFrame({
             <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.25em] text-foreground/55">{c.label}</span>
           </div>
         ))}
-      </motion.div>
+      </m.div>
     </div>
   );
 }
@@ -266,8 +266,8 @@ function BeatCell({ beat, index, activeIdx }: { beat: Beat; index: number; activ
 
   if (beat.kind === 'agent') {
     return (
-      <motion.div style={{ opacity, scale }} className="flex-1 md:min-w-0">
-        <motion.div
+      <m.div style={{ opacity, scale }} className="flex-1 md:min-w-0">
+        <m.div
           style={{ borderColor }}
           className="flex flex-row items-center justify-between border bg-background px-4 py-3 md:flex-col md:items-start md:gap-1 md:px-5 md:py-4"
         >
@@ -278,21 +278,21 @@ function BeatCell({ beat, index, activeIdx }: { beat: Beat; index: number; activ
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-foreground/55 md:self-end">
             {beat.role}
           </span>
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
     );
   }
 
   // HITL gate — diamond
   return (
-    <motion.div style={{ opacity }} className="flex items-center justify-center py-1 md:px-2 md:py-0">
+    <m.div style={{ opacity }} className="flex items-center justify-center py-1 md:px-2 md:py-0">
       <div className="relative h-10 w-10 md:h-12 md:w-12" aria-label={beat.title}>
-        <motion.div style={{ scale, borderColor }} className="absolute inset-0 rotate-45 border bg-background" />
+        <m.div style={{ scale, borderColor }} className="absolute inset-0 rotate-45 border bg-background" />
         <span className="absolute inset-0 flex items-center justify-center font-mono text-[8px] font-semibold uppercase tracking-[0.15em] text-foreground/70 md:text-[9px]">
           HITL
         </span>
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -304,27 +304,27 @@ function MobileBeatCell({ beat, index, activeIdx }: { beat: Beat; index: number;
 
   if (beat.kind === 'agent') {
     return (
-      <motion.div style={{ opacity }} className="pointer-events-none absolute inset-x-0 top-0">
+      <m.div style={{ opacity }} className="pointer-events-none absolute inset-x-0 top-0">
         <div className="flex items-center justify-between border border-foreground/70 bg-background px-4 py-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-foreground/50">{beat.step}</span>
           <span className="font-instrument text-2xl italic text-foreground">{beat.title}</span>
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-foreground/55">{beat.role}</span>
         </div>
-      </motion.div>
+      </m.div>
     );
   }
   return (
-    <motion.div
+    <m.div
       style={{ opacity }}
       className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center py-1"
     >
-      <div className="relative h-12 w-12" aria-label={beat.title}>
+      <div className="relative size-12" aria-label={beat.title}>
         <div className="absolute inset-0 rotate-45 border border-foreground/70 bg-background" />
         <span className="absolute inset-0 flex items-center justify-center font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-foreground/70">
           HITL
         </span>
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -333,10 +333,7 @@ function BeatAnnotation({ beat, index, activeIdx }: { beat: Beat; index: number;
   const y = useTransform(activeIdx, (v) => (v === index ? 0 : 8));
 
   return (
-    <motion.div
-      style={{ opacity, y }}
-      className="pointer-events-none absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6"
-    >
+    <m.div style={{ opacity, y }} className="pointer-events-none absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
       <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">
         {beat.kind === 'agent' ? `Stage ${beat.step}` : `Gate ${beat.step.replace('G', '')} — ${beat.title}`}
       </p>
@@ -347,20 +344,20 @@ function BeatAnnotation({ beat, index, activeIdx }: { beat: Beat; index: number;
           Output → {beat.annoArtifact}
         </p>
       )}
-    </motion.div>
+    </m.div>
   );
 }
 
 function FinalAnnotation({ activeIdx }: { activeIdx: MotionValue<number> }) {
   const opacity = useTransform(activeIdx, (v) => (v === 8 ? 1 : 0));
   return (
-    <motion.div style={{ opacity }} className="pointer-events-none absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
+    <m.div style={{ opacity }} className="pointer-events-none absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
       <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">The Machine</p>
       <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">Four agents. Four gates. One PR.</h3>
       <p className="mt-3 font-instrument text-base leading-relaxed text-foreground/70 md:text-lg">
         The numbers below are the scaffolding — five agents including Todd, twenty-two Claude commands wiring up each
         mission, eight hook matchers enforcing style and safety, two pipelines (net-new and enhance).
       </p>
-    </motion.div>
+    </m.div>
   );
 }

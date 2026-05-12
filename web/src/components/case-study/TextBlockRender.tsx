@@ -1,26 +1,30 @@
-import { Fragment, type ReactNode } from 'react';
+import { Fragment } from 'react';
 import type { TextBlock } from '@/data/projects';
 import InlineData from './InlineData';
 
 const TOKEN_RE = /\{\{([^}]+)\}\}/g;
 
-function renderText(text: string): ReactNode[] {
-  const out: ReactNode[] = [];
+// Splits a paragraph on `{{token}}` markers and renders each token through
+// InlineData. Extracted as a real component (not an inline render helper) so
+// React reconciles its children consistently across paragraph re-renders.
+// Uses matchAll so the shared module-level regex doesn't get its lastIndex
+// mutated during render (react-hooks/immutability).
+function TokenizedParagraph({ text }: { text: string }) {
+  const out: React.ReactNode[] = [];
   let lastIndex = 0;
-  let match: RegExpExecArray | null;
   let key = 0;
-  TOKEN_RE.lastIndex = 0;
-  while ((match = TOKEN_RE.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      out.push(<Fragment key={key++}>{text.slice(lastIndex, match.index)}</Fragment>);
+  for (const match of text.matchAll(TOKEN_RE)) {
+    const start = match.index ?? 0;
+    if (start > lastIndex) {
+      out.push(<Fragment key={key++}>{text.slice(lastIndex, start)}</Fragment>);
     }
     out.push(<InlineData key={key++}>{match[1]}</InlineData>);
-    lastIndex = TOKEN_RE.lastIndex;
+    lastIndex = start + match[0].length;
   }
   if (lastIndex < text.length) {
     out.push(<Fragment key={key++}>{text.slice(lastIndex)}</Fragment>);
   }
-  return out;
+  return <>{out}</>;
 }
 
 export default function TextBlockRender({ heading, body }: Omit<TextBlock, 'type'>) {
@@ -37,12 +41,12 @@ export default function TextBlockRender({ heading, body }: Omit<TextBlock, 'type
           </h3>
         </div>
         <div className="md:col-span-8">
-          {paragraphs.map((p, i) => (
+          {paragraphs.map((p) => (
             <p
-              key={i}
+              key={p}
               className="mb-6 max-w-[58ch] text-lg leading-relaxed text-foreground/80 last:mb-0 md:text-xl md:leading-[1.55]"
             >
-              {renderText(p)}
+              <TokenizedParagraph text={p} />
             </p>
           ))}
         </div>

@@ -71,7 +71,7 @@ export interface Project {
   order: number;
 }
 
-export const projects: Project[] = [
+const projects: Project[] = [
   {
     title: 'New Belgium & Friends',
     subtitle: 'One Engine. Five Brands. Zero Redundancy.',

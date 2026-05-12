@@ -1,0 +1,53 @@
+{
+  "ignore": {
+    "rules": [
+      "react-doctor/design-no-em-dash-in-jsx-text",
+      "react-doctor/no-giant-component"
+    ],
+    "files": ["scripts/bake-font.mjs"],
+    "overrides": [
+      {
+        "files": [
+          "src/components/sections/BackgroundField.tsx",
+          "src/components/sections/LetterFillField.tsx",
+          "src/components/CaseStudyHeroLayer.tsx",
+          "src/components/case-study/DitheredPlane.tsx",
+          "src/components/lab/BlobBackdrop.tsx",
+          "src/app/lab/dispersion/page.tsx"
+        ],
+        "rules": ["react/no-unknown-property"]
+      },
+      {
+        "files": ["src/app/**/opengraph-image.tsx"],
+        "rules": ["react-doctor/no-inline-exhaustive-style"]
+      },
+      {
+        "files": [
+          "src/app/layout.tsx",
+          "src/app/process/page.tsx",
+          "src/app/work/[slug]/page.tsx"
+        ],
+        "rules": ["react/no-danger"]
+      },
+      {
+        "files": ["src/app/work/[slug]/page.tsx"],
+        "rules": ["react-doctor/no-array-index-as-key"]
+      },
+      {
+        "files": [
+          "src/app/page.tsx",
+          "src/app/lab/dispersion/page.tsx"
+        ],
+        "rules": ["react-doctor/nextjs-missing-metadata"]
+      },
+      {
+        "files": ["src/app/lab/dispersion/page.tsx"],
+        "rules": ["react-doctor/no-cascading-set-state"]
+      },
+      {
+        "files": ["src/app/work/[slug]/lab/page.tsx"],
+        "rules": ["react-doctor/js-combine-iterations"]
+      }
+    ]
+  }
+}

@@ -100,7 +100,7 @@ export const ABOUT_PRESETS: Record<string, AboutPreset> = {
 // Spread  — contact-sheet ledger of indexed card-frames (siblings About).
 // Stack   — horizontal ridgeline of bar-spines, FBM breath (siblings Hero).
 // Index   — one large card SDF morphing landscape→portrait→square→grid (siblings Hero).
-export type SpreadPreset = {
+type SpreadPreset = {
   workMode: 0;
   workGridCols: number;
   workGridRows: number;
@@ -112,7 +112,7 @@ export type SpreadPreset = {
   workDotSize: number;
 };
 
-export type StackPreset = {
+type StackPreset = {
   workMode: 1;
   workBarCount: number;
   workBarGap: number;
@@ -123,7 +123,7 @@ export type StackPreset = {
   workBreathSpeed: number;
 };
 
-export type IndexPreset = {
+type IndexPreset = {
   workMode: 2;
   workCardSize: number;
   workRingThickness: number;

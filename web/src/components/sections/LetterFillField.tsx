@@ -421,54 +421,90 @@ export default function LetterFillField() {
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
-    const make = (uniform: { value: Texture | null }) => {
+    type Bundle = { canvas: HTMLCanvasElement; tex: CanvasTexture; text: string };
+
+    const make = (uniform: { value: Texture | null }, text: string): Bundle => {
       const canvas = document.createElement('canvas');
       const tex = new CanvasTexture(canvas);
       tex.minFilter = LinearFilter;
       tex.magFilter = LinearFilter;
       uniform.value = tex;
-      return { canvas, tex };
+      return { canvas, tex, text };
     };
 
-    const aboutBundle = make(uniforms.uAboutNameMask);
-    const workBundle = make(uniforms.uWorkNameMask);
-    const contactBundle = make(uniforms.uContactNameMask);
+    const bundles: Bundle[] = [
+      make(uniforms.uAboutNameMask, 'About'),
+      make(uniforms.uWorkNameMask, 'Work'),
+      make(uniforms.uContactNameMask, 'Contact'),
+    ];
 
-    const drawOne = ({ canvas, tex }: { canvas: HTMLCanvasElement; tex: CanvasTexture }, text: string) => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.max(1, Math.round(window.innerWidth * dpr));
-      const h = Math.max(1, Math.round(window.innerHeight * dpr));
-      if (canvas.width !== w) canvas.width = w;
-      if (canvas.height !== h) canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = 'white';
+    // Pick one fontPx for all three words by fitting the LONGEST string to
+    // 88% of viewport width. Earlier the per-word width-fit let "Work" stay
+    // large while "Contact" shrank on narrow viewports — letter beats across
+    // module transitions read inconsistently. Mobile DPR clamps to 1.5 to
+    // match SceneCanvas's mobile Canvas dpr so the mask texture isn't
+    // authored above the canvas's actual render resolution.
+    const drawAll = () => {
+      const winW = window.innerWidth;
+      const winH = window.innerHeight;
+      const isMobile = winW < 768;
+      const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
+      const w = Math.max(1, Math.round(winW * dpr));
+      const h = Math.max(1, Math.round(winH * dpr));
       const family =
         getComputedStyle(document.body).getPropertyValue('--font-geist-pixel-square').trim() || 'monospace';
-      const targetWidth = 0.88 * w;
-      let fontPx = Math.round(0.5 * window.innerHeight * dpr);
-      ctx.font = `500 ${fontPx}px ${family}`;
-      const m = ctx.measureText(text);
-      if (m.width > targetWidth) {
-        fontPx = Math.round((fontPx * targetWidth) / m.width);
-        ctx.font = `500 ${fontPx}px ${family}`;
-      }
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, w / 2, h / 2);
-      tex.needsUpdate = true;
-    };
 
-    const drawAll = () => {
-      drawOne(aboutBundle, 'About');
-      drawOne(workBundle, 'Work');
-      drawOne(contactBundle, 'Contact');
+      const probe = document.createElement('canvas').getContext('2d');
+      const targetWidth = 0.88 * w;
+      let fontPx = Math.round(0.5 * h);
+      if (probe) {
+        probe.font = `500 ${fontPx}px ${family}`;
+        let maxWidth = 0;
+        for (const b of bundles) {
+          const m = probe.measureText(b.text);
+          if (m.width > maxWidth) maxWidth = m.width;
+        }
+        if (maxWidth > targetWidth) {
+          fontPx = Math.round((fontPx * targetWidth) / maxWidth);
+        }
+      }
+
+      for (const { canvas, tex, text } of bundles) {
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = 'white';
+        ctx.font = `500 ${fontPx}px ${family}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, w / 2, h / 2);
+        tex.needsUpdate = true;
+      }
     };
 
     drawAll();
 
-    const onResize = () => drawAll();
+    // iOS Safari fires resize on every URL-bar show/hide; without this
+    // debounce all three masks would re-rasterize and re-upload to GPU
+    // mid-scroll. rAF-coalesce and skip height-only wobbles smaller than the
+    // URL-bar delta — width changes (rotation, split-screen) are the real
+    // layout signal that warrants a redraw.
+    let lastW = window.innerWidth;
+    let lastH = window.innerHeight;
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const dw = Math.abs(window.innerWidth - lastW);
+        const dh = Math.abs(window.innerHeight - lastH);
+        if (dw < 1 && dh < 120) return;
+        lastW = window.innerWidth;
+        lastH = window.innerHeight;
+        drawAll();
+      });
+    };
     window.addEventListener('resize', onResize);
 
     let cancelled = false;
@@ -482,10 +518,9 @@ export default function LetterFillField() {
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
-      aboutBundle.tex.dispose();
-      workBundle.tex.dispose();
-      contactBundle.tex.dispose();
+      bundles.forEach((b) => b.tex.dispose());
     };
   }, []);
 

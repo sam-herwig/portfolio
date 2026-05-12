@@ -3,7 +3,7 @@
 import { useFrame } from '@react-three/fiber';
 import { ScreenQuad, useTexture } from '@react-three/drei';
 import { useScroll, useSpring, useVelocity } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { DataTexture, NearestFilter, RedFormat, RepeatWrapping, type ShaderMaterial, SRGBColorSpace } from 'three';
 import { getImageUniforms } from '@/lib/caseStudyImageUniforms';
 
@@ -104,13 +104,17 @@ export default function DitheredPlane({ src, slug }: Props) {
   const velocity = useVelocity(scrollY);
   const smoothed = useSpring(velocity, { stiffness: 100, damping: 30, mass: 0.5 });
 
-  const [reducedMotion, setReducedMotion] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  });
+  // useRef, not useState: the value is only ever read inside useFrame — no
+  // render path depends on it, so flipping reduced-motion shouldn't trigger
+  // a React re-render. The media-query listener mutates the ref in place.
+  const reducedMotion = useRef(
+    typeof window === 'undefined' ? false : window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    const handler = (e: MediaQueryListEvent) => {
+      reducedMotion.current = e.matches;
+    };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
@@ -132,7 +136,7 @@ export default function DitheredPlane({ src, slug }: Props) {
   useFrame(() => {
     const m = matRef.current;
     if (!m) return;
-    if (reducedMotion) {
+    if (reducedMotion.current) {
       m.uniforms.uVelocityFactor.value = 0;
       return;
     }

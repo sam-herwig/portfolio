@@ -1,11 +1,11 @@
 'use client';
 
-import { motion, useMotionValueEvent, useTransform, type MotionValue } from 'framer-motion';
+import { m, useMotionValueEvent, useTransform, type MotionValue } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import type { ModuleWindow } from '@/lib/moduleTimeline';
 
 export type PixelVariant = 'square' | 'grid';
-export type PixelTag = 'h1' | 'h2' | 'h3' | 'div' | 'span';
+type PixelTag = 'h1' | 'h2' | 'h3' | 'div' | 'span';
 
 interface Props {
   text: string;
@@ -20,11 +20,11 @@ interface Props {
 }
 
 const TAG_MAP = {
-  h1: motion.h1,
-  h2: motion.h2,
-  h3: motion.h3,
-  div: motion.div,
-  span: motion.span,
+  h1: m.h1,
+  h2: m.h2,
+  h3: m.h3,
+  div: m.div,
+  span: m.span,
 } as const;
 
 function fontVar(variant: PixelVariant) {

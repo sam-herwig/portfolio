@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useTransform, type MotionValue } from 'framer-motion';
+import { m, useTransform, type MotionValue } from 'framer-motion';
 import Link from 'next/link';
 import { useRef } from 'react';
 import PixelTitle from '@/components/sections/PixelTitle';
@@ -21,12 +21,20 @@ function FrameHoldCard({ project, index, videoSrc }: { project: Project; index: 
     v.pause();
     v.currentTime = 0;
   };
+  // Touch devices never fire onMouseEnter — without this, mobile users stare
+  // at a static poster + scanline frame and never see the video tell.
+  const handleTouch = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => {});
+  };
 
   return (
     <Link
       href={`/work/${project.slug}`}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
+      onTouchStart={handleTouch}
       aria-label={`Visit ${project.title} case study`}
       className="work-card group/card relative block h-full w-full overflow-hidden bg-foreground/5"
     >
@@ -200,11 +208,11 @@ function WorkOverlayMotion({ progress }: { progress: MotionValue<number> }) {
   const pointerEvents = useTransform(opacity, (v) => (v > 0.5 ? 'auto' : 'none'));
 
   return (
-    <motion.div
+    <m.div
       style={{ opacity, pointerEvents }}
       className="work-card-grid absolute bottom-0 left-0 top-1/2 z-10 flex w-full flex-col gap-2 p-3 md:bottom-0 md:left-0 md:right-0 md:top-0 md:block md:w-full md:p-0"
     >
       <WorkInner progress={progress} />
-    </motion.div>
+    </m.div>
   );
 }

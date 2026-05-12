@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useTransform, type MotionValue } from 'framer-motion';
+import { m, useTransform, type MotionValue } from 'framer-motion';
 import PixelTitle from '@/components/sections/PixelTitle';
 import { MODULE_WINDOWS, overlayOpacity } from '@/lib/moduleTimeline';
 
@@ -26,7 +26,7 @@ function HeroBody() {
         <PixelTitle
           text="Sam Herwig"
           mount
-          className="text-5xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-8xl"
+          className="text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-8xl"
         />
       </div>
 
@@ -63,11 +63,11 @@ export default function HeroOverlay({ progress }: { progress?: MotionValue<numbe
 function HeroOverlayMotion({ progress }: { progress: MotionValue<number> }) {
   const opacity = useTransform(progress, (v) => overlayOpacity(v, MODULE_WINDOWS.hero));
   return (
-    <motion.div
+    <m.div
       style={{ opacity }}
       className="pointer-events-none absolute bottom-0 left-0 top-1/2 z-10 flex w-full flex-col justify-between p-6 md:inset-y-0 md:top-0 md:w-1/2 md:p-16"
     >
       <HeroBody />
-    </motion.div>
+    </m.div>
   );
 }

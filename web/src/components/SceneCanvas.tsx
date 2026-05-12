@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
+import { animate, m, useMotionValue, useTransform } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import BackgroundField from '@/components/sections/BackgroundField';
@@ -146,7 +146,7 @@ export default function SceneCanvas() {
 
   // Source MotionValues for the slot rect. Driven from a per-rAF loop, not a
   // store subscription. Browser scroll events fire on input cadence (often
-  // ~30Hz on mouse wheels) with discrete deltas — binding motion.div directly
+  // ~30Hz on mouse wheels) with discrete deltas — binding m.div directly
   // to that chunked source produces a visible staircase on the wrapper rect.
   // Per-rAF lerp toward the latest store target filters that chunkiness into a
   // smooth 60Hz output. Smoothing rate `k` is high enough that perceived lag
@@ -196,7 +196,7 @@ export default function SceneCanvas() {
   if (!visible) return null;
 
   return (
-    <motion.div
+    <m.div
       aria-hidden="true"
       style={
         isMobileCaseStudy
@@ -217,7 +217,11 @@ export default function SceneCanvas() {
               top: 0,
               left: 0,
               width: '100vw',
-              height: '100vh',
+              // dvh tracks the iOS Safari URL bar so the canvas wrapper
+              // collapses in sync with the sticky overlay container's 100svh
+              // — eliminates the bottom strip where the shader was visible
+              // beneath the overlay during the letter HOLD beat.
+              height: '100dvh',
               pointerEvents: 'none',
               zIndex: 0,
               clipPath,
@@ -234,6 +238,6 @@ export default function SceneCanvas() {
         <LetterFillField />
         <CaseStudyHeroLayer />
       </Canvas>
-    </motion.div>
+    </m.div>
   );
 }

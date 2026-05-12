@@ -80,7 +80,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
           <CaseStudyHero project={project} />
 
           {project.blocks?.map((block, i) => (
-            <BlockRenderer key={i} block={block} slug={slug} />
+            <BlockRenderer key={`${block.type}-${i}`} block={block} slug={slug} />
           ))}
 
           {project.deliverables && project.deliverables.length > 0 && (

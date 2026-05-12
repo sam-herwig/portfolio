@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useTransform, type MotionValue } from 'framer-motion';
+import { m, useTransform, type MotionValue } from 'framer-motion';
 import Link from 'next/link';
 import PixelTitle from '@/components/sections/PixelTitle';
 import { MODULE_WINDOWS, overlayOpacity } from '@/lib/moduleTimeline';
@@ -36,10 +36,10 @@ function AboutBody({ progress }: { progress?: MotionValue<number> }) {
           mount={!progress}
           progress={progress}
           window={MODULE_WINDOWS.about}
-          className="flex-shrink-0 text-5xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-6xl lg:text-7xl"
+          className="flex-shrink-0 text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-6xl lg:text-7xl"
         />
         <p
-          className="text-balance text-2xl italic leading-snug text-foreground/85 md:max-w-[55ch] md:text-2xl lg:text-3xl"
+          className="text-balance text-lg italic leading-snug text-foreground/85 sm:text-2xl md:max-w-[55ch] md:text-2xl lg:text-3xl"
           style={{ fontFamily: 'var(--font-instrument)' }}
         >
           Creative engineer in Denver. Builds interactive 3D web, shader-based interfaces, and{' '}
@@ -79,11 +79,11 @@ export default function AboutOverlay({ progress }: { progress?: MotionValue<numb
 function AboutOverlayMotion({ progress }: { progress: MotionValue<number> }) {
   const opacity = useTransform(progress, (v) => overlayOpacity(v, MODULE_WINDOWS.about));
   return (
-    <motion.div
+    <m.div
       style={{ opacity }}
       className="pointer-events-none absolute bottom-1/2 right-0 top-0 z-10 flex w-full flex-col justify-between gap-6 p-6 md:bottom-0 md:left-0 md:right-0 md:top-auto md:h-[42vh] md:w-full md:p-12 lg:p-16"
     >
       <AboutBody progress={progress} />
-    </motion.div>
+    </m.div>
   );
 }

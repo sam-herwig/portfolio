@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useMemo } from 'react';
+import { useMemo, type Ref } from 'react';
 import { AdditiveBlending, Color, Group, ShaderMaterial } from 'three';
 
 const blobVertex = /* glsl */ `
@@ -54,7 +54,7 @@ function makeMaterial(color: string, intensity: number) {
   });
 }
 
-const BlobBackdrop = forwardRef<Group>(function BlobBackdrop(_, ref) {
+export default function BlobBackdrop({ ref }: { ref?: Ref<Group> }) {
   const materials = useMemo(() => BLOBS.map((b) => makeMaterial(b.color, b.intensity)), []);
 
   return (
@@ -65,12 +65,10 @@ const BlobBackdrop = forwardRef<Group>(function BlobBackdrop(_, ref) {
         <meshBasicMaterial color="#070710" />
       </mesh>
       {BLOBS.map((blob, i) => (
-        <mesh key={i} position={blob.position} material={materials[i]}>
+        <mesh key={blob.color} position={blob.position} material={materials[i]}>
           <planeGeometry args={[blob.size, blob.size]} />
         </mesh>
       ))}
     </group>
   );
-});
-
-export default BlobBackdrop;
+}

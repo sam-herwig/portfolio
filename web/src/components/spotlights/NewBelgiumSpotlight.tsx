@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { m, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 type Brand = {
   slug: string;
@@ -72,7 +72,7 @@ export default function NewBelgiumSpotlight({ caption }: { caption?: string }) {
             >
               {b.name}
               {isActive && (
-                <motion.span
+                <m.span
                   layoutId="nb-active-underline"
                   className="absolute -bottom-[17px] left-0 right-0 h-px bg-foreground"
                   transition={{ type: 'spring', stiffness: 380, damping: 34 }}
@@ -92,7 +92,7 @@ export default function NewBelgiumSpotlight({ caption }: { caption?: string }) {
           className="relative aspect-[2/1] w-full overflow-hidden bg-foreground/[0.04]"
         >
           <AnimatePresence mode="wait">
-            <motion.div
+            <m.div
               key={activeBrand.slug}
               initial={reduced ? {} : { opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -108,7 +108,7 @@ export default function NewBelgiumSpotlight({ caption }: { caption?: string }) {
                 className="object-contain"
                 unoptimized
               />
-            </motion.div>
+            </m.div>
           </AnimatePresence>
         </div>
 

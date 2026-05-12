@@ -42,3 +42,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: React Doctor
+        run: npx -y react-doctor@latest . --offline --yes --fail-on warning

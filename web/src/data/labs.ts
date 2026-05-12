@@ -3,7 +3,7 @@
  * Each lab is opt-in — only projects with technical depth get a /lab sub-route.
  */
 
-export interface LabNote {
+interface LabNote {
   title: string;
   body: string;
   code?: string;
@@ -15,7 +15,7 @@ export interface Lab {
   notes: LabNote[];
 }
 
-export const LABS: Record<string, Lab> = {
+const LABS: Record<string, Lab> = {
   craftedkit: {
     headline: 'How a four-agent pipeline ships shader work without losing taste',
     intro:

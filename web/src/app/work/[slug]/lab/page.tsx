@@ -61,7 +61,7 @@ export default async function CaseStudyLabPage({ params }: { params: Promise<{ s
       <section className="mt-24 max-w-4xl">
         <ul className="flex flex-col gap-16">
           {lab.notes.map((note, i) => (
-            <li key={i}>
+            <li key={note.title}>
               <p
                 className="text-[11px] uppercase tracking-[0.35em] text-foreground/45"
                 style={{ fontFamily: 'var(--font-geist-mono)' }}
@@ -74,8 +74,8 @@ export default async function CaseStudyLabPage({ params }: { params: Promise<{ s
               >
                 {note.title}
               </h2>
-              {note.body.split('\n\n').map((p, j) => (
-                <p key={j} className="mt-5 max-w-[62ch] text-base leading-relaxed text-foreground/70 md:text-lg">
+              {note.body.split('\n\n').map((p) => (
+                <p key={p} className="mt-5 max-w-[62ch] text-base leading-relaxed text-foreground/70 md:text-lg">
                   {p}
                 </p>
               ))}
