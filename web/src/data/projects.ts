@@ -76,7 +76,7 @@ export const projects: Project[] = [
     title: 'New Belgium & Friends',
     subtitle: 'One Engine. Five Brands. Zero Redundancy.',
     slug: 'new-belgium',
-    year: '2022',
+    year: '2021–present',
     role: 'Lead Front-End Engineer',
     client: 'New Belgium Brewing',
     deliverables: ['Web', 'Component System', 'Brand Theming'],

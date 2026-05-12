@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRef } from 'react';
 import PixelTitle from '@/components/sections/PixelTitle';
 import { getFeaturedProjects, getProjectFeaturedVideo, type Project } from '@/data/projects';
-import { MODULE_WINDOWS, sceneOpacity } from '@/lib/moduleTimeline';
+import { MODULE_WINDOWS, overlayOpacity } from '@/lib/moduleTimeline';
 
 function FrameHoldCard({ project, index, videoSrc }: { project: Project; index: number; videoSrc: string | null }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -109,35 +109,76 @@ function FrameHoldCard({ project, index, videoSrc }: { project: Project; index: 
   );
 }
 
-function WorkInner({ progress }: { progress?: MotionValue<number> }) {
-  const projects = getFeaturedProjects().slice(0, 4);
+// Mobile layout: 2x2 grid with title between rows. Unchanged from original.
+function MobileWorkLayout({ projects, progress }: { projects: Project[]; progress?: MotionValue<number> }) {
   const top = projects.slice(0, 2);
   const bottom = projects.slice(2, 4);
-
   return (
-    <>
-      <div className="flex items-center justify-center py-2 md:row-start-2 md:py-4">
+    <div className="flex flex-1 flex-col gap-2 md:hidden">
+      <div className="grid flex-1 grid-cols-2 gap-2">
+        {top.map((p, i) => (
+          <FrameHoldCard key={p.slug} project={p} index={i} videoSrc={getProjectFeaturedVideo(p)} />
+        ))}
+      </div>
+      <div className="flex items-center justify-center py-2">
         <PixelTitle
           text="Work"
           as="h2"
           mount={!progress}
           progress={progress}
           window={MODULE_WINDOWS.work}
-          className="text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl"
+          className="text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-5xl"
         />
       </div>
-      <div className="flex flex-1 flex-col gap-2 md:contents md:gap-3">
-        <div className="grid flex-1 grid-cols-2 gap-2 md:row-start-1 md:gap-3">
-          {top.map((p, i) => (
-            <FrameHoldCard key={p.slug} project={p} index={i} videoSrc={getProjectFeaturedVideo(p)} />
-          ))}
-        </div>
-        <div className="grid flex-1 grid-cols-2 gap-2 md:row-start-3 md:gap-3">
-          {bottom.map((p, i) => (
-            <FrameHoldCard key={p.slug} project={p} index={i + 2} videoSrc={getProjectFeaturedVideo(p)} />
-          ))}
-        </div>
+      <div className="grid flex-1 grid-cols-2 gap-2">
+        {bottom.map((p, i) => (
+          <FrameHoldCard key={p.slug} project={p} index={i + 2} videoSrc={getProjectFeaturedVideo(p)} />
+        ))}
       </div>
+    </div>
+  );
+}
+
+// Desktop layout: 4 cards at viewport corners, "Work" title floating dead-center.
+// Cards sized at 24vw × 28vh — large enough to read at 1280px viewport without
+// crowding the title, balanced enough to leave the shader visible in the middle.
+function DesktopWorkLayout({ projects, progress }: { projects: Project[]; progress?: MotionValue<number> }) {
+  const cornerCard = (index: number, position: string) => {
+    const project = projects[index];
+    if (!project) return null;
+    return (
+      <div className={`absolute h-[28vh] w-[24vw] ${position}`}>
+        <FrameHoldCard project={project} index={index} videoSrc={getProjectFeaturedVideo(project)} />
+      </div>
+    );
+  };
+
+  return (
+    <div className="hidden md:block">
+      {cornerCard(0, 'left-6 top-6 lg:left-10 lg:top-10')}
+      {cornerCard(1, 'right-6 top-6 lg:right-10 lg:top-10')}
+      {cornerCard(2, 'bottom-6 left-6 lg:bottom-10 lg:left-10')}
+      {cornerCard(3, 'bottom-6 right-6 lg:bottom-10 lg:right-10')}
+      <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+        <PixelTitle
+          text="Work"
+          as="h2"
+          mount={!progress}
+          progress={progress}
+          window={MODULE_WINDOWS.work}
+          className="text-5xl font-medium leading-[0.95] tracking-tight text-foreground md:text-6xl lg:text-7xl xl:text-8xl"
+        />
+      </div>
+    </div>
+  );
+}
+
+function WorkInner({ progress }: { progress?: MotionValue<number> }) {
+  const projects = getFeaturedProjects().slice(0, 4);
+  return (
+    <>
+      <MobileWorkLayout projects={projects} progress={progress} />
+      <DesktopWorkLayout projects={projects} progress={progress} />
     </>
   );
 }
@@ -145,7 +186,7 @@ function WorkInner({ progress }: { progress?: MotionValue<number> }) {
 export default function WorkOverlay({ progress }: { progress?: MotionValue<number> }) {
   if (!progress) {
     return (
-      <section className="relative flex min-h-[80svh] w-full flex-col gap-3 p-3 md:grid md:grid-rows-[1fr_auto_1fr] md:p-6">
+      <section className="relative flex min-h-[80svh] w-full flex-col gap-3 p-3 md:block md:min-h-[100svh] md:p-0">
         <WorkInner />
       </section>
     );
@@ -155,13 +196,13 @@ export default function WorkOverlay({ progress }: { progress?: MotionValue<numbe
 }
 
 function WorkOverlayMotion({ progress }: { progress: MotionValue<number> }) {
-  const opacity = useTransform(progress, (v) => sceneOpacity(v, MODULE_WINDOWS.work));
+  const opacity = useTransform(progress, (v) => overlayOpacity(v, MODULE_WINDOWS.work));
   const pointerEvents = useTransform(opacity, (v) => (v > 0.5 ? 'auto' : 'none'));
 
   return (
     <motion.div
       style={{ opacity, pointerEvents }}
-      className="work-card-grid absolute bottom-0 left-0 top-1/2 z-10 flex w-full flex-col gap-2 p-3 md:top-0 md:grid md:w-1/2 md:grid-rows-[1fr_auto_1fr] md:gap-3 md:p-6"
+      className="work-card-grid absolute bottom-0 left-0 top-1/2 z-10 flex w-full flex-col gap-2 p-3 md:bottom-0 md:left-0 md:right-0 md:top-0 md:block md:w-full md:p-0"
     >
       <WorkInner progress={progress} />
     </motion.div>

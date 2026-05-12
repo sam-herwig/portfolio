@@ -2,7 +2,7 @@
 
 import { motion, useTransform, type MotionValue } from 'framer-motion';
 import PixelTitle from '@/components/sections/PixelTitle';
-import { MODULE_WINDOWS, sceneOpacity } from '@/lib/moduleTimeline';
+import { MODULE_WINDOWS, overlayOpacity } from '@/lib/moduleTimeline';
 
 function ContactInner({
   progress,
@@ -93,7 +93,7 @@ export default function ContactOverlay({ progress }: { progress?: MotionValue<nu
 }
 
 function ContactOverlayMotion({ progress }: { progress: MotionValue<number> }) {
-  const opacity = useTransform(progress, (v) => sceneOpacity(v, MODULE_WINDOWS.contact));
+  const opacity = useTransform(progress, (v) => overlayOpacity(v, MODULE_WINDOWS.contact));
   const pointerEvents = useTransform(opacity, (v) => (v > 0.5 ? 'auto' : 'none'));
 
   return (

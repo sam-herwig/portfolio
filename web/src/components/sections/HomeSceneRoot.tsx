@@ -1,7 +1,7 @@
 'use client';
 
 import { useMotionValueEvent, useReducedMotion, useScroll } from 'framer-motion';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import AboutOverlay from '@/components/sections/AboutOverlay';
 import ContactOverlay from '@/components/sections/ContactOverlay';
 import HeroOverlay from '@/components/sections/HeroOverlay';
@@ -43,6 +43,41 @@ function HomeSceneRootMotion() {
   useMotionValueEvent(scrollYProgress, 'change', (v) => {
     useSceneStore.getState().setScrollProgress(v);
   });
+
+  // Pointer tracking for shader interactivity. Writes a vUv-space target
+  // into the scene store; BackgroundField's useFrame exponential-lerps the
+  // uMouse uniform toward it. After 2.5s of pointer stillness (or always,
+  // on touch idle) a Lissajous figure drives the target so the shader's
+  // interactive layer stays alive without input — same code path mobile
+  // visitors get for free, no gyroscope permission required.
+  useEffect(() => {
+    let lastMove = performance.now();
+    let raf = 0;
+    const setMouseTarget = useSceneStore.getState().setMouseTarget;
+
+    const onMove = (e: PointerEvent) => {
+      lastMove = performance.now();
+      // y flip: clientY=0 is top, but shader's vUv.y=0 is bottom.
+      setMouseTarget([e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight]);
+    };
+
+    const tick = () => {
+      const dt = performance.now() - lastMove;
+      if (dt > 2500) {
+        const t = performance.now() * 0.001;
+        setMouseTarget([0.5 + 0.3 * Math.sin(t * 0.31), 0.5 + 0.25 * Math.cos(t * 0.43)]);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   return (
     <>

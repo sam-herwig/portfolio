@@ -55,7 +55,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
     url: `${SITE_URL}/work/${slug}`,
     image: `${SITE_URL}/work/${slug}/opengraph-image`,
     author: { '@type': 'Person', name: 'Sam Herwig', url: SITE_URL },
-    ...(project.year && { datePublished: project.year }),
+    ...(project.year && { datePublished: project.year.split(/[–-]/)[0].trim() }),
     ...(project.client && { sourceOrganization: { '@type': 'Organization', name: project.client } }),
   };
 

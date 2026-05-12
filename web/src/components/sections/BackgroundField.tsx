@@ -37,6 +37,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uTime;
   uniform float uScroll;
   uniform vec2 uResolution;
+  uniform vec2 uModuleCenter; // visible slot center in vUv [0,1] space
 
   // Module exit windows from MODULE_WINDOWS — single source of truth.
   uniform vec2 uHeroExit;
@@ -84,6 +85,7 @@ const FRAGMENT = /* glsl */ `
   uniform vec2  uWorkRadialCenter;
   uniform float uWorkStaggerStrength;
   uniform float uWorkRotRate;
+  uniform float uWorkDotSize;
 
   // Stack mode
   uniform float uWorkBarCount;
@@ -114,6 +116,17 @@ const FRAGMENT = /* glsl */ `
   uniform float uVignette;
   uniform float uCrossfadeWidth;
   uniform int uDebugMode;
+
+  // Interaction layer — universal cursor disturbance applied uniformly to all
+  // four module evaluations. uMouse is in vUv [0,1] space; main() transforms
+  // it into module-local p-space before applyInteraction warps the lookup
+  // coord. Modes map to ints; uniform branch keeps dispatch coherent.
+  //   0 Off · 1 Magnet · 2 Repel · 3 Swirl · 4 Ripple · 5 Lens
+  uniform vec2 uMouse;
+  uniform int uInteractionMode;
+  uniform float uInteractionStrength;
+  uniform float uInteractionRadius;
+  uniform float uInteractionFreq;
 
   float vHash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -397,13 +410,26 @@ const FRAGMENT = /* glsl */ `
       0.0, 1.0
     );
 
+    // Analytic pixel size in cell-local coords. fwidth on cell-local SDFs
+    // (frame ring, glyph) blows up at cell boundaries because fract()
+    // discontinuities and per-cell cellT01 jumps produce huge gradients
+    // across the 2×2 derivative quad. That aliases into a faint dashed
+    // seam at every column edge. Computing the pixel size analytically
+    // from uResolution + grid density bypasses derivatives entirely so
+    // anti-aliasing is uniform inside each cell with no boundary spike.
+    // The 0.5 multiplier collapses the AA half-width to ~half a pixel,
+    // which removes the grainy mid-grey shimmer on slow-rotating dots
+    // and keeps edges close to a hard binary line.
+    float pxX = (aspect / max(uResolution.x, 1.0)) * uWorkGridCols;
+    float pxY = (1.0 / max(uResolution.y, 1.0)) * uWorkGridRows;
+    float fwAA = length(vec2(pxX, pxY)) * 0.5;
+
     // Card-frame ring: sdBox subtracted from a slightly larger sdBox.
     vec2 frameHalf = vec2(0.5 - uWorkCardPadding);
     float frameOuter = sdBox(cellP, frameHalf);
     float frameInner = sdBox(cellP, frameHalf - vec2(uWorkStrokeWidth));
     float frameStroke = max(-frameOuter, frameInner);
-    float fwF = max(fwidth(frameStroke) * 1.2, 0.001);
-    float frame = 1.0 - smoothstep(0.0, fwF, abs(frameStroke));
+    float frame = 1.0 - smoothstep(0.0, fwAA, abs(frameStroke));
 
     // Ledger glyph anchored at left side of cell (like a list bullet).
     vec2 g = cellP - vec2(-0.28, 0.0);
@@ -414,10 +440,14 @@ const FRAGMENT = /* glsl */ `
     float lt = clamp(seg - i, 0.0, 1.0);
     float morphMix = linger(lt);
 
-    float dBullet = sdCircle(g, 0.04);
-    float dFold   = sdBox(g, vec2(0.07, 0.018));
-    float dTag    = sdDiamond(g, 0.07);
-    float dCheck  = sdPlus(g, 0.07, 0.018);
+    // Single multiplier scales all 4 morph keypoints proportionally so
+    // the bullet→fold→tag→check sequence keeps its relative shape ratios
+    // as the user dials dot size up or down.
+    float ds = max(uWorkDotSize, 0.01);
+    float dBullet = sdCircle(g, 0.04 * ds);
+    float dFold   = sdBox(g, vec2(0.07, 0.018) * ds);
+    float dTag    = sdDiamond(g, 0.07 * ds);
+    float dCheck  = sdPlus(g, 0.07 * ds, 0.018 * ds);
 
     float m0 = step(i, 0.5);
     float m1 = step(0.5, i) * step(i, 1.5);
@@ -426,8 +456,7 @@ const FRAGMENT = /* glsl */ `
     float dB = m0 * dFold   + m1 * dTag    + m2 * dCheck;
     float dG = mix(dA, dB, morphMix);
 
-    float fwG = max(fwidth(dG) * 1.2, 0.001);
-    float glyph = 1.0 - smoothstep(-fwG, fwG, dG);
+    float glyph = 1.0 - smoothstep(-fwAA, fwAA, dG);
 
     return vec3(max(frame, glyph));
   }
@@ -546,6 +575,35 @@ const FRAGMENT = /* glsl */ `
     return vec3(max(line1, line2));
   }
 
+  // Universal interaction warp. Transforms the fragment lookup coord based
+  // on cursor position so every module mode (Hero/About/Work/Contact)
+  // inherits the same disturbance vocabulary without per-mode code edits.
+  // Modes are unaware they're being driven — they just see a deformed p.
+  vec2 applyInteraction(vec2 p) {
+    if (uInteractionMode == 0) return p;
+    vec2 mouseP = uMouse - uModuleCenter;
+    mouseP.x *= uResolution.x / uResolution.y;
+    vec2 d = p - mouseP;
+    float d2 = dot(d, d);
+    float fall = exp(-d2 / max(uInteractionRadius * uInteractionRadius, 1e-4));
+    if (uInteractionMode == 1) {
+      return p - d * fall * uInteractionStrength;
+    } else if (uInteractionMode == 2) {
+      return p + d * fall * uInteractionStrength;
+    } else if (uInteractionMode == 3) {
+      float angle = fall * uInteractionStrength * 1.5708;
+      float ca = cos(angle);
+      float sa = sin(angle);
+      return mouseP + mat2(ca, -sa, sa, ca) * d;
+    } else if (uInteractionMode == 4) {
+      float dist = sqrt(d2 + 1e-6);
+      return p + (d / dist) * sin(dist * uInteractionFreq - uTime * 2.0) * fall * uInteractionStrength * 0.05;
+    } else if (uInteractionMode == 5) {
+      return mouseP + d * (1.0 - fall * uInteractionStrength);
+    }
+    return p;
+  }
+
   vec3 sRGBEncode(vec3 c) {
     vec3 cutoff = vec3(lessThanEqual(c, vec3(0.0031308)));
     vec3 lower = c * 12.92;
@@ -554,8 +612,14 @@ const FRAGMENT = /* glsl */ `
   }
 
   void main() {
-    vec2 p = vUv - 0.5;
+    // Anchor module-centered content to the visible slot's center, not the
+    // canvas center. The canvas is now full-viewport with clip-path masking
+    // the visible region, so without this offset the Hero SDF moon would
+    // render at viewport-center and the right-half clip would only reveal
+    // its left edge.
+    vec2 p = vUv - uModuleCenter;
     p.x *= uResolution.x / uResolution.y;
+    p = applyInteraction(p);
 
     if (uDebugMode == 1) { gl_FragColor = vec4(vUv.x, vUv.y, 0.0, 1.0); return; }
     if (uDebugMode == 2) { gl_FragColor = vec4(uScroll, 1.0 - uScroll, 0.0, 1.0); return; }
@@ -598,6 +662,7 @@ const uniforms = {
   uTime: { value: 0 },
   uScroll: { value: 0 },
   uResolution: { value: [1, 1] as [number, number] },
+  uModuleCenter: { value: [0.75, 0.5] as [number, number] },
 
   uHeroExit: {
     value: [MODULE_WINDOWS.hero.exitStart, MODULE_WINDOWS.hero.exitEnd] as [number, number],
@@ -624,15 +689,16 @@ const uniforms = {
   uAboutWaveAmp: { value: 0.05 },
   uAboutRotRate: { value: 0.1 },
 
-  uWorkMode: { value: 1 },
+  uWorkMode: { value: 0 },
 
-  uWorkGridCols: { value: 6.0 },
-  uWorkGridRows: { value: 4.0 },
-  uWorkCardPadding: { value: 0.06 },
-  uWorkStrokeWidth: { value: 0.012 },
+  uWorkGridCols: { value: 11.0 },
+  uWorkGridRows: { value: 8.0 },
+  uWorkCardPadding: { value: 0.12 },
+  uWorkStrokeWidth: { value: 0.04 },
   uWorkRadialCenter: { value: [-0.5, 0.5] as [number, number] },
-  uWorkStaggerStrength: { value: 0.55 },
-  uWorkRotRate: { value: 0.0 },
+  uWorkStaggerStrength: { value: 0.61 },
+  uWorkRotRate: { value: 0.53 },
+  uWorkDotSize: { value: 2.0 },
 
   uWorkBarCount: { value: 40.0 },
   uWorkBarGap: { value: 0.07 },
@@ -660,6 +726,12 @@ const uniforms = {
   uVignette: { value: 0.55 },
   uCrossfadeWidth: { value: 0.03 },
   uDebugMode: { value: 0 },
+
+  uMouse: { value: [0.5, 0.5] as [number, number] },
+  uInteractionMode: { value: 1 },
+  uInteractionStrength: { value: 1.03 },
+  uInteractionRadius: { value: 0.13 },
+  uInteractionFreq: { value: 8.5 },
 };
 
 export default function BackgroundField() {
@@ -688,6 +760,19 @@ export default function BackgroundField() {
             });
           },
         },
+      },
+      { collapsed: false },
+    ),
+    Interaction: folder(
+      {
+        interactionMode: {
+          value: 1,
+          options: { Off: 0, Magnet: 1, Repel: 2, Swirl: 3, Ripple: 4, Lens: 5 },
+          label: 'mode',
+        },
+        interactionStrength: { value: 1.03, min: 0, max: 2.0, step: 0.01, label: 'strength' },
+        interactionRadius: { value: 0.13, min: 0.05, max: 1.5, step: 0.01, label: 'radius' },
+        interactionFreq: { value: 8.5, min: 2, max: 60, step: 0.5, label: 'ripple freq' },
       },
       { collapsed: false },
     ),
@@ -747,7 +832,7 @@ export default function BackgroundField() {
     Work: folder(
       {
         workPreset: {
-          value: 'Stack',
+          value: 'Spread',
           options: WORK_PRESET_NAMES,
           label: 'preset',
           onChange: (name: string, _path: string, _ctx: { initial: boolean }) => {
@@ -757,25 +842,26 @@ export default function BackgroundField() {
           },
         },
         workMode: {
-          value: 1,
+          value: 0,
           options: { Spread: 0, Stack: 1, Index: 2 },
           label: 'mode',
         },
         WorkSpread: folder(
           {
-            workGridCols: { value: 6, min: 2, max: 16, step: 1 },
-            workGridRows: { value: 4, min: 1, max: 12, step: 1 },
-            workCardPadding: { value: 0.06, min: 0.0, max: 0.3, step: 0.005 },
-            workStrokeWidth: { value: 0.012, min: 0.002, max: 0.08, step: 0.001 },
+            workGridCols: { value: 11, min: 2, max: 16, step: 1 },
+            workGridRows: { value: 8, min: 1, max: 12, step: 1 },
+            workCardPadding: { value: 0.12, min: 0.0, max: 0.3, step: 0.005 },
+            workStrokeWidth: { value: 0.04, min: 0.002, max: 0.08, step: 0.001 },
             workRadialCenter: { value: [-0.5, 0.5] as [number, number], step: 0.05 },
-            workStaggerStrength: { value: 0.55, min: 0.0, max: 1.0, step: 0.01 },
-            workRotRate: { value: 0.0, min: -1.5, max: 1.5, step: 0.01 },
+            workStaggerStrength: { value: 0.61, min: 0.0, max: 1.0, step: 0.01 },
+            workRotRate: { value: 0.53, min: -1.5, max: 1.5, step: 0.01 },
+            workDotSize: { value: 2.0, min: 0.3, max: 5.0, step: 0.05, label: 'dot size' },
           },
           { collapsed: true },
         ),
         WorkStack: folder(
           {
-            workBarCount: { value: 40, min: 6, max: 80, step: 1 },
+            workBarCount: { value: 40, min: 6, max: 120, step: 1 },
             workBarGap: { value: 0.07, min: 0.0, max: 0.45, step: 0.01 },
             workBaseHeight: { value: 0.47, min: 0.05, max: 0.95, step: 0.01 },
             workVarianceIdle: { value: 0.31, min: 0.0, max: 0.8, step: 0.01 },
@@ -873,6 +959,7 @@ export default function BackgroundField() {
     uniforms.uWorkRadialCenter.value = controls.workRadialCenter as [number, number];
     uniforms.uWorkStaggerStrength.value = controls.workStaggerStrength;
     uniforms.uWorkRotRate.value = controls.workRotRate;
+    uniforms.uWorkDotSize.value = controls.workDotSize;
 
     uniforms.uWorkBarCount.value = controls.workBarCount;
     uniforms.uWorkBarGap.value = controls.workBarGap;
@@ -900,21 +987,45 @@ export default function BackgroundField() {
     uniforms.uVignette.value = controls.vignette;
     uniforms.uCrossfadeWidth.value = controls.crossfadeWidth;
     uniforms.uDebugMode.value = controls.debugMode;
+
+    uniforms.uInteractionMode.value = controls.interactionMode;
+    uniforms.uInteractionStrength.value = controls.interactionStrength;
+    uniforms.uInteractionRadius.value = controls.interactionRadius;
+    uniforms.uInteractionFreq.value = controls.interactionFreq;
+
+    // Mirror to the scene store so LetterFillField reads the same values
+    // and the Leva folder here is the single source of truth.
+    useSceneStore
+      .getState()
+      .setInteraction(
+        controls.interactionMode,
+        controls.interactionStrength,
+        controls.interactionRadius,
+        controls.interactionFreq,
+      );
   }, [controls]);
 
-  // Damped scroll for the shader: lerp displayed scroll toward the actual
-  // scrollYProgress at a frame-rate-independent rate. Prevents flick-scroll
-  // viewers from snapping past keypoints in the hero/about morph timelines.
-  // HTML overlays continue to read raw scroll for opacity sync.
-  const displayedScrollRef = useRef(0);
-  useFrame((state, dt) => {
-    const target = useSceneStore.getState().scrollProgress;
-    const factor = 1.0 - Math.exp(-6.0 * dt);
-    displayedScrollRef.current += (target - displayedScrollRef.current) * factor;
-
+  // Read scroll directly per frame — the wrapper rect, scroll dispatch, and
+  // canvasSlot() interpolation are already smooth, and uResolution is updated
+  // unconditionally below. A second damping layer on uScroll only created
+  // phase mismatch with uResolution (visible as grid-cell staircase during
+  // wrapper resize). Tight 1:1 tracking keeps morph weights and aspect-driven
+  // shader logic on the same frame cadence.
+  useFrame((state) => {
+    const store = useSceneStore.getState();
     uniforms.uTime.value = state.clock.elapsedTime;
-    uniforms.uScroll.value = displayedScrollRef.current;
+    uniforms.uScroll.value = store.scrollProgress;
     uniforms.uResolution.value = [state.size.width, state.size.height];
+    uniforms.uModuleCenter.value = store.slotCenter;
+
+    // Exponential lerp toward the mouseTarget written by HomeSceneRoot's
+    // pointermove listener. 0.08 is the canonical r3f cursor-damping factor
+    // (~8-frame half-life at 60fps) — kills sub-pixel jitter without
+    // visible lag on the warped p-coord.
+    const target = store.mouseTarget;
+    const m = uniforms.uMouse.value;
+    m[0] += (target[0] - m[0]) * 0.08;
+    m[1] += (target[1] - m[1]) * 0.08;
   });
 
   return (
@@ -925,6 +1036,7 @@ export default function BackgroundField() {
         uniforms={uniforms}
         depthTest={false}
         depthWrite={false}
+        transparent
       />
     </ScreenQuad>
   );

@@ -79,7 +79,46 @@ const FRAG = /* glsl */ `
   uniform float uCKIdleDrift;
   uniform float uCKWhooshGain;
 
+  // Interaction layer mirrored from BackgroundField via useSceneStore — same
+  // Leva folder drives every shader on the page. Applied to cuv once before
+  // mode dispatch so all four case-study shaders inherit consistent behavior.
+  //   0 Off · 1 Magnet · 2 Repel · 3 Swirl · 4 Ripple · 5 Lens
+  uniform vec2  uMouse;
+  uniform int   uInteractionMode;
+  uniform float uInteractionStrength;
+  uniform float uInteractionRadius;
+  uniform float uInteractionFreq;
+
   varying vec2 vUv;
+
+  // ---- Universal cursor warp (mirrors BackgroundField.applyInteraction). ----
+  // cuv is already screen-centered + aspect-corrected; uMouse is in vUv [0,1]
+  // so we transform it through the same (subtract 0.5, multiply x by aspect)
+  // pipeline before computing the falloff.
+  vec2 applyInteraction(vec2 p) {
+    if (uInteractionMode == 0) return p;
+    vec2 mouseP = uMouse - 0.5;
+    mouseP.x *= uAspect;
+    vec2 d = p - mouseP;
+    float d2 = dot(d, d);
+    float fall = exp(-d2 / max(uInteractionRadius * uInteractionRadius, 1e-4));
+    if (uInteractionMode == 1) {
+      return p - d * fall * uInteractionStrength;
+    } else if (uInteractionMode == 2) {
+      return p + d * fall * uInteractionStrength;
+    } else if (uInteractionMode == 3) {
+      float angle = fall * uInteractionStrength * 1.5708;
+      float ca = cos(angle);
+      float sa = sin(angle);
+      return mouseP + mat2(ca, -sa, sa, ca) * d;
+    } else if (uInteractionMode == 4) {
+      float dist = sqrt(d2 + 1e-6);
+      return p + (d / dist) * sin(dist * uInteractionFreq - uTime * 2.0) * fall * uInteractionStrength * 0.05;
+    } else if (uInteractionMode == 5) {
+      return mouseP + d * (1.0 - fall * uInteractionStrength);
+    }
+    return p;
+  }
 
   // ---- Hash helpers (used by MB dot jitter and CK cell hashing). ----
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -700,6 +739,7 @@ const FRAG = /* glsl */ `
     vec2 uv = vUv;
     vec2 cuv = uv - 0.5;
     cuv.x *= uAspect;
+    cuv = applyInteraction(cuv);
 
     vec3 col;
     if (uIndex == 0) {
@@ -776,6 +816,14 @@ const uniforms = {
   uCKCycles: { value: 3.0 },
   uCKIdleDrift: { value: 0.06 },
   uCKWhooshGain: { value: 0.06 },
+
+  // Interaction — driven by useSceneStore (set by BackgroundField's Leva).
+  // Defaults match the store so SSR / first-frame are coherent.
+  uMouse: { value: new Vector2(0.5, 0.5) },
+  uInteractionMode: { value: 1 },
+  uInteractionStrength: { value: 0.6 },
+  uInteractionRadius: { value: 0.35 },
+  uInteractionFreq: { value: 18.0 },
 };
 
 // Three full presets, one snapshot per shader. All keys match the Leva schemas
@@ -1260,6 +1308,18 @@ export default function CaseStudyHeroLayer() {
     uniforms.uCKCycles.value = ck.ckCycles;
     uniforms.uCKIdleDrift.value = ck.ckIdleDrift;
     uniforms.uCKWhooshGain.value = ck.ckWhooshGain;
+
+    // Pull interaction params + mouse target from the shared store. Same
+    // 0.08 lerp factor as BackgroundField / LetterFillField so all three
+    // shaders track in lockstep.
+    uniforms.uInteractionMode.value = s.interactionMode;
+    uniforms.uInteractionStrength.value = s.interactionStrength;
+    uniforms.uInteractionRadius.value = s.interactionRadius;
+    uniforms.uInteractionFreq.value = s.interactionFreq;
+    const mouseTarget = s.mouseTarget;
+    const m = uniforms.uMouse.value;
+    m.x += (mouseTarget[0] - m.x) * 0.08;
+    m.y += (mouseTarget[1] - m.y) * 0.08;
   });
 
   return (

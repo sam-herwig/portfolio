@@ -1,17 +1,17 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { animate } from 'framer-motion';
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import BackgroundField from '@/components/sections/BackgroundField';
+import LetterFillField from '@/components/sections/LetterFillField';
 import CaseStudyHeroLayer from '@/components/CaseStudyHeroLayer';
 import useCanvasGate from '@/lib/useCanvasGate';
 import useIsMobileViewport from '@/lib/useIsMobileViewport';
 import { useSceneStore } from '@/lib/useSceneStore';
-import { canvasLeanFactor, canvasLeftPct, canvasTopPct } from '@/lib/moduleTimeline';
+import { canvasSlot, type CanvasSlot } from '@/lib/moduleTimeline';
 
-const SLASH_PEAK_PCT = 12;
 const WORK_PATH = /^\/work\/([^/]+)$/;
 
 const SLUG_TO_INDEX: Record<string, number> = {
@@ -25,7 +25,29 @@ const FORWARD_DURATION = 1.1;
 const BACK_FADE_DURATION = 0.4;
 const FORWARD_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
+// Case-study mode slot — left half on desktop. Mobile case study uses its own
+// 100vw 1:1 strip path below, so this rect is desktop-only.
+const CS_SLOT_DESKTOP: CanvasSlot = { top: 0, left: 0, w: 50, h: 100 };
+
 type FrameLoopMode = 'always' | 'never';
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function blendSlot(home: CanvasSlot, cs: CanvasSlot, slide: number): CanvasSlot {
+  return {
+    top: lerp(home.top, cs.top, slide),
+    left: lerp(home.left, cs.left, slide),
+    w: lerp(home.w, cs.w, slide),
+    h: lerp(home.h, cs.h, slide),
+  };
+}
+
+function computeTargetSlot(s: { scrollProgress: number; canvasSlide: number }, isMobile: boolean): CanvasSlot {
+  const home = canvasSlot(s.scrollProgress, isMobile);
+  return isMobile ? home : blendSlot(home, CS_SLOT_DESKTOP, s.canvasSlide);
+}
 
 export default function SceneCanvas() {
   const pathname = usePathname();
@@ -51,15 +73,6 @@ export default function SceneCanvas() {
   const isCaseStudy = slug != null;
   const visible = enableCanvas && (isHome || isCaseStudy);
   const isMobileCaseStudy = isMobile && isCaseStudy;
-
-  const [scrollProgress, setScrollProgress] = useState(() => useSceneStore.getState().scrollProgress);
-  const [canvasSlide, setCanvasSlide] = useState(() => useSceneStore.getState().canvasSlide);
-  useEffect(() => {
-    return useSceneStore.subscribe((s) => {
-      setScrollProgress(s.scrollProgress);
-      setCanvasSlide(s.canvasSlide);
-    });
-  }, []);
 
   // Pathname-driven choreography. Forward = slide. Back = snap-position + fade-shader.
   // Direct entry = snap. Slug→slug = index swap only.
@@ -131,32 +144,59 @@ export default function SceneCanvas() {
     };
   }, [pathname, isCaseStudy, isHome, isMobile, slug]);
 
+  // Source MotionValues for the slot rect. Driven from a per-rAF loop, not a
+  // store subscription. Browser scroll events fire on input cadence (often
+  // ~30Hz on mouse wheels) with discrete deltas — binding motion.div directly
+  // to that chunked source produces a visible staircase on the wrapper rect.
+  // Per-rAF lerp toward the latest store target filters that chunkiness into a
+  // smooth 60Hz output. Smoothing rate `k` is high enough that perceived lag
+  // stays under ~80ms (≈ 5 frames at 60fps) but low enough to absorb scroll
+  // event boundaries without staircase.
+  const initial = computeTargetSlot(useSceneStore.getState(), isMobile);
+  const topRaw = useMotionValue(initial.top);
+  const leftRaw = useMotionValue(initial.left);
+  const wRaw = useMotionValue(initial.w);
+  const hRaw = useMotionValue(initial.h);
+
+  useEffect(() => {
+    let raf = 0;
+    let prev = performance.now();
+    const k = 30;
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - prev) / 1000);
+      prev = now;
+      const factor = 1 - Math.exp(-k * dt);
+      const t = computeTargetSlot(useSceneStore.getState(), isMobile);
+      topRaw.set(topRaw.get() + (t.top - topRaw.get()) * factor);
+      leftRaw.set(leftRaw.get() + (t.left - leftRaw.get()) * factor);
+      wRaw.set(wRaw.get() + (t.w - wRaw.get()) * factor);
+      hRaw.set(hRaw.get() + (t.h - hRaw.get()) * factor);
+      // Push smoothed slot center to store for the shader's uModuleCenter.
+      // Canvas is full viewport, so center is in vUv [0,1] across the whole
+      // canvas. Anchors centered module content (Hero moon) to the visible rect.
+      useSceneStore
+        .getState()
+        .setSlotCenter([(leftRaw.get() + wRaw.get() / 2) / 100, (topRaw.get() + hRaw.get() / 2) / 100]);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isMobile, topRaw, leftRaw, wRaw, hRaw]);
+
+  // Derive clip-path inset from the rect MotionValues. Wrapper stays full
+  // viewport; clip-path masks the visible region. Animating clip-path is
+  // GPU-composited — no layout, no paint, no Canvas resize, no WebGL drawing-
+  // buffer reallocation. That's why the rect now glides per-frame even at
+  // 60fps with a complex shader inside.
+  const clipPath = useTransform(
+    [topRaw, leftRaw, wRaw, hRaw],
+    ([t, l, w, h]: number[]) => `inset(${t}% ${100 - l - w}% ${100 - t - h}% ${l}%)`,
+  );
+
   if (!visible) return null;
 
-  // Slot position. canvasSlide blends from home's scroll-driven slot → left (0%).
-  const homeLeft = canvasLeftPct(scrollProgress);
-  const homeTop = canvasTopPct(scrollProgress);
-  const left = homeLeft + (0 - homeLeft) * canvasSlide;
-  const top = homeTop + (0 - homeTop) * canvasSlide;
-
-  // Lean fades out as we slide into case-study state.
-  const leanScale = 1 - canvasSlide;
-  const lean = canvasLeanFactor(scrollProgress) * SLASH_PEAK_PCT * leanScale;
-  const tlx = Math.max(0, lean);
-  const trx = 100 + Math.min(0, lean);
-  const brx = 100 - Math.max(0, lean);
-  const blx = -Math.min(0, lean);
-  const clipDesktop = `polygon(${tlx}% 0%, ${trx}% 0%, ${brx}% 100%, ${blx}% 100%)`;
-
-  const leanMobile = -canvasLeanFactor(scrollProgress) * SLASH_PEAK_PCT * leanScale;
-  const tly = Math.max(0, leanMobile);
-  const try_ = -Math.min(0, leanMobile);
-  const bry = 100 - Math.max(0, leanMobile);
-  const bly = 100 + Math.min(0, leanMobile);
-  const clipMobile = `polygon(0% ${tly}%, 100% ${try_}%, 100% ${bry}%, 0% ${bly}%)`;
-
   return (
-    <div
+    <motion.div
       aria-hidden="true"
       style={
         isMobileCaseStudy
@@ -172,27 +212,16 @@ export default function SceneCanvas() {
               pointerEvents: 'none',
               zIndex: 10,
             }
-          : isMobile
-            ? {
-                position: 'fixed',
-                left: 0,
-                width: '100%',
-                height: '50%',
-                top: `${top}%`,
-                clipPath: clipMobile,
-                pointerEvents: 'none',
-                zIndex: 0,
-              }
-            : {
-                position: 'fixed',
-                top: 0,
-                height: '100%',
-                width: '50%',
-                left: `${left}%`,
-                clipPath: clipDesktop,
-                pointerEvents: 'none',
-                zIndex: 0,
-              }
+          : {
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              pointerEvents: 'none',
+              zIndex: 0,
+              clipPath,
+            }
       }
     >
       <Canvas
@@ -202,8 +231,9 @@ export default function SceneCanvas() {
         gl={{ antialias: !isMobile, alpha: true }}
       >
         <BackgroundField />
+        <LetterFillField />
         <CaseStudyHeroLayer />
       </Canvas>
-    </div>
+    </motion.div>
   );
 }

@@ -11,16 +11,25 @@ export interface ModuleWindow {
 
 // Total scroll length for the unified timeline. The single sticky-pinned
 // container is this tall; scrollYProgress maps 0..1 across this range.
-export const TIMELINE_HEIGHT_SVH = 900;
+// Module holds: hero=256, about=192, work=192, contact=320svh. Inter-
+// module letter-field transitions: 160svh each. New total:
+// 256+160+192+160+192+160+320 = 1440svh. The transition windows grew
+// from 128→160svh by adding +32svh ENTIRELY into the full-width HOLD
+// beat — rect-expand/contract and overlay fades keep their previous
+// absolute svh duration via the shifted beat constants below.
+export const TIMELINE_HEIGHT_SVH = 1440;
 
 // Hero is opacity 1 from scroll=0 (no DOM enter — the in-mesh per-glyph
 // reveal animation handles its visual entry). Each subsequent scene
 // overlaps with the previous via shared enter/exit windows for crossfade.
+// Boundaries are computed from absolute svh: 256/192/192/320 module holds
+// and 160svh transitions, divided by 1440 total. Adjacent modules share
+// boundaries by contract (about.enterStart === hero.exitStart, etc.).
 export const MODULE_WINDOWS: Record<Module, ModuleWindow> = {
-  hero: { enterStart: 0.0, enterEnd: 0.0, exitStart: 0.16, exitEnd: 0.32 },
-  about: { enterStart: 0.16, enterEnd: 0.32, exitStart: 0.4, exitEnd: 0.56 },
-  work: { enterStart: 0.4, enterEnd: 0.56, exitStart: 0.64, exitEnd: 0.8 },
-  contact: { enterStart: 0.64, enterEnd: 0.8, exitStart: 1.0, exitEnd: 1.0 },
+  hero: { enterStart: 0.0, enterEnd: 0.0, exitStart: 0.1778, exitEnd: 0.2889 },
+  about: { enterStart: 0.1778, enterEnd: 0.2889, exitStart: 0.4222, exitEnd: 0.5333 },
+  work: { enterStart: 0.4222, enterEnd: 0.5333, exitStart: 0.6667, exitEnd: 0.7778 },
+  contact: { enterStart: 0.6667, enterEnd: 0.7778, exitStart: 1.0, exitEnd: 1.0 },
 };
 
 export function sceneOpacity(progress: number, w: ModuleWindow): number {
@@ -41,56 +50,68 @@ export function moduleProgress(progress: number, w: ModuleWindow): number {
   return Math.max(0, Math.min(1, (progress - start) / (end - start)));
 }
 
-// Per-scene canvas side. Content sits on the opposite half. The canvas slides
-// between sides during the outgoing scene's exit window so the slide is
-// choreographed with the existing mode crossfade.
-export const MODULE_CANVAS_SIDE: Record<Module, 'left' | 'right'> = {
-  hero: 'right',
-  about: 'left',
-  work: 'right',
-  contact: 'left',
-};
-
-// Mobile equivalent: canvas occupies top or bottom 50%. Pattern A
-// (top/bottom/top/bottom) is the mirror of the desktop right/left/right/left
-// rhythm, transposed to the vertical axis.
-export const MODULE_CANVAS_SLOT_MOBILE: Record<Module, 'top' | 'bottom'> = {
-  hero: 'top',
-  about: 'bottom',
-  work: 'top',
-  contact: 'bottom',
-};
-
-// Signed "lean" envelope for the canvas during transitions: in [-1, 1].
-// Magnitude follows a smoothstep tent (0 → 1 → 0) across each exit window;
-// sign = direction of horizontal travel (+1 = sliding right, -1 = sliding
-// left). Drives the parallelogram clip-path decoration on the canvas wrapper
-// so the canvas appears to lean toward the direction of travel mid-slide.
-export function canvasLeanFactor(progress: number): number {
-  const order: Module[] = ['hero', 'about', 'work', 'contact'];
-  const sidePct = (m: Module) => (MODULE_CANVAS_SIDE[m] === 'right' ? 50 : 0);
-  for (let i = 0; i < order.length - 1; i++) {
-    const from = order[i];
-    const to = order[i + 1];
-    const w = MODULE_WINDOWS[from];
-    if (progress < w.exitStart) return 0;
-    if (progress < w.exitEnd) {
-      const u = (progress - w.exitStart) / (w.exitEnd - w.exitStart);
-      const tent = u < 0.5 ? u * 2 : (1 - u) * 2;
-      const eased = tent * tent * (3 - 2 * tent);
-      const dir = Math.sign(sidePct(to) - sidePct(from));
-      return eased * dir;
-    }
-  }
-  return 0;
+// Per-module canvas slot rectangles, in viewport %. Drives the geometry of
+// where the shader physically renders — not just where it slides to. The
+// shader steps forward at module transitions by EXPANDING into more of the
+// viewport (Hero=half, About=upper letterbox, Work=full, Contact=half).
+export interface CanvasSlot {
+  top: number;
+  left: number;
+  w: number;
+  h: number;
 }
 
-// Canvas left edge in % of viewport (0 = left, 50 = right). Slides via
-// smoothstep across each transition's exit window.
-export function canvasLeftPct(progress: number): number {
+export const MODULE_CANVAS_SLOT_DESKTOP: Record<Module, CanvasSlot> = {
+  hero: { top: 0, left: 50, w: 50, h: 100 },
+  about: { top: 0, left: 0, w: 100, h: 58 },
+  work: { top: 0, left: 0, w: 100, h: 100 },
+  contact: { top: 0, left: 0, w: 50, h: 100 },
+};
+
+export const MODULE_CANVAS_SLOT_MOBILE: Record<Module, CanvasSlot> = {
+  hero: { top: 0, left: 0, w: 100, h: 50 },
+  about: { top: 50, left: 0, w: 100, h: 50 },
+  work: { top: 0, left: 0, w: 100, h: 50 },
+  contact: { top: 50, left: 0, w: 100, h: 50 },
+};
+
+const FULLSCREEN_SLOT: CanvasSlot = { top: 0, left: 0, w: 100, h: 100 };
+
+// Six-phase sequential beats inside each transition window (u ∈ [0,1]).
+// Each beat has its own focal motion so the eye has somewhere to land
+// instead of three things morphing in lockstep. ~3% kiss overlaps soften
+// hand-offs without slop. The rect/overlay constants below feed canvasSlot
+// and overlayOpacity; per-preset letter timing lives in TRANSITION_PRESETS.
+//
+// Beat-anchor svh map (in a 160svh transition window):
+//   [0,    15.4]   from-overlay fades out
+//   [12.8, 35.8]   rect expands from-slot → fullscreen
+//   [32.0, 48.6]   letters dissolve in    (per-preset, see TRANSITION_PRESETS)
+//   [48.6, 111.4]  HOLD — letters at full, all-black bg (~63svh, the
+//                  full-width dwell — bumped from 30.7→62.7svh)
+//   [111.4, 128.0] letters dissolve out   (per-preset)
+//   [124.2, 147.2] rect contracts fullscreen → to-slot
+//   [144.6, 160.0] to-overlay fades in
+export const OVERLAY_OUT_END = 0.096;
+export const RECT_EXPAND_START = 0.08;
+export const RECT_EXPAND_END = 0.224;
+export const RECT_CONTRACT_START = 0.776;
+export const RECT_CONTRACT_END = 0.92;
+export const OVERLAY_IN_START = 0.904;
+
+function lerpSlot(a: CanvasSlot, b: CanvasSlot, t: number): CanvasSlot {
+  return {
+    top: a.top + (b.top - a.top) * t,
+    left: a.left + (b.left - a.left) * t,
+    w: a.w + (b.w - a.w) * t,
+    h: a.h + (b.h - a.h) * t,
+  };
+}
+
+export function canvasSlot(progress: number, isMobile: boolean): CanvasSlot {
+  const slots = isMobile ? MODULE_CANVAS_SLOT_MOBILE : MODULE_CANVAS_SLOT_DESKTOP;
   const order: Module[] = ['hero', 'about', 'work', 'contact'];
-  const sidePct = (m: Module) => (MODULE_CANVAS_SIDE[m] === 'right' ? 50 : 0);
-  let current = sidePct('hero');
+  let current = slots.hero;
   for (let i = 0; i < order.length - 1; i++) {
     const from = order[i];
     const to = order[i + 1];
@@ -98,31 +119,25 @@ export function canvasLeftPct(progress: number): number {
     if (progress < w.exitStart) return current;
     if (progress < w.exitEnd) {
       const u = (progress - w.exitStart) / (w.exitEnd - w.exitStart);
-      const eased = u * u * (3 - 2 * u);
-      return sidePct(from) + (sidePct(to) - sidePct(from)) * eased;
+      const fromSlot = slots[from];
+      const toSlot = slots[to];
+      if (u < RECT_EXPAND_START) return fromSlot;
+      if (u < RECT_EXPAND_END) {
+        const v = (u - RECT_EXPAND_START) / (RECT_EXPAND_END - RECT_EXPAND_START);
+        const eased = v * v * (3 - 2 * v);
+        return lerpSlot(fromSlot, FULLSCREEN_SLOT, eased);
+      }
+      if (u < RECT_CONTRACT_START) {
+        return FULLSCREEN_SLOT;
+      }
+      if (u < RECT_CONTRACT_END) {
+        const v = (u - RECT_CONTRACT_START) / (RECT_CONTRACT_END - RECT_CONTRACT_START);
+        const eased = v * v * (3 - 2 * v);
+        return lerpSlot(FULLSCREEN_SLOT, toSlot, eased);
+      }
+      return toSlot;
     }
-    current = sidePct(to);
-  }
-  return current;
-}
-
-// Mobile analog: canvas top edge in % of viewport (0 = top half, 50 = bottom
-// half). Same smoothstep slide as canvasLeftPct, transposed to the y axis.
-export function canvasTopPct(progress: number): number {
-  const order: Module[] = ['hero', 'about', 'work', 'contact'];
-  const slotPct = (m: Module) => (MODULE_CANVAS_SLOT_MOBILE[m] === 'bottom' ? 50 : 0);
-  let current = slotPct('hero');
-  for (let i = 0; i < order.length - 1; i++) {
-    const from = order[i];
-    const to = order[i + 1];
-    const w = MODULE_WINDOWS[from];
-    if (progress < w.exitStart) return current;
-    if (progress < w.exitEnd) {
-      const u = (progress - w.exitStart) / (w.exitEnd - w.exitStart);
-      const eased = u * u * (3 - 2 * u);
-      return slotPct(from) + (slotPct(to) - slotPct(from)) * eased;
-    }
-    current = slotPct(to);
+    current = slots[to];
   }
   return current;
 }
@@ -154,6 +169,33 @@ export function getTransitionState(progress: number): TransitionState {
     }
   }
   return { active: null, progress: 0, from: null, to: null };
+}
+
+function smoothstep01(x: number): number {
+  const t = Math.max(0, Math.min(1, x));
+  return t * t * (3 - 2 * t);
+}
+
+// HTML overlay opacity, staggered to leave room for rect-expand and
+// letter-emerge beats on either side. The from-overlay collapses its 1→0
+// fade into the first OVERLAY_OUT_END portion of its exit window so it's
+// gone before letters start emerging; the to-overlay holds at 0 until
+// OVERLAY_IN_START of its enter window then fades in over the tail. Outside
+// active transitions the standard sceneOpacity (rest=1) carries.
+export function overlayOpacity(progress: number, w: ModuleWindow): number {
+  if (progress > w.exitStart && progress < w.exitEnd && w.exitEnd > w.exitStart) {
+    const u = (progress - w.exitStart) / (w.exitEnd - w.exitStart);
+    if (u < OVERLAY_OUT_END) return 1 - smoothstep01(u / OVERLAY_OUT_END);
+    return 0;
+  }
+  if (progress > w.enterStart && progress < w.enterEnd && w.enterEnd > w.enterStart) {
+    const u = (progress - w.enterStart) / (w.enterEnd - w.enterStart);
+    if (u > OVERLAY_IN_START) {
+      return smoothstep01((u - OVERLAY_IN_START) / (1 - OVERLAY_IN_START));
+    }
+    return 0;
+  }
+  return sceneOpacity(progress, w);
 }
 
 interface MaybeMaterial {
