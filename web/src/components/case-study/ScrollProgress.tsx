@@ -13,11 +13,10 @@ export default function ScrollProgress() {
   });
 
   useEffect(() => {
-    useSceneStore.getState().setScrollProgress(scrollYProgress.get());
     return () => {
       useSceneStore.getState().setScrollProgress(0);
     };
-  }, [scrollYProgress]);
+  }, []);
 
   return (
     <m.div

@@ -9,6 +9,7 @@ import LetterFillField from '@/components/sections/LetterFillField';
 import CaseStudyHeroLayer from '@/components/CaseStudyHeroLayer';
 import useCanvasGate from '@/lib/useCanvasGate';
 import useIsMobileViewport from '@/lib/useIsMobileViewport';
+import useWebGLSupport from '@/lib/useWebGLSupport';
 import { useSceneStore } from '@/lib/useSceneStore';
 import { canvasSlot, type CanvasSlot } from '@/lib/moduleTimeline';
 
@@ -52,6 +53,7 @@ function computeTargetSlot(s: { scrollProgress: number; canvasSlide: number }, i
 export default function SceneCanvas() {
   const pathname = usePathname();
   const enableCanvas = useCanvasGate();
+  const webgl = useWebGLSupport();
   const isMobile = useIsMobileViewport();
   const isHome = pathname === '/';
 
@@ -193,7 +195,25 @@ export default function SceneCanvas() {
     ([t, l, w, h]: number[]) => `inset(${t}% ${100 - l - w}% ${100 - t - h}% ${l}%)`,
   );
 
-  if (!visible) return null;
+  if (!visible) {
+    // Last-resort backdrop for browsers without WebGL. Reduced-motion users get
+    // the static overlay path in HomeSceneRoot instead, so we only render this
+    // when WebGL is explicitly unsupported — keeps the dark void from looking
+    // broken on home / case study without competing with the real shader.
+    if (webgl === false && (isHome || isCaseStudy)) {
+      return (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-0"
+          style={{
+            background:
+              'radial-gradient(ellipse at 30% 20%, rgba(196, 245, 122, 0.06) 0%, transparent 55%), radial-gradient(ellipse at 75% 80%, rgba(120, 160, 220, 0.05) 0%, transparent 60%), var(--color-background)',
+          }}
+        />
+      );
+    }
+    return null;
+  }
 
   return (
     <m.div

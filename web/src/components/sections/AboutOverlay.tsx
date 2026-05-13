@@ -36,7 +36,7 @@ function AboutBody({ progress }: { progress?: MotionValue<number> }) {
           mount={!progress}
           progress={progress}
           window={MODULE_WINDOWS.about}
-          className="flex-shrink-0 text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-6xl lg:text-7xl"
+          className="flex-shrink-0 text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl"
         />
         <p
           className="text-balance text-lg italic leading-snug text-foreground/85 sm:text-2xl md:max-w-[55ch] md:text-2xl lg:text-3xl"

@@ -286,7 +286,7 @@ function BeatCell({ beat, index, activeIdx }: { beat: Beat; index: number; activ
   // HITL gate — diamond
   return (
     <m.div style={{ opacity }} className="flex items-center justify-center py-1 md:px-2 md:py-0">
-      <div className="relative h-10 w-10 md:h-12 md:w-12" aria-label={beat.title}>
+      <div className="relative h-10 w-10 md:h-12 md:w-12">
         <m.div style={{ scale, borderColor }} className="absolute inset-0 rotate-45 border bg-background" />
         <span className="absolute inset-0 flex items-center justify-center font-mono text-[8px] font-semibold uppercase tracking-[0.15em] text-foreground/70 md:text-[9px]">
           HITL
@@ -318,7 +318,7 @@ function MobileBeatCell({ beat, index, activeIdx }: { beat: Beat; index: number;
       style={{ opacity }}
       className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center py-1"
     >
-      <div className="relative size-12" aria-label={beat.title}>
+      <div className="relative size-12">
         <div className="absolute inset-0 rotate-45 border border-foreground/70 bg-background" />
         <span className="absolute inset-0 flex items-center justify-center font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-foreground/70">
           HITL
