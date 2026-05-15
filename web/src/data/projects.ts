@@ -21,7 +21,7 @@ export interface VideoBlock {
   src: string;
   poster?: string;
   alt: string;
-  aspect?: '16/9' | '21/9';
+  aspect?: '16/9' | '21/9' | '4/3' | '1/1' | '9/16';
   caption?: string;
   figNumber?: string;
 }
@@ -194,7 +194,53 @@ const projects: Project[] = [
         heading: 'The switcher',
         body: 'Same component tree. Different theme file. Watch every pixel repaint without a single markup change.',
       },
-      { type: 'chapter', number: '05', title: 'What shipped' },
+      { type: 'chapter', number: '05', title: 'Campaigns on the engine', eyebrow: 'Production Output' },
+      {
+        type: 'text-block',
+        heading: 'Real campaigns, shipped on the same architecture',
+        body: "The engine doesn't just power five brand homepages — it ships campaign landing pages, launch microsites, and seasonal pushes. Same component tree. Different theme. Marketing requests turn around in days, not weeks.",
+      },
+      {
+        type: 'video-block',
+        src: '/work/videos/new-belgium-campaign-1.mp4',
+        alt: 'New Belgium campaign landing page interaction',
+        aspect: '16/9',
+        caption: 'Campaign landing — engine-built, theme-driven',
+      },
+      {
+        type: 'video-block',
+        src: '/work/videos/new-belgium-campaign-2.mp4',
+        alt: 'New Belgium campaign interaction',
+        aspect: '16/9',
+        caption: 'Campaign interaction — built fast on the shared system',
+      },
+      {
+        type: 'video-block',
+        src: '/work/videos/new-belgium-campaign-3.mp4',
+        alt: 'New Belgium campaign rollout',
+        aspect: '16/9',
+        caption: 'Campaign rollout — the engine handles seasonal launches at scale',
+      },
+      {
+        type: 'text-block',
+        heading: 'Same engine, mobile too',
+        body: 'The responsive variants ship from the same component tree. No separate mobile codebase, no mobile-specific QA cycle. The engine handles every breakpoint from one source of truth.',
+      },
+      {
+        type: 'video-block',
+        src: '/work/videos/new-belgium-campaign-mobile-1.mp4',
+        alt: 'New Belgium campaign on mobile',
+        aspect: '9/16',
+        caption: 'Mobile responsive — same components, different breakpoints',
+      },
+      {
+        type: 'video-block',
+        src: '/work/videos/new-belgium-campaign-mobile-2.mp4',
+        alt: 'New Belgium campaign on mobile',
+        aspect: '9/16',
+        caption: 'Mobile responsive — engine-driven from desktop to phone',
+      },
+      { type: 'chapter', number: '06', title: 'What shipped' },
       {
         type: 'text-block',
         heading: 'Five brands, one deploy pipeline',
@@ -203,6 +249,130 @@ const projects: Project[] = [
     ],
     featured: true,
     order: 1,
+  },
+  {
+    title: 'Phantom Labs',
+    subtitle: "A Studio Site That Never Shipped — and the Strongest Engineering I've Built",
+    slug: 'phantom-labs',
+    year: '2023',
+    role: 'Lead Front-End Engineer',
+    client: 'Phantom Labs (studio)',
+    deliverables: ['Web', 'WebGL', 'Motion', 'Interaction'],
+    tags: [
+      'Three.js',
+      'GLSL',
+      'Custom Shaders',
+      'WebGL',
+      'Motion Systems',
+      'Interaction Design',
+      'Front End Engineering',
+    ],
+    projectUrl: '',
+    thumbnail: '/work/phantom-1.webp',
+    gallery: [
+      '/work/phantom-1.webp',
+      '/work/phantom-2.webp',
+      '/work/phantom-3.webp',
+      '/work/phantom-4.webp',
+      '/work/phantom-5.webp',
+      '/work/phantom-6.webp',
+    ],
+    overview: {
+      headline: 'A Studio Site That Pushed The Boundary, Then Never Went Public',
+      body: "Built for Phantom Labs in 2023. The studio later pivoted and the site never shipped — preserved here because it's the strongest engineering I've built. Custom shaders, hand-tuned interactions, motion systems that still hold up.",
+    },
+    blocks: [
+      { type: 'chapter', number: '01', title: 'The Brief' },
+      {
+        type: 'text-block',
+        heading: 'A studio site, swung at peak craft',
+        body: 'Phantom Labs commissioned a portfolio site that had to look like the work — not a frame around the work. The brief gave room for custom shaders, custom interactions, and a motion language built from scratch. No drei drop-ins, no off-the-shelf scroll libraries. Every primitive was authored to fit.',
+      },
+      {
+        type: 'text-block',
+        heading: 'And then the studio pivoted',
+        body: 'Mid-build, Phantom changed direction. The site never went public. Preserved here because the engineering deserves the daylight — and because shipping is not the only definition of done.',
+      },
+      { type: 'chapter', number: '02', title: 'The build', eyebrow: 'Hand-Authored Primitives' },
+      {
+        type: 'text-block',
+        heading: 'Custom shaders, custom motion',
+        body: 'Every visual primitive was hand-authored. No off-the-shelf materials. No drei post-processing stack. GLSL written to the visual brief, not adapted from a library.',
+      },
+      {
+        type: 'video-block',
+        src: '/work/videos/phantom-1.mp4',
+        alt: 'Phantom Labs hero interaction',
+        aspect: '16/9',
+        caption: 'Hero — custom shader, hand-tuned motion',
+      },
+      {
+        type: 'text-block',
+        heading: 'The motion language',
+        body: 'Every spring, every easing, every interaction beat tuned by hand. The whole site reads as one coherent motion sculpture rather than a stack of borrowed parts.',
+      },
+      { type: 'chapter', number: '03', title: 'In motion' },
+      {
+        type: 'video-block',
+        src: '/work/videos/phantom-2.mp4',
+        alt: 'Phantom Labs section transition',
+        aspect: '16/9',
+        caption: 'Section transition — typography meets material',
+      },
+      {
+        type: 'video-block',
+        src: '/work/videos/phantom-3.mp4',
+        alt: 'Phantom Labs interaction detail',
+        aspect: '16/9',
+        caption: 'Detail interaction — engineered, not synthesized',
+      },
+      { type: 'chapter', number: '04', title: 'In stills' },
+      {
+        type: 'media-block',
+        src: '/work/phantom-1.webp',
+        alt: 'Phantom Labs hero state',
+        aspect: '16/9',
+        caption: 'Hero state — design and material as one',
+      },
+      {
+        type: 'media-block',
+        src: '/work/phantom-2.webp',
+        alt: 'Phantom Labs work section',
+        aspect: '16/9',
+      },
+      {
+        type: 'media-block',
+        src: '/work/phantom-3.webp',
+        alt: 'Phantom Labs work section',
+        aspect: '16/9',
+      },
+      {
+        type: 'media-block',
+        src: '/work/phantom-4.webp',
+        alt: 'Phantom Labs case study layout',
+        aspect: '16/9',
+      },
+      {
+        type: 'media-block',
+        src: '/work/phantom-5.webp',
+        alt: 'Phantom Labs case study layout',
+        aspect: '16/9',
+      },
+      {
+        type: 'media-block',
+        src: '/work/phantom-6.webp',
+        alt: 'Phantom Labs case study layout',
+        aspect: '16/9',
+      },
+      { type: 'chapter', number: '05', title: 'Almost shipped, still mine' },
+      {
+        type: 'text-block',
+        heading: 'What the work proved',
+        body: 'The site never went live, but the build proved out a way of working: custom shaders to taste, motion language hand-authored, no synthesis. That engineering still lives in everything I ship today.',
+      },
+    ],
+    featured: true,
+    order: 2,
   },
   {
     title: 'Mission Bell',
@@ -280,7 +450,7 @@ const projects: Project[] = [
       },
     ],
     featured: true,
-    order: 2,
+    order: 3,
   },
   {
     title: 'Consume & Create',
@@ -363,7 +533,7 @@ const projects: Project[] = [
       },
     ],
     featured: true,
-    order: 3,
+    order: 4,
   },
   {
     title: 'CraftedKit',
@@ -446,7 +616,7 @@ const projects: Project[] = [
       },
     ],
     featured: true,
-    order: 4,
+    order: 5,
   },
 ];
 
