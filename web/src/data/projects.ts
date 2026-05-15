@@ -252,7 +252,7 @@ const projects: Project[] = [
   },
   {
     title: 'Phantom Labs',
-    subtitle: "A Studio Site That Never Shipped — and the Strongest Engineering I've Built",
+    subtitle: "The Best Thing I Haven't Shipped",
     slug: 'phantom-labs',
     year: '2023',
     role: 'Lead Front-End Engineer',
@@ -278,26 +278,26 @@ const projects: Project[] = [
       '/work/phantom-6.webp',
     ],
     overview: {
-      headline: 'A Studio Site That Pushed The Boundary, Then Never Went Public',
-      body: "Built for Phantom Labs in 2023. The studio later pivoted and the site never shipped — preserved here because it's the strongest engineering I've built. Custom shaders, hand-tuned interactions, motion systems that still hold up.",
+      headline: 'A Studio Site Built Without Library Defaults',
+      body: "Built for Phantom Labs in 2023. The studio took a different direction mid-build and the site never went public. Including it here because it's still the best thing I've made.",
     },
     blocks: [
       { type: 'chapter', number: '01', title: 'The Brief' },
       {
         type: 'text-block',
-        heading: 'A studio site, swung at peak craft',
-        body: 'Phantom Labs commissioned a portfolio site that had to look like the work — not a frame around the work. The brief gave room for custom shaders, custom interactions, and a motion language built from scratch. No drei drop-ins, no off-the-shelf scroll libraries. Every primitive was authored to fit.',
+        heading: 'A studio site that had to look like the work',
+        body: 'Phantom Labs wanted a studio site that looked like the work, not a wrapper around it. The brief was open: build it however you want. So I did — every shader, every transition written from scratch, no drei drop-ins, no off-the-shelf scroll lib.',
       },
       {
         type: 'text-block',
         heading: 'And then the studio pivoted',
-        body: 'Mid-build, Phantom changed direction. The site never went public. Preserved here because the engineering deserves the daylight — and because shipping is not the only definition of done.',
+        body: 'Mid-build, the studio took a different direction. The site never went public. The work is still mine.',
       },
       { type: 'chapter', number: '02', title: 'The build', eyebrow: 'Hand-Authored Primitives' },
       {
         type: 'text-block',
-        heading: 'Custom shaders, custom motion',
-        body: 'Every visual primitive was hand-authored. No off-the-shelf materials. No drei post-processing stack. GLSL written to the visual brief, not adapted from a library.',
+        heading: 'Hand-authored, top to bottom',
+        body: "No drei materials. No bolted-on post-processing. No scroll lib carrying the load. I wrote every shader to the comps and tuned every interaction by hand. That's why the whole thing reads as one piece — everything was made for the part next to it.",
       },
       {
         type: 'video-block',
@@ -308,8 +308,8 @@ const projects: Project[] = [
       },
       {
         type: 'text-block',
-        heading: 'The motion language',
-        body: 'Every spring, every easing, every interaction beat tuned by hand. The whole site reads as one coherent motion sculpture rather than a stack of borrowed parts.',
+        heading: 'The motion',
+        body: 'Every transition tuned by hand. No library shortcuts.',
       },
       { type: 'chapter', number: '03', title: 'In motion' },
       {
@@ -324,7 +324,7 @@ const projects: Project[] = [
         src: '/work/videos/phantom-3.mp4',
         alt: 'Phantom Labs interaction detail',
         aspect: '16/9',
-        caption: 'Detail interaction — engineered, not synthesized',
+        caption: 'Detail interaction — built, not borrowed',
       },
       { type: 'chapter', number: '04', title: 'In stills' },
       {
@@ -367,8 +367,8 @@ const projects: Project[] = [
       { type: 'chapter', number: '05', title: 'Almost shipped, still mine' },
       {
         type: 'text-block',
-        heading: 'What the work proved',
-        body: 'The site never went live, but the build proved out a way of working: custom shaders to taste, motion language hand-authored, no synthesis. That engineering still lives in everything I ship today.',
+        heading: 'Still my best build',
+        body: "Site never went live. Custom shaders, motion by hand, no library defaults — everything I've made since is downstream of this one.",
       },
     ],
     featured: true,
