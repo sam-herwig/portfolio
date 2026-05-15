@@ -175,6 +175,18 @@ const projects: Project[] = [
         heading: 'Kirin USA',
         body: 'Kirin USA pulls Japanese-influenced design into the same system. Completely different cultural DNA, same architecture.',
       },
+      {
+        type: 'video-block',
+        src: '/work/videos/new-belgium-nbb.mp4',
+        alt: 'New Belgium flagship homepage interaction',
+        aspect: '16/9',
+        caption: 'New Belgium — heritage craft, the parent that ties the family together',
+      },
+      {
+        type: 'text-block',
+        heading: 'New Belgium',
+        body: 'New Belgium is the parent — warm, considered, craft-first. The sub-brands borrow from its DNA without flattening into it.',
+      },
       { type: 'chapter', number: '04', title: 'Try the theme switch yourself' },
       { type: 'spotlight-block', spotlightId: 'new-belgium-theme-switcher' },
       {

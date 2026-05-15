@@ -235,14 +235,14 @@ export default function ProcessPage() {
           </h2>
           <div className="flex flex-col gap-4">
             <a
-              href="mailto:sam@samherwig.dev"
+              href="mailto:hello@craftedkit.io"
               className="inline-flex w-fit items-baseline gap-3 text-2xl font-medium tracking-tight text-foreground transition-opacity hover:opacity-70 md:text-3xl"
               style={{
                 fontFamily: 'var(--font-fraunces)',
                 fontVariationSettings: '"opsz" 144, "SOFT" 100, "WONK" 0',
               }}
             >
-              sam@samherwig.dev ↗
+              hello@craftedkit.io ↗
             </a>
             <a
               href="https://craftedkit.io"

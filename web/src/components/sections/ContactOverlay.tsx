@@ -28,14 +28,14 @@ function ContactInner({
         Got a project, role, or collaboration that needs WebGL, motion, or AI pipelines —
       </p>
       <a
-        href="mailto:sam@samherwig.dev"
+        href="mailto:hello@craftedkit.io"
         className="text-balance text-2xl font-medium tracking-tight text-foreground transition-opacity hover:opacity-70 sm:text-3xl md:text-5xl lg:text-6xl"
         style={{
           fontFamily: 'var(--font-fraunces)',
           fontVariationSettings: '"opsz" 144, "SOFT" 100, "WONK" 0',
         }}
       >
-        sam@samherwig.dev ↗
+        hello@craftedkit.io ↗
       </a>
       <p className="text-base text-foreground/55 md:text-lg" style={{ fontFamily: 'var(--font-instrument)' }}>
         Or run the studio:&nbsp;
