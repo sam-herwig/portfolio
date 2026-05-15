@@ -79,6 +79,19 @@ const FRAG = /* glsl */ `
   uniform float uCKIdleDrift;
   uniform float uCKWhooshGain;
 
+  // 4 — Phantom Labs: procedural 1-bit particle field (1-bit, 4 keypoints).
+  uniform vec2  uPLFocal;
+  uniform float uPLGridDensity;
+  uniform float uPLRingRadius;
+  uniform float uPLRingWidth;
+  uniform float uPLFocalRingRadius;
+  uniform float uPLFocalRingWidth;
+  uniform float uPLScatter;
+  uniform float uPLSpiralPitch;
+  uniform float uPLCycles;
+  uniform float uPLIdleDrift;
+  uniform float uPLWhooshGain;
+
   // Interaction layer mirrored from BackgroundField via useSceneStore — same
   // Leva folder drives every shader on the page. Applied to cuv once before
   // mode dispatch so all four case-study shaders inherit consistent behavior.
@@ -733,6 +746,77 @@ const FRAG = /* glsl */ `
     return vec3(ink);
   }
 
+  // ============================================================
+  // 4 — Phantom Labs: procedural 1-bit particle field (Phantom Labs reference).
+  //   K0 dual-ring + scatter   K1 single dense ring   K2 logarithmic spiral arms   K3 dispersed cloud
+  // Per-cell hash thresholded against a target-shape density bias yields
+  // scattered 1-bit dots. The 4 keypoint shape distances are morph-blended
+  // through morphSegment, identical to modeCraftedKit / modeConsumeCreate.
+  // ============================================================
+  // Signed distance to a ring at radius r0 (negative inside the band).
+  float plRingDist(vec2 p, float r0, float halfW) {
+    return abs(length(p) - r0) - halfW;
+  }
+  // Distance to nearest arm of a log spiral (4 arms equispaced in theta).
+  float plSpiralDist(vec2 p, float pitch, float r0) {
+    float r    = max(length(p), 1e-4);
+    float th   = atan(p.y, p.x);
+    float b    = max(pitch, 1e-3);
+    float ideal = log(r / max(r0, 1e-3)) / b;
+    float arms  = 4.0;
+    float seg   = 6.28318531 / arms;
+    float dTh   = mod(th - ideal + seg * 0.5, seg) - seg * 0.5;
+    return abs(dTh) * r / sqrt(1.0 + b * b);
+  }
+  // K3 dispersed cloud: a very wide gaussian envelope centered on origin.
+  // Effective "distance" is large radius minus rho — coherence collapses.
+  float plCloudDist(vec2 p, float rOuter) {
+    return length(p) - rOuter;
+  }
+
+  vec3 modePhantomLabs(vec2 cuv) {
+    vec2 p = cuv - uPLFocal;
+    // Idle rotation matches the other 1-bit modes for visual register.
+    float ti = uTime * uPLIdleDrift;
+    float ca = cos(ti), sa = sin(ti);
+    p = mat2(ca, -sa, sa, ca) * p;
+
+    float phase = fract(uScroll * uPLCycles);
+    float seg   = phase * 4.0;
+    float i     = floor(seg);
+    float lt    = clamp(seg - i, 0.0, 1.0);
+
+    // Four keypoint "ideal" distances — same morph contract as CK/CC.
+    float d0 = plRingDist(p, uPLRingRadius, uPLRingWidth);
+    float d1 = plRingDist(p, uPLRingRadius * 0.72, uPLRingWidth * 0.5);
+    float d2 = plSpiralDist(p, uPLSpiralPitch, uPLFocalRingRadius);
+    float d3 = plCloudDist(p, uPLRingRadius * 1.6);
+
+    float d = morphSegment(d0, d1, d2, d3, lt, i, uPLWhooshGain);
+
+    // Per-cell hash → density bias against the morphed shape distance.
+    // Cells near the target shape produce dots; off-shape cells stay dark.
+    // Slight per-cell wobble keeps the field alive without losing crispness.
+    vec2  cell    = floor(cuv * uPLGridDensity);
+    vec2  jitter  = (hash22(cell) - 0.5) * 0.6;
+    float h       = hash(cell + 13.0);
+    // Bias: 1 at d=0, falling off at scale uPLScatter. K3 keeps the falloff
+    // wide so coherence reads as "dissolved" rather than "blank".
+    float falloff = max(uPLScatter, 1e-3);
+    float bias    = exp(-(d * d) / (falloff * falloff));
+    // Add a low-amplitude ambient scatter so the field never goes fully dark.
+    bias = clamp(bias + jitter.x * 0.04, 0.0, 1.0);
+    float particle = step(1.0 - bias, h);
+
+    // Crisp focal ring — persistent across all 4 keypoints as the unifying motif.
+    float dFocal = plRingDist(p, uPLFocalRingRadius, uPLFocalRingWidth);
+    float fw     = max(fwidth(dFocal), 1e-4);
+    float focal  = 1.0 - smoothstep(-fw, fw, dFocal);
+
+    float ink = max(particle, focal);
+    return vec3(ink);
+  }
+
   void main() {
     if (uWeight <= 0.001) discard;
 
@@ -752,8 +836,10 @@ const FRAG = /* glsl */ `
       else                      col = modeNewBelgium(cuv);
     } else if (uIndex == 2) {
       col = modeConsumeCreate(cuv);
-    } else {
+    } else if (uIndex == 3) {
       col = modeCraftedKit(cuv);
+    } else {
+      col = modePhantomLabs(cuv);
     }
 
     col = pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2));
@@ -816,6 +902,18 @@ const uniforms = {
   uCKCycles: { value: 3.0 },
   uCKIdleDrift: { value: 0.06 },
   uCKWhooshGain: { value: 0.06 },
+
+  uPLFocal: { value: new Vector2(0.0, 0.0) },
+  uPLGridDensity: { value: 180.0 },
+  uPLRingRadius: { value: 0.32 },
+  uPLRingWidth: { value: 0.08 },
+  uPLFocalRingRadius: { value: 0.05 },
+  uPLFocalRingWidth: { value: 0.004 },
+  uPLScatter: { value: 0.12 },
+  uPLSpiralPitch: { value: 0.4 },
+  uPLCycles: { value: 3.0 },
+  uPLIdleDrift: { value: 0.03 },
+  uPLWhooshGain: { value: 0.08 },
 
   // Interaction — driven by useSceneStore (set by BackgroundField's Leva).
   // Defaults match the store so SSR / first-frame are coherent.
@@ -883,6 +981,19 @@ const PRESETS = {
       ckIdleDrift: 0.01,
       ckWhooshGain: 0.02,
     },
+    pl: {
+      plFocal: [0.0, 0.0] as [number, number],
+      plGridDensity: 140.0,
+      plRingRadius: 0.34,
+      plRingWidth: 0.06,
+      plFocalRingRadius: 0.05,
+      plFocalRingWidth: 0.003,
+      plScatter: 0.08,
+      plSpiralPitch: 0.5,
+      plCycles: 1.0,
+      plIdleDrift: 0.01,
+      plWhooshGain: 0.03,
+    },
   },
   'Bauhaus Manifesto': {
     mb: {
@@ -937,6 +1048,19 @@ const PRESETS = {
       ckCycles: 3.0,
       ckIdleDrift: 0.06,
       ckWhooshGain: 0.06,
+    },
+    pl: {
+      plFocal: [0.0, 0.0] as [number, number],
+      plGridDensity: 180.0,
+      plRingRadius: 0.32,
+      plRingWidth: 0.08,
+      plFocalRingRadius: 0.05,
+      plFocalRingWidth: 0.004,
+      plScatter: 0.12,
+      plSpiralPitch: 0.4,
+      plCycles: 3.0,
+      plIdleDrift: 0.03,
+      plWhooshGain: 0.08,
     },
   },
   'Op-Art Vertigo': {
@@ -993,6 +1117,19 @@ const PRESETS = {
       ckIdleDrift: 0.26,
       ckWhooshGain: 0.18,
     },
+    pl: {
+      plFocal: [0.0, 0.0] as [number, number],
+      plGridDensity: 240.0,
+      plRingRadius: 0.3,
+      plRingWidth: 0.12,
+      plFocalRingRadius: 0.05,
+      plFocalRingWidth: 0.005,
+      plScatter: 0.2,
+      plSpiralPitch: 0.3,
+      plCycles: 4.0,
+      plIdleDrift: 0.08,
+      plWhooshGain: 0.18,
+    },
   },
 } as const;
 
@@ -1009,11 +1146,13 @@ type LiveBag = {
   nb: ShaderValues['nb'] | null;
   cc: ShaderValues['cc'] | null;
   ck: ShaderValues['ck'] | null;
+  pl: ShaderValues['pl'] | null;
   forceIndex: number;
   mbSet: ((v: Partial<ShaderValues['mb']>) => void) | null;
   nbSet: ((v: Partial<ShaderValues['nb']>) => void) | null;
   ccSet: ((v: Partial<ShaderValues['cc']>) => void) | null;
   ckSet: ((v: Partial<ShaderValues['ck']>) => void) | null;
+  plSet: ((v: Partial<ShaderValues['pl']>) => void) | null;
   sceneSet: ((v: Record<string, unknown>) => void) | null;
 };
 const liveBag: LiveBag = {
@@ -1021,11 +1160,13 @@ const liveBag: LiveBag = {
   nb: null,
   cc: null,
   ck: null,
+  pl: null,
   forceIndex: -1,
   mbSet: null,
   nbSet: null,
   ccSet: null,
   ckSet: null,
+  plSet: null,
   sceneSet: null,
 };
 
@@ -1035,6 +1176,7 @@ const FORCE_OPTIONS = {
   'New Belgium': 1,
   'Consume & Create': 2,
   CraftedKit: 3,
+  'Phantom Labs': 4,
 } as const;
 
 export default function CaseStudyHeroLayer() {
@@ -1183,12 +1325,46 @@ export default function CaseStudyHeroLayer() {
     { collapsed: true },
   );
 
+  const [pl, plSet] = useControls(
+    'Phantom Labs hero',
+    () => ({
+      plFocal: { value: [0.0, 0.0] as [number, number], step: 0.01, label: 'focal xy' },
+      plGridDensity: { value: 180.0, min: 60.0, max: 320.0, step: 5.0, label: 'grid density' },
+      Geometry: folder(
+        {
+          plRingRadius: { value: 0.32, min: 0.15, max: 0.55, step: 0.005, label: 'ring radius' },
+          plRingWidth: { value: 0.08, min: 0.01, max: 0.2, step: 0.005, label: 'ring width' },
+          plFocalRingRadius: { value: 0.05, min: 0.02, max: 0.12, step: 0.002, label: 'focal r' },
+          plFocalRingWidth: { value: 0.004, min: 0.001, max: 0.02, step: 0.0005, label: 'focal w' },
+          plScatter: { value: 0.12, min: 0.02, max: 0.3, step: 0.005, label: 'scatter falloff' },
+          plSpiralPitch: { value: 0.4, min: 0.1, max: 1.0, step: 0.01, label: 'spiral pitch' },
+        },
+        { collapsed: true },
+      ),
+      Motion: folder(
+        {
+          plCycles: { value: 3.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
+          plIdleDrift: { value: 0.03, min: 0.0, max: 0.2, step: 0.005 },
+          plWhooshGain: { value: 0.08, min: 0.005, max: 0.2, step: 0.005, label: 'softmin k' },
+        },
+        { collapsed: true },
+      ),
+    }),
+    { collapsed: true },
+  );
+
   // Time accumulator: pause/scale stay coherent without resetting drift.
   const lastTimeRef = useRef(0);
 
   const snapKeypoint = (k: number): number => {
     const idx = liveBag.forceIndex >= 0 ? liveBag.forceIndex : useSceneStore.getState().csHeroIndex;
-    const cyclesByIdx = [liveBag.mb?.mbCycles, liveBag.nb?.nbCycles, liveBag.cc?.ccCycles, liveBag.ck?.ckCycles];
+    const cyclesByIdx = [
+      liveBag.mb?.mbCycles,
+      liveBag.nb?.nbCycles,
+      liveBag.cc?.ccCycles,
+      liveBag.ck?.ckCycles,
+      liveBag.pl?.plCycles,
+    ];
     const cycles = cyclesByIdx[idx] ?? 2;
     return ((k + 0.5) / (cycles * 4)) % 1;
   };
@@ -1199,6 +1375,7 @@ export default function CaseStudyHeroLayer() {
     liveBag.nbSet?.(p.nb);
     liveBag.ccSet?.(p.cc);
     liveBag.ckSet?.(p.ck);
+    liveBag.plSet?.(p.pl);
   };
 
   const [scene, sceneSet] = useControls(
@@ -1215,7 +1392,11 @@ export default function CaseStudyHeroLayer() {
       pauseTime: { value: false, label: 'pause time' },
       timeScale: { value: 1, min: 0, max: 2, step: 0.05, label: 'time ×' },
       copyValues: button(() => {
-        const snap = JSON.stringify({ mb: liveBag.mb, nb: liveBag.nb, cc: liveBag.cc, ck: liveBag.ck }, null, 2);
+        const snap = JSON.stringify(
+          { mb: liveBag.mb, nb: liveBag.nb, cc: liveBag.cc, ck: liveBag.ck, pl: liveBag.pl },
+          null,
+          2,
+        );
         navigator.clipboard?.writeText(snap).catch(() => {});
       }),
     }),
@@ -1237,11 +1418,13 @@ export default function CaseStudyHeroLayer() {
     liveBag.nb = nb as ShaderValues['nb'];
     liveBag.cc = cc as ShaderValues['cc'];
     liveBag.ck = ck as ShaderValues['ck'];
+    liveBag.pl = pl as ShaderValues['pl'];
     liveBag.forceIndex = scene.forceIndex;
     liveBag.mbSet = mbSet as LiveBag['mbSet'];
     liveBag.nbSet = nbSet as LiveBag['nbSet'];
     liveBag.ccSet = ccSet as LiveBag['ccSet'];
     liveBag.ckSet = ckSet as LiveBag['ckSet'];
+    liveBag.plSet = plSet as LiveBag['plSet'];
     liveBag.sceneSet = sceneSet as LiveBag['sceneSet'];
   });
 
@@ -1308,6 +1491,18 @@ export default function CaseStudyHeroLayer() {
     uniforms.uCKCycles.value = ck.ckCycles;
     uniforms.uCKIdleDrift.value = ck.ckIdleDrift;
     uniforms.uCKWhooshGain.value = ck.ckWhooshGain;
+
+    uniforms.uPLFocal.value.set(pl.plFocal[0], pl.plFocal[1]);
+    uniforms.uPLGridDensity.value = pl.plGridDensity;
+    uniforms.uPLRingRadius.value = pl.plRingRadius;
+    uniforms.uPLRingWidth.value = pl.plRingWidth;
+    uniforms.uPLFocalRingRadius.value = pl.plFocalRingRadius;
+    uniforms.uPLFocalRingWidth.value = pl.plFocalRingWidth;
+    uniforms.uPLScatter.value = pl.plScatter;
+    uniforms.uPLSpiralPitch.value = pl.plSpiralPitch;
+    uniforms.uPLCycles.value = pl.plCycles;
+    uniforms.uPLIdleDrift.value = pl.plIdleDrift;
+    uniforms.uPLWhooshGain.value = pl.plWhooshGain;
 
     // Pull interaction params + mouse target from the shared store. Same
     // 0.08 lerp factor as BackgroundField / LetterFillField so all three

@@ -20,6 +20,7 @@ const SLUG_TO_INDEX: Record<string, number> = {
   'new-belgium': 1,
   'consume-and-create': 2,
   craftedkit: 3,
+  'phantom-labs': 4,
 };
 
 const FORWARD_DURATION = 1.1;
