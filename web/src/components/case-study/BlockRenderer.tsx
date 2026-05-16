@@ -6,18 +6,26 @@ import VideoBlockRender from './VideoBlockRender';
 import SpotlightSlot from './SpotlightSlot';
 import Reveal from './Reveal';
 
-export default function BlockRenderer({ block, slug }: { block: ContentBlock; slug: string }) {
+export default function BlockRenderer({
+  block,
+  slug,
+  variant = 'body',
+}: {
+  block: ContentBlock;
+  slug: string;
+  variant?: 'body' | 'brief';
+}) {
   switch (block.type) {
     case 'chapter':
       return (
         <Reveal y={48} amount={0.3}>
-          <ChapterMark number={block.number} title={block.title} eyebrow={block.eyebrow} />
+          <ChapterMark number={block.number} title={block.title} eyebrow={block.eyebrow} variant={variant} />
         </Reveal>
       );
     case 'text-block':
       return (
         <Reveal>
-          <TextBlockRender heading={block.heading} body={block.body} />
+          <TextBlockRender heading={block.heading} body={block.body} variant={variant} />
         </Reveal>
       );
     case 'media-block':

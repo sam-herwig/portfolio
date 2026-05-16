@@ -9,25 +9,24 @@ export interface ModuleWindow {
 
 // Total scroll length for the unified timeline. The single sticky-pinned
 // container is this tall; scrollYProgress maps 0..1 across this range.
-// Module holds: hero=256, about=192, work=192, contact=320svh. Inter-
-// module letter-field transitions: 160svh each. New total:
-// 256+160+192+160+192+160+320 = 1440svh. The transition windows grew
-// from 128→160svh by adding +32svh ENTIRELY into the full-width HOLD
-// beat — rect-expand/contract and overlay fades keep their previous
-// absolute svh duration via the shifted beat constants below.
-export const TIMELINE_HEIGHT_SVH = 1440;
+// Design-intent module-svh breakdown: hero 160, about 128, work 100,
+// contact 232; transitions 144 each (HOLD = chemical reaction).
+// Baseline 160+144+128+144+100+144+232 = 1052svh; global pace scaled
+// +10% (1052 → 1157) to slow the whole page evenly. Module proportions
+// in MODULE_WINDOWS are unchanged — every beat stretches uniformly.
+export const TIMELINE_HEIGHT_SVH = 1157;
 
 // Hero is opacity 1 from scroll=0 (no DOM enter — the in-mesh per-glyph
 // reveal animation handles its visual entry). Each subsequent scene
 // overlaps with the previous via shared enter/exit windows for crossfade.
-// Boundaries are computed from absolute svh: 256/192/192/320 module holds
-// and 160svh transitions, divided by 1440 total. Adjacent modules share
+// Boundaries are computed from absolute svh: 160/128/100/232 module holds
+// and 144svh transitions, divided by 1052 total. Adjacent modules share
 // boundaries by contract (about.enterStart === hero.exitStart, etc.).
 export const MODULE_WINDOWS: Record<Module, ModuleWindow> = {
-  hero: { enterStart: 0.0, enterEnd: 0.0, exitStart: 0.1778, exitEnd: 0.2889 },
-  about: { enterStart: 0.1778, enterEnd: 0.2889, exitStart: 0.4222, exitEnd: 0.5333 },
-  work: { enterStart: 0.4222, enterEnd: 0.5333, exitStart: 0.6667, exitEnd: 0.7778 },
-  contact: { enterStart: 0.6667, enterEnd: 0.7778, exitStart: 1.0, exitEnd: 1.0 },
+  hero: { enterStart: 0.0, enterEnd: 0.0, exitStart: 0.1521, exitEnd: 0.289 },
+  about: { enterStart: 0.1521, enterEnd: 0.289, exitStart: 0.4106, exitEnd: 0.5475 },
+  work: { enterStart: 0.4106, enterEnd: 0.5475, exitStart: 0.6426, exitEnd: 0.7795 },
+  contact: { enterStart: 0.6426, enterEnd: 0.7795, exitStart: 1.0, exitEnd: 1.0 },
 };
 
 function sceneOpacity(progress: number, w: ModuleWindow): number {
@@ -65,27 +64,23 @@ const MODULE_CANVAS_SLOT_MOBILE: Record<Module, CanvasSlot> = {
 
 const FULLSCREEN_SLOT: CanvasSlot = { top: 0, left: 0, w: 100, h: 100 };
 
-// Six-phase sequential beats inside each transition window (u ∈ [0,1]).
-// Each beat has its own focal motion so the eye has somewhere to land
-// instead of three things morphing in lockstep. ~3% kiss overlaps soften
-// hand-offs without slop. The rect/overlay constants below feed canvasSlot
-// and overlayOpacity; per-preset letter timing lives in TRANSITION_PRESETS.
+// Five sequential beats inside each transition window (u ∈ [0,1]). Letter
+// emerge/dissipate beats were dropped when the letter moment was retired;
+// the HOLD beat now hosts the chemical reaction directly inside
+// BackgroundField. Small kiss overlaps soften hand-offs without slop.
 //
-// Beat-anchor svh map (in a 160svh transition window):
-//   [0,    15.4]   from-overlay fades out
-//   [12.8, 35.8]   rect expands from-slot → fullscreen
-//   [32.0, 48.6]   letters dissolve in    (per-preset, see TRANSITION_PRESETS)
-//   [48.6, 111.4]  HOLD — letters at full, all-black bg (~63svh, the
-//                  full-width dwell — bumped from 30.7→62.7svh)
-//   [111.4, 128.0] letters dissolve out   (per-preset)
-//   [124.2, 147.2] rect contracts fullscreen → to-slot
-//   [144.6, 160.0] to-overlay fades in
-const OVERLAY_OUT_END = 0.096;
-const RECT_EXPAND_START = 0.08;
-const RECT_EXPAND_END = 0.224;
-const RECT_CONTRACT_START = 0.776;
-const RECT_CONTRACT_END = 0.92;
-const OVERLAY_IN_START = 0.904;
+// Beat-anchor svh map (in a 144svh transition window):
+//   [0,    17.0]   from-overlay fades out
+//   [14.4, 39.4]   rect expands from-slot → fullscreen
+//   [39.4, 99.4]   HOLD — fullscreen, chemical reaction visible (~60svh)
+//   [99.4, 124.4]  rect contracts fullscreen → to-slot
+//   [127.0, 144.0] to-overlay fades in
+const OVERLAY_OUT_END = 0.118;
+const RECT_EXPAND_START = 0.1;
+const RECT_EXPAND_END = 0.274;
+const RECT_CONTRACT_START = 0.69;
+const RECT_CONTRACT_END = 0.864;
+const OVERLAY_IN_START = 0.882;
 
 function lerpSlot(a: CanvasSlot, b: CanvasSlot, t: number): CanvasSlot {
   return {
@@ -133,6 +128,21 @@ export function canvasSlot(progress: number, isMobile: boolean): CanvasSlot {
 function smoothstep01(x: number): number {
   const t = Math.max(0, Math.min(1, x));
   return t * t * (3 - 2 * t);
+}
+
+// True when scroll progress sits inside any module's exit window — i.e.
+// during the rect-expand / HOLD / rect-contract span of a transition.
+// Used to gate transition-only perf knobs (e.g., `BackgroundField`'s
+// FBM-octave drop from 4 → 2 across the heavy window).
+export function isInTransition(progress: number): boolean {
+  const heroW = MODULE_WINDOWS.hero;
+  const aboutW = MODULE_WINDOWS.about;
+  const workW = MODULE_WINDOWS.work;
+  return (
+    (progress > heroW.exitStart && progress < heroW.exitEnd) ||
+    (progress > aboutW.exitStart && progress < aboutW.exitEnd) ||
+    (progress > workW.exitStart && progress < workW.exitEnd)
+  );
 }
 
 // HTML overlay opacity, staggered to leave room for rect-expand and

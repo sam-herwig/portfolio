@@ -27,11 +27,39 @@ function TokenizedParagraph({ text }: { text: string }) {
   return <>{out}</>;
 }
 
-export default function TextBlockRender({ heading, body }: Omit<TextBlock, 'type'>) {
+export default function TextBlockRender({
+  heading,
+  body,
+  variant = 'body',
+}: Omit<TextBlock, 'type'> & { variant?: 'body' | 'brief' }) {
   const paragraphs = body.split('\n\n');
+  if (variant === 'brief') {
+    return (
+      <section className="px-8 py-8 md:px-12">
+        <div className="mx-auto flex max-w-[44ch] flex-col gap-6">
+          <h3
+            className="text-[14px] tracking-[0.18em] text-foreground/50"
+            style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
+          >
+            {heading}
+          </h3>
+          <div>
+            {paragraphs.map((p) => (
+              <p
+                key={p}
+                className="mb-6 text-lg leading-relaxed text-foreground/80 last:mb-0 md:text-xl md:leading-[1.55]"
+              >
+                <TokenizedParagraph text={p} />
+              </p>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="px-8 py-16 md:px-16 md:py-24">
-      <div className="grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-12 md:gap-12">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-12 md:gap-12">
         <div className="md:col-span-4">
           <h3
             className="text-[14px] tracking-[0.18em] text-foreground/50"

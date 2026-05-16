@@ -4,7 +4,7 @@ import { ScreenQuad } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
 import { useEffect, useRef } from 'react';
-import { MODULE_WINDOWS } from '@/lib/moduleTimeline';
+import { MODULE_WINDOWS, isInTransition } from '@/lib/moduleTimeline';
 import { useSceneStore } from '@/lib/useSceneStore';
 import {
   ABOUT_PRESET_NAMES,
@@ -117,6 +117,24 @@ const FRAGMENT = /* glsl */ `
   uniform float uCrossfadeWidth;
   uniform int uDebugMode;
 
+  // Chemistry warp — drives the inter-module HOLD beat. Each shader's
+  // luminance distorts the other's UV; direction flips at uChemMidpoint
+  // (early HOLD outgoing→incoming, late HOLD incoming→outgoing). HOLD
+  // window bounds in transition u-space mirror RECT_EXPAND_END /
+  // RECT_CONTRACT_START in moduleTimeline.ts.
+  uniform float uChemStrength;
+  uniform float uChemFreq;
+  uniform float uChemMidpoint;
+  uniform float uChemHoldStart;
+  uniform float uChemHoldEnd;
+
+  // FBM octave count — 4 normally, 2 during transitions. Dropping the two
+  // smallest octaves halves the hash-lookup cost of every fbm call without
+  // a visible change to the low-frequency warp character (the two cut
+  // octaves contribute amplitude ≈ 0.55² + 0.55³ ≈ 0.47 of the total at
+  // a scale finer than the warp's perception threshold).
+  uniform int uFbmOctaves;
+
   // Interaction layer — universal cursor disturbance applied uniformly to all
   // four module evaluations. uMouse is in vUv [0,1] space; main() transforms
   // it into module-local p-space before applyInteraction warps the lookup
@@ -146,6 +164,7 @@ const FRAGMENT = /* glsl */ `
     float v = 0.0;
     float a = 0.5;
     for (int i = 0; i < 4; i++) {
+      if (i >= uFbmOctaves) break;
       v += a * vNoise(p);
       p *= 2.05;
       a *= 0.55;
@@ -577,6 +596,44 @@ const FRAGMENT = /* glsl */ `
 
   // Universal interaction warp. Transforms the fragment lookup coord based
   // on cursor position so every module mode (Hero/About/Work/Contact)
+  // Chemistry envelope: 0 outside HOLD, peaks at uChemMidpoint, smooth
+  // triangle bell. Drives the magnitude of the inter-shader UV warp.
+  float chemistryEnvelope(float u) {
+    float a = smoothstep(uChemHoldStart, uChemMidpoint, u);
+    float b = 1.0 - smoothstep(uChemMidpoint, uChemHoldEnd, u);
+    return a * b;
+  }
+
+  // Distortion offset derived from another shader's luminance. Cheap
+  // procedural direction varies in p so the warp creates structure rather
+  // than a global shift; (lum - 0.5) flips sign so brights and darks push
+  // opposite directions, magnitude scales with how far lum strays from grey.
+  vec2 chemistryOffset(vec2 p, float lum) {
+    vec2 dir = vec2(
+      sin(p.x * uChemFreq + lum * 6.2831853),
+      cos(p.y * uChemFreq - lum * 6.2831853)
+    );
+    return dir * (lum - 0.5) * 0.18;
+  }
+
+  // First-order Taylor approximation of modeX(p + off). dFdx/dFdy yield
+  // the per-pixel gradient of the already-computed module color; dividing
+  // by the per-pixel p-derivative converts to gradient in p-space, then
+  // off is applied as the displacement. Replaces a second full SDF morph
+  // evaluation with two 1-cycle derivative ops + a multiply-add — same
+  // "outgoing-luminance-distorts-incoming-UV" design intent, ~6× cheaper
+  // per HOLD pixel. The clamp(delta, ±0.5) is an edge guard: at SDF
+  // boundaries dFdx(c) is large (0→1 in one pixel), so the linearization
+  // would over/undershoot without it. With typical offsets (~0.03 in
+  // p-space) the cap only engages right at glyph edges.
+  vec3 chemTaylor(vec3 c, vec2 p, vec2 off) {
+    float dpx = max(abs(dFdx(p.x)), 1e-6);
+    float dpy = max(abs(dFdy(p.y)), 1e-6);
+    vec3 delta = (dFdx(c) / dpx) * off.x + (dFdy(c) / dpy) * off.y;
+    delta = clamp(delta, -0.5, 0.5);
+    return clamp(c + delta, 0.0, 1.0);
+  }
+
   // inherits the same disturbance vocabulary without per-mode code edits.
   // Modes are unaware they're being driven — they just see a deformed p.
   vec2 applyInteraction(vec2 p) {
@@ -640,11 +697,57 @@ const FRAGMENT = /* glsl */ `
     if (uDebugMode == 3) { gl_FragColor = vec4(wHero, wAbout, wWork + wContact, 1.0); return; }
     if (uDebugMode == 4) { gl_FragColor = vec4(modeHero(p, uTime), 1.0); return; }
 
-    vec3 col = vec3(0.0);
-    if (wHero    > 0.001) col += modeHero(p, uTime)    * wHero;
-    if (wAbout   > 0.001) col += modeAbout(p, uTime)   * wAbout;
-    if (wWork    > 0.001) col += modeWork(p, uTime)    * wWork;
-    if (wContact > 0.001) col += modeContact(p, uTime) * wContact;
+    vec3 cHero    = (wHero    > 0.001) ? modeHero(p, uTime)    : vec3(0.0);
+    vec3 cAbout   = (wAbout   > 0.001) ? modeAbout(p, uTime)   : vec3(0.0);
+    vec3 cWork    = (wWork    > 0.001) ? modeWork(p, uTime)    : vec3(0.0);
+    vec3 cContact = (wContact > 0.001) ? modeContact(p, uTime) : vec3(0.0);
+
+    // Chemistry warp during the HOLD beat. Each transition pair has its
+    // own outgoing/incoming pair; direction flips at uChemMidpoint of the
+    // transition u-window so outgoing imprints on incoming first, then
+    // incoming disturbs outgoing on its way out.
+    if (uChemStrength > 0.001) {
+      const vec3 LUMA = vec3(0.299, 0.587, 0.114);
+      if (s >= uHeroExit.x && s <= uHeroExit.y) {
+        float u = (s - uHeroExit.x) / max(uHeroExit.y - uHeroExit.x, 1e-6);
+        float env = chemistryEnvelope(u);
+        if (env > 0.001) {
+          if (u < uChemMidpoint) {
+            float lum = dot(cHero, LUMA);
+            cAbout = chemTaylor(cAbout, p, chemistryOffset(p, lum) * env * uChemStrength);
+          } else {
+            float lum = dot(cAbout, LUMA);
+            cHero = chemTaylor(cHero, p, chemistryOffset(p, lum) * env * uChemStrength);
+          }
+        }
+      } else if (s >= uAboutExit.x && s <= uAboutExit.y) {
+        float u = (s - uAboutExit.x) / max(uAboutExit.y - uAboutExit.x, 1e-6);
+        float env = chemistryEnvelope(u);
+        if (env > 0.001) {
+          if (u < uChemMidpoint) {
+            float lum = dot(cAbout, LUMA);
+            cWork = chemTaylor(cWork, p, chemistryOffset(p, lum) * env * uChemStrength);
+          } else {
+            float lum = dot(cWork, LUMA);
+            cAbout = chemTaylor(cAbout, p, chemistryOffset(p, lum) * env * uChemStrength);
+          }
+        }
+      } else if (s >= uWorkExit.x && s <= uWorkExit.y) {
+        float u = (s - uWorkExit.x) / max(uWorkExit.y - uWorkExit.x, 1e-6);
+        float env = chemistryEnvelope(u);
+        if (env > 0.001) {
+          if (u < uChemMidpoint) {
+            float lum = dot(cWork, LUMA);
+            cContact = chemTaylor(cContact, p, chemistryOffset(p, lum) * env * uChemStrength);
+          } else {
+            float lum = dot(cContact, LUMA);
+            cWork = chemTaylor(cWork, p, chemistryOffset(p, lum) * env * uChemStrength);
+          }
+        }
+      }
+    }
+
+    vec3 col = cHero * wHero + cAbout * wAbout + cWork * wWork + cContact * wContact;
 
     float vig = 1.0 - smoothstep(0.45, 1.0, length(p));
     col *= mix(1.0, vig, uVignette);
@@ -726,6 +829,19 @@ const uniforms = {
   uVignette: { value: 0.55 },
   uCrossfadeWidth: { value: 0.03 },
   uDebugMode: { value: 0 },
+
+  // Chemistry warp defaults. Strength + freq tuned in-browser at the
+  // earlier 110svh transition; HOLD bounds rebased after the transition
+  // window grew to 144svh so the chemistry beat keeps the same absolute
+  // svh-from-rect-anchor relationship: starts ~12svh before HOLD begins,
+  // ends ~9svh before HOLD ends, flips at HOLD midpoint.
+  uChemStrength: { value: 0.35 },
+  uChemFreq: { value: 4.0 },
+  uChemMidpoint: { value: 0.482 },
+  uChemHoldStart: { value: 0.187 },
+  uChemHoldEnd: { value: 0.63 },
+
+  uFbmOctaves: { value: 4 },
 
   uMouse: { value: [0.5, 0.5] as [number, number] },
   uInteractionMode: { value: 1 },
@@ -912,6 +1028,16 @@ export default function BackgroundField() {
       },
       { collapsed: true },
     ),
+    Chemistry: folder(
+      {
+        chemStrength: { value: 0.35, min: 0, max: 2.5, step: 0.05, label: 'strength' },
+        chemFreq: { value: 4.0, min: 1.0, max: 12.0, step: 0.25, label: 'freq' },
+        chemMidpoint: { value: 0.482, min: 0.3, max: 0.7, step: 0.005, label: 'flip @' },
+        chemHoldStart: { value: 0.187, min: 0.1, max: 0.5, step: 0.005, label: 'hold start' },
+        chemHoldEnd: { value: 0.63, min: 0.5, max: 0.9, step: 0.005, label: 'hold end' },
+      },
+      { collapsed: true },
+    ),
     Frame: folder(
       {
         vignette: { value: 0.55, min: 0, max: 1, step: 0.05 },
@@ -988,13 +1114,19 @@ export default function BackgroundField() {
     uniforms.uCrossfadeWidth.value = controls.crossfadeWidth;
     uniforms.uDebugMode.value = controls.debugMode;
 
+    uniforms.uChemStrength.value = controls.chemStrength;
+    uniforms.uChemFreq.value = controls.chemFreq;
+    uniforms.uChemMidpoint.value = controls.chemMidpoint;
+    uniforms.uChemHoldStart.value = controls.chemHoldStart;
+    uniforms.uChemHoldEnd.value = controls.chemHoldEnd;
+
     uniforms.uInteractionMode.value = controls.interactionMode;
     uniforms.uInteractionStrength.value = controls.interactionStrength;
     uniforms.uInteractionRadius.value = controls.interactionRadius;
     uniforms.uInteractionFreq.value = controls.interactionFreq;
 
-    // Mirror to the scene store so LetterFillField reads the same values
-    // and the Leva folder here is the single source of truth.
+    // Mirror to the scene store so CaseStudyHeroLayer reads the same values
+    // and the Leva folder here stays the single source of truth.
     useSceneStore
       .getState()
       .setInteraction(
@@ -1017,6 +1149,11 @@ export default function BackgroundField() {
     uniforms.uScroll.value = store.scrollProgress;
     uniforms.uResolution.value = [state.size.width, state.size.height];
     uniforms.uModuleCenter.value = store.slotCenter;
+    // Drop FBM detail during transitions where two modes overlap on a
+    // fullscreen quad — the warp magnitude is small enough that octaves
+    // 3+4 read below the eye's perception threshold there. Restores at
+    // IDLE so single-mode beats keep their full noise character.
+    uniforms.uFbmOctaves.value = isInTransition(store.scrollProgress) ? 2 : 4;
 
     // Exponential lerp toward the mouseTarget written by HomeSceneRoot's
     // pointermove listener. 0.08 is the canonical r3f cursor-damping factor

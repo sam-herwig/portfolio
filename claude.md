@@ -88,22 +88,25 @@ The critical architectural piece is the **Module Timeline Contract** (`src/lib/m
 
 ### Module ownership windows (% of total scroll)
 
-| Module   | Range       | HTML overlay                      | Shader mode                        |
-|----------|-------------|-----------------------------------|------------------------------------|
-| hero     | 0.00–0.32   | name + tagline                    | Optical Moiré                      |
-| about    | 0.16–0.56   | bio paragraph                     | Brushed Anisotropic Metal          |
-| work     | 0.40–0.80   | corner case-study cards           | Volumetric LIDAR Point-cloud       |
-| contact  | 0.64–1.00   | email CTA + studio link           | Fiber-Optic Cable Array            |
+| Module   | Range       | HTML overlay                      |
+|----------|-------------|-----------------------------------|
+| hero     | 0.00–0.27   | name + tagline                    |
+| about    | 0.14–0.51   | bio paragraph                     |
+| work     | 0.39–0.79   | corner case-study cards           |
+| contact  | 0.66–1.00   | email CTA + studio link           |
 
-Each module's enter/exit window is `0.16` wide (10% / scroll length × 16). Adjacent modules overlap on enter/exit — that overlap IS the crossfade region in both the overlay opacity and the shader weight blending.
+Each transition window is `~0.129` wide (144 svh / 1120 svh total). Adjacent modules overlap on enter/exit — that overlap IS the crossfade region in both the overlay opacity and the shader weight blending. Shader mode names live in `backgroundPresets.ts` and shift as presets evolve; treat that file as the source of truth.
+
+### Inter-module HOLD beat — the chemical reaction
+
+Each transition's HOLD beat (~60 svh, the middle of the 144 svh transition window) hosts a **shader-on-shader chemical reaction**: both the outgoing and incoming module shaders run at fullscreen, and each one's luminance distorts the other's UV. Direction flips at the HOLD midpoint — outgoing imprints on incoming first, incoming disturbs outgoing late. Code lives in `BackgroundField.tsx`'s fragment shader (`chemistryEnvelope` / `chemistryOffset` helpers, `uChem*` uniforms, Leva `Chemistry` folder). Replaced the old letter-moment shader (`LetterFillField`, deleted). See `web/docs/adr/0001-chemical-reaction-replaces-letter-moment.md`.
 
 ### Key components
 
-- **`HomeSceneRoot.tsx`** — top-level container. Owns the `useScroll` motion value, the long-scroll section (`600svh`), the sticky overlay layer, and the R3F Canvas.
-- **`BackgroundField.tsx`** — single fullscreen `<ScreenQuad>` with all four shader modes packed into one fragment. Mounted LAST inside the Canvas so its `useFrame` reads freshly-written text masks each frame.
-- **`scenes/TextMaskScene.tsx`** — one component, instantiated 4× (one per module). Renders module-named text into an offscreen `useFBO` and stores the resulting texture in `textMasks[module]` for the shader to sample as a reveal mask.
-- **`textMasks.ts`** — module-scoped `Record<Module, { texture }>` ref registry shared between TextMaskScene (writer) and BackgroundField (reader). No React state — direct mutable refs by design.
-- **`{Hero|About|Work|Contact}Overlay.tsx`** — HTML overlays. Each calls `useTransform` on the scroll progress to derive its own opacity from `sceneOpacity(v, MODULE_WINDOWS[name])`.
+- **`HomeSceneRoot.tsx`** — top-level container. Owns the `useScroll` motion value, the long-scroll section (height = `TIMELINE_HEIGHT_SVH`), the sticky overlay layer, and the pointer listener that writes `mouseTarget` to the scene store.
+- **`SceneCanvas.tsx`** — owns the R3F Canvas + clip-path wrapper. Mounts `BackgroundField` and `CaseStudyHeroLayer` inside the Canvas; smooth-lerps the visible canvas slot rect via per-rAF MotionValues.
+- **`BackgroundField.tsx`** — single fullscreen `<ScreenQuad>` with all four module modes packed into one fragment. Hosts the chemistry warp during HOLD and the cursor magnet for the whole canvas.
+- **`{Hero|About|Work|Contact}Overlay.tsx`** — HTML overlays. Each calls `useTransform` on the scroll progress to derive its own opacity from `overlayOpacity(v, MODULE_WINDOWS[name])`.
 
 ### Color management gotcha
 

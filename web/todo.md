@@ -791,3 +791,469 @@ Deleted:
 - `web/src/components/case-study/CaseStudyHeroShader.tsx`
 - `web/src/components/case-study/CaseStudyCanvas.tsx`
 - `web/src/components/case-study/heroShaders/` (4 files)
+
+---
+
+# Homepage transitions — chemical reaction replaces letter moment
+
+ADR: `web/docs/adr/0001-chemical-reaction-replaces-letter-moment.md`
+Glossary: `web/CONTEXT.md`
+
+## Spine (locked via /grill-with-docs)
+
+| Branch | Decision |
+|---|---|
+| Interaction kind | Module-to-module visual handoff (not cursor, not bleed) |
+| Transition shape | Keep armature; HOLD hosts shader-on-shader |
+| Mix operator | Distortion-mediated (luminance → UV warp) |
+| Warp direction | Phased asymmetric — flips at HOLD midpoint |
+| HOLD duration | Shrink ~63 svh → ~30 svh per transition (~100 svh total reclaimed) |
+| Module labels | Drop entirely; PixelTitle stays for headlines |
+| Cursor magnet | No change; layered on top of chemistry warp |
+
+## Phase 1 — Tearout (verifies existing crossfade still reads after letters die)
+
+- [ ] 1.1 Delete `web/src/components/sections/LetterFillField.tsx`.
+- [ ] 1.2 Remove the `<LetterFillField />` line and import from `web/src/components/SceneCanvas.tsx`.
+- [ ] 1.3 Prune `LETTER_FILL_PRESETS`, `LETTER_FILL_PRESET_NAMES`, `TRANSITION_PRESETS`, `TRANSITION_PRESET_NAMES` from `web/src/components/sections/backgroundPresets.ts` if only LetterFillField referenced them — verify with grep first.
+- [ ] 1.4 Drop any `useSceneStore` fields that ONLY served LetterFillField mirroring (cursor-warp fields STAY — they still drive BackgroundField). Verify with grep before deleting.
+- [ ] 1.5 Manual scroll test on `/`: rect should still expand to fullscreen during transitions; HOLD beat shows the existing additive weight crossfade for ~63 svh. Confirm timing/feel before changing constants.
+
+## Phase 2 — Shrink HOLD, reclaim scroll
+
+- [ ] 2.1 In `web/src/lib/moduleTimeline.ts`, recalculate the per-module svh budget:
+  - Hero 256 / About 192 / Work 192 / Contact 320 unchanged
+  - Transitions 160 → ~125 svh each (HOLD goes from ~63 → ~30 svh)
+  - New TIMELINE_HEIGHT_SVH ≈ 1335 svh (down from 1440)
+- [ ] 2.2 Recompute `MODULE_WINDOWS` boundaries against new total. Adjacent modules must still share boundaries by contract.
+- [ ] 2.3 Adjust the beat-anchor constants (`OVERLAY_OUT_END`, `RECT_EXPAND_*`, `RECT_CONTRACT_*`, `OVERLAY_IN_START`) so overlay fades + rect-expand/contract retain their previous absolute svh duration; only HOLD shrinks.
+- [ ] 2.4 Manual scroll test: transitions feel tighter; rect-expand and contract still feel deliberate; HOLD reads as a brief moment, not a dwell.
+
+## Phase 3 — Chemical reaction in BackgroundField
+
+- [ ] 3.1 In `web/src/components/sections/BackgroundField.tsx` fragment, identify the active outgoing/incoming module pair from scroll progress (smoothstep across the same exitStart/exitEnd already used for weights).
+- [ ] 3.2 Compute the outgoing mode's color at the unwarped UV `p` once; derive a scalar luminance proxy.
+- [ ] 3.3 Sample the incoming mode at a UV displaced by the outgoing luminance proxy (gradient or simple gradient-of-luminance vector). Add a `uChemStrength` uniform for the warp magnitude.
+- [ ] 3.4 Drive `uChemStrength` from a per-HOLD envelope: 0 outside HOLD, peak mid-HOLD. Drive a `uChemDirection` (-1..1) sign that flips at HOLD midpoint so the warp roles swap (outgoing→incoming early, incoming→outgoing late).
+- [ ] 3.5 Combine warped incoming + raw outgoing via the existing weight blend; no change to weight math itself.
+- [ ] 3.6 Layer cursor magnet warp ON TOP of the chemistry warp (cursor warp applies last to the final UV passed to the texture-free mode evaluators — minimal compositional change).
+- [ ] 3.7 Add Leva folder `Chemistry` with `strengthPeak`, `directionFlipBias`, `gradEpsilon` knobs for tuning per-pair feel.
+
+## Phase 4 — Cleanup + docs
+
+- [ ] 4.1 Update `CLAUDE.md`:
+  - Remove stale `scenes/TextMaskScene.tsx` and `textMasks.ts` references (they don't exist in the current codebase)
+  - Add a paragraph on the chemical reaction in the "Architecture: Scroll-Driven Module Timeline" section
+  - Update the module table's notes if needed
+- [ ] 4.2 Run `npm run guardrails` (lint + typecheck + asset check + build) from `web/`.
+- [ ] 4.3 Manual QA on desktop (Chrome, Safari) + mobile Safari (iOS perf-sensitive due to 2× mode evals during HOLD). If iOS frames drop, switch to the signature-pattern proxy fallback called out in the ADR.
+
+## Files touched
+
+Deleted:
+- `web/src/components/sections/LetterFillField.tsx`
+
+Modified:
+- `web/src/components/SceneCanvas.tsx` (remove LetterFillField mount + import)
+- `web/src/components/sections/backgroundPresets.ts` (prune letter presets)
+- `web/src/lib/useSceneStore.ts` (drop letter-only mirrored fields)
+- `web/src/lib/moduleTimeline.ts` (shrink HOLD, recompute MODULE_WINDOWS, drop letter beat constants)
+- `web/src/components/sections/BackgroundField.tsx` (add chemistry warp + Leva folder)
+- `web/CLAUDE.md` (refresh architecture section)
+
+Created:
+- `web/CONTEXT.md` (already done)
+- `web/docs/adr/0001-chemical-reaction-replaces-letter-moment.md` (already done)
+
+## Review
+
+All four phases shipped. Net: +229 / −822 lines (8 files modified, 1 deleted, 3 new).
+
+**What changed**
+
+- **Letter moment retired.** `LetterFillField.tsx` (624 LOC) deleted. Mount + import removed from `SceneCanvas.tsx`. `LETTER_FILL_PRESETS` and `TRANSITION_PRESETS` (144 LOC) pruned from `backgroundPresets.ts`. The cursor-warp store fields stayed — they're still consumed by `CaseStudyHeroLayer.tsx`, comment refreshed accordingly.
+- **Timeline rebalanced.** `moduleTimeline.ts`: transitions 160 → 110 svh each; total scroll 1440 → 1290 svh. HOLD beat 63 → 30 svh. `MODULE_WINDOWS` boundaries recomputed; rect-expand/contract and overlay fades retain their previous absolute svh duration via shifted normalized constants.
+- **Chemical reaction shipped.** `BackgroundField.tsx` fragment shader gained `chemistryEnvelope()` + `chemistryOffset()` helpers and a per-transition warp branch. During HOLD, one shader's luminance distorts the other's UV; direction flips at `uChemMidpoint` so outgoing imprints on incoming first, then incoming disturbs outgoing. Cursor magnet warp still applies on top (unchanged). Leva folder `Chemistry` exposes strength, freq, midpoint, hold-start, hold-end.
+- **Docs.** `CLAUDE.md` table updated to new % ranges, stale `TextMaskScene` / `textMasks.ts` references removed, chemistry-reaction section added. `web/CONTEXT.md` (new) pins vocabulary. `web/docs/adr/0001-chemical-reaction-replaces-letter-moment.md` (new) records the decision + rejected alternatives.
+
+**Verification**
+
+- `npm run guardrails` — lint, typecheck, asset check, build all green
+- Not yet manually QA'd — needs a scroll-through on `/` to confirm HOLD-beat chemistry reads as designed and tighter scroll feels right; iOS Safari frame-rate spot-check during HOLD recommended (2× mode evals per pixel during transitions)
+
+**Known follow-ups (not in scope this PR)**
+
+- If iOS perf tight: switch chemistry to a signature-pattern proxy of each module (cheaper than re-evaluating the full mode at warped UV) — fallback called out in the ADR
+- The shader-mode names in `CLAUDE.md` were already stale before this work (they referenced "Optical Moiré / Brushed Metal / LIDAR / Fiber-Optic") — I dropped that column rather than try to restate them; per-mode names live in `backgroundPresets.ts` and shift as presets evolve
+
+---
+
+# Work module — fit the 5th case study via sliding-window cycle
+
+ADR: `web/docs/adr/0002-sliding-window-channel-flip-cycle.md`
+
+## Spine (locked via /grill-with-docs)
+
+| Branch | Decision |
+|---|---|
+| Layout strategy | Scroll-driven cycle (not quincunx, not featured-hero, not asymmetric grid) |
+| Cycle pattern | Sliding window — every slot crossfades, staggered |
+| At Work entry | Slots show projects [1, 2, 3, 4] |
+| At Work exit | Slots show [2, 3, 4, 5] |
+| Stagger order | Reading order — TL early → TR → BL → BR latest |
+| Crossfade mechanic | Channel-flip snap (CRT-style scale-y collapse + flash) |
+| Mobile | Same sliding-window cycle, 2×2 grid — single code path |
+| Work scroll length | Unchanged at 168 svh; the cycling itself adds dynamism |
+
+## Stagger schedule
+
+Work IDLE u (0–1 across the Work module's IDLE beat between rect-contract end of about→work transition and rect-expand start of work→contact transition):
+
+| Slot | Flip center | Half-width |
+|---|---|---|
+| TL | 0.20 | 0.10 |
+| TR | 0.40 | 0.10 |
+| BL | 0.60 | 0.10 |
+| BR | 0.80 | 0.10 |
+
+Channel-flip envelope per slot: `scaleY = clamp(|u - flipCenter| / halfWidth, 0, 1)`. Flash overlay = `max(0, 1 - 4|u - flipCenter|/halfWidth)` — narrow spike only visible at the swap moment. Outgoing project shown while `u < flipCenter`; incoming while `u ≥ flipCenter`.
+
+## Phase 1 — Implement SlotCycle wrapper
+
+- [ ] 1.1 In `web/src/components/sections/WorkOverlay.tsx`, drop the `.slice(0, 4)`; get all featured projects.
+- [ ] 1.2 New inline `SlotCycle` component: takes `outgoing`, `incoming`, `index`, `progress`, `flipCenter`, `halfWidth`. Renders both projects stacked, swaps which is visible at the flip, animates `scaleY` and a white flash overlay.
+- [ ] 1.3 Compute the Work IDLE u from the parent module progress (re-use existing pattern — progress is already passed down).
+- [ ] 1.4 `DesktopWorkLayout`: replace direct `cornerCard(index, position)` with `<SlotCycle outgoing={projects[i]} incoming={projects[i+1]} flipCenter={STAGGER[i]} ... />` for i in 0–3.
+- [ ] 1.5 `MobileWorkLayout`: same swap inside the 2×2 grid.
+
+## Phase 2 — Channel-flip visual
+
+- [ ] 2.1 Outer slot wrapper: `overflow-hidden` and a fixed transform-origin center, so the scaleY collapse reads as a horizontal "lid closing."
+- [ ] 2.2 Inner card layer animates `scaleY` driven by the per-slot `useTransform` of `progress`.
+- [ ] 2.3 White flash overlay: absolute-positioned, opacity from `useTransform`. Mix-blend-mode `screen` so it brightens whatever's underneath rather than washing out the bg.
+- [ ] 2.4 Hover/saturate behavior on `FrameHoldCard` should keep working — wrapper sits OUTSIDE the existing card markup.
+
+## Phase 3 — Cleanup + docs
+
+- [ ] 3.1 ADR `web/docs/adr/0002-sliding-window-channel-flip-cycle.md`.
+- [ ] 3.2 `web/CONTEXT.md` add: `Sliding window cycle`, `Channel-flip snap`, `Slot`.
+- [ ] 3.3 `npm run guardrails`.
+- [ ] 3.4 Manual QA: scroll Work module slowly and at speed; verify staggered flips; mobile 2×2 cycle; reduced-motion path (currently renders static module list — may want to opt out of cycling there too).
+
+## Files touched
+
+Modified:
+- `web/src/components/sections/WorkOverlay.tsx` (drop slice, add SlotCycle)
+- `web/CONTEXT.md` (vocabulary)
+
+Created:
+- `web/docs/adr/0002-sliding-window-channel-flip-cycle.md`
+
+## Review
+
+Shipped. `WorkOverlay.tsx` refactored: `SlotCycle` component now wraps each card slot, `useWorkIdleU` derives the per-Work-IDLE u from the homepage scroll progress, and the four corner slots crossfade via channel-flip snaps staggered at u = 0.20 / 0.40 / 0.60 / 0.80. Reduced-motion path forks to a `StaticWorkLayout` (vertical stack of all 5).
+
+Verified: `npm run guardrails` green (lint + typecheck + asset check + build).
+
+Not verified: needs scroll-through QA on the dev server. Things to look for:
+- All 5 case studies visible across the Work scroll
+- Each slot's flip reads as a deliberate snap, not a generic crossfade
+- The white flash is bright enough to register but not blinding
+- Mobile 2×2 cycles same way without feeling cramped
+- Reduced-motion (Mac System Settings → Accessibility → Display → Reduce motion) shows the static 5-stack, no cycling
+
+If the flash feels too quick or the scaleY collapse too snappy, tune `SLOT_FLIP_HALF_WIDTH` (currently 0.10). Larger value = slower, more drawn-out flip.
+
+---
+
+# Hero band runway compression (ADR 0003 — 2026-05-15)
+
+Compress the omnipresent case-study hero shader into a ~200svh Hero band at
+page top. Below the band, body reflows into a centered single-column Body
+column. Spec lives in `web/docs/adr/0003-case-study-hero-band-replaces-
+omnipresent-backdrop.md` and `web/CONTEXT.md`. Chapter transitions are a
+follow-up; this PR is hero-band + body-column only.
+
+## Phase 5 — Hero band + Body column
+
+- [x] 5.1 `HERO_BAND_SVH` constant in new `web/src/lib/caseStudyTimeline.ts`. Also exports `heroBandProgress()` and `heroBandVisibility()` helpers.
+- [x] 5.2 `csHeroBandProgress` + `setCsHeroBandProgress` added to `useSceneStore`.
+- [x] 5.3 `SceneCanvas.tsx` — wrapper opacity gated by `heroBandVisibility(csHeroBandProgress)` on case-study pages. Smoothed via per-rAF lerp alongside the existing slot-rect lerp. Existing `setCsHeroWeight` navigation choreography preserved (snap=1 on entry, fade=0 on back-nav).
+- [x] 5.4 `CaseStudyHeroLayer.tsx` — all `cycles` Leva defaults dropped from 3.0 → 1.0 (mb/nb/cc/ck/pl). Underlying uniform defaults updated to match. Presets (Inkwell / Bauhaus / Op-Art) untouched.
+- [x] 5.5 `app/work/[slug]/page.tsx` layout split: Hero band section (`md:min-h-[200svh]` 2-col grid holding `<CaseStudyHero>` in the right column) + Body column (full-width container hosting blocks + credits + `<NextProject>`).
+- [x] 5.6 `MediaBlockRender.tsx` — non-fullBleed media now `mx-auto w-full max-w-[1200px]`. (VideoBlockRender already had `mx-auto max-w-[1400px]`.) `TextBlockRender` and `ChapterMark` got `mx-auto` on their inner containers so they center inside the full-width Body column.
+- [x] 5.7 Body type bump: TextBlockRender body copy was already `text-lg md:text-xl` (carried over from prior phase). Credits paragraph in `page.tsx` bumped `text-base md:text-lg` → `text-lg md:text-xl`.
+- [x] 5.8 Mobile parity: same canvas wrapper opacity gate covers the `isMobileCaseStudy` 1:1 strip path. The pinned strip stays visible during the band, fades on exit. Band length stays 200svh on mobile (cycle traverses K0→K3 once across 2 viewports of scroll, same as desktop).
+- [x] 5.9 `npm run guardrails` — green (lint + typecheck + asset check + build).
+- [ ] 5.10 Manual QA in browser — **not done**. Chrome extension wasn't connected this session; only verified that case-study routes serve HTTP 200. Visual scroll behavior across the 5 case studies needs eyes-on before merging.
+
+## Files touched (phase 5)
+
+Modified:
+- `web/src/lib/useSceneStore.ts` (added `csHeroBandProgress`)
+- `web/src/components/case-study/ScrollProgress.tsx` (pushes Hero band progress)
+- `web/src/components/SceneCanvas.tsx` (wrapper opacity gated by `heroBandVisibility`)
+- `web/src/components/CaseStudyHeroLayer.tsx` (cycles defaults 3 → 1, `uScroll` reads `csHeroBandProgress`)
+- `web/src/app/work/[slug]/page.tsx` (layout split — Hero band section + Body column container)
+- `web/src/components/case-study/MediaBlockRender.tsx` (non-fullBleed `mx-auto max-w-[1200px]`)
+- `web/src/components/case-study/TextBlockRender.tsx` (added `mx-auto` to inner grid)
+- `web/src/components/case-study/ChapterMark.tsx` (added `mx-auto w-full` to inner div)
+- `web/CONTEXT.md` (Hero band / Body column / Chapter transition vocabulary)
+
+Created:
+- `web/src/lib/caseStudyTimeline.ts` (`HERO_BAND_SVH`, `heroBandProgress`, `heroBandVisibility`)
+- `web/docs/adr/0003-case-study-hero-band-replaces-omnipresent-backdrop.md`
+
+Memory updated:
+- `~/.claude/projects/-Users-samherwig-Code-Github-portfolio/memory/project_case-study-redesign.md` (prepended Hero-band runway compression decision, pointed at ADR 0003)
+
+## Review (phase 5)
+
+Shipped the runway compression — case-study hero shader now lives only inside a 200svh Hero band at page top. `ScrollProgress` computes `csHeroBandProgress = scrollY / (200vh in px)` from the page's scroll position and pushes it to the store. `CaseStudyHeroLayer` reads that as `uScroll` so cycles=1 means K0→K3 traverses exactly once across the band. `SceneCanvas` lerps the canvas wrapper's opacity from `heroBandVisibility(progress)` — stays 1 inside the band, fades 1→0 across 20svh past it. The page layout splits at the Hero-band boundary: a 200svh 2-col grid hosts `<CaseStudyHero>` on the right; everything below lives in a full-width container with each block managing its own max-width (text 58ch, media 1200px, video 1400px, chapters max-w-5xl, NextProject full-bleed). The same opacity gate covers the mobile 1:1 strip path.
+
+Guardrails green: lint + typecheck + asset check + build (Next.js 16, 18 static pages including 5 case studies).
+
+**Not verified:** UI behavior in a real browser. Type checking only proves the code compiles. Things that still need eyes-on QA before merging:
+- All 4 keypoints (K0–K3) visible inside the Hero band as you scroll
+- Shader fades cleanly at band exit, body content reads at centered width
+- Mobile 1:1 strip pins for the band, fades on exit
+- Reduced-motion still works
+- Home → case-study slide-in still lands in the Hero band's left half (no regression)
+- Case-study → home back-nav still fades the canvas correctly
+- ChapterMark spacing reads OK below the Hero band (pt-32 still on the section)
+
+## Files expected to change
+
+Modified:
+- `web/src/lib/useSceneStore.ts` (new field)
+- `web/src/components/SceneCanvas.tsx` (Hero band gating)
+- `web/src/components/CaseStudyHeroLayer.tsx` (cycles defaults 3 → 1)
+- `web/src/app/work/[slug]/page.tsx` (layout split)
+- `web/src/components/case-study/TextBlockRender.tsx` (type bump)
+- `web/src/components/case-study/MediaBlockRender.tsx` (width bump for non-fullbleed)
+
+Created:
+- `web/src/lib/caseStudyTimeline.ts` (HERO_BAND_SVH constant + helpers)
+
+Out of scope (follow-up):
+- Chapter transition implementations (per-project bespoke shaders in scoped canvases)
+- Tuning each hero shader's K0-K3 saved keypoints for the new cycles=1 scroll mapping
+
+## Phase 6 — Hero band right column splits into Hero slot + Brief slot
+
+Background: the Hero band's right column today holds only `<CaseStudyHero />` (`md:min-h-[100svh]`), leaving ~100svh of empty right-column space below the hero while the shader's K2→K3 keeps running. ADR 0005 captures the decision. CONTEXT.md already updated with Hero slot / Brief slot vocabulary.
+
+- [x] 6.1 `splitBlocks(project)` helper in `web/src/data/projects.ts` (co-located with `Project` / `ContentBlock`). Walks `project.blocks[]`, collects into `brief` until the first block with `type === 'chapter' && number === '02'`; that block and everything after go into `body`. Returns `{ brief: ContentBlock[]; body: ContentBlock[] }`. Empty `brief` is valid (project without chapter-01).
+- [x] 6.2 `variant?: 'body' | 'brief'` prop added to `BlockRenderer.tsx`. Threaded into `ChapterMark`, `TextBlockRender` (no media/video/spotlight variants needed for now — chapter 01 is text-only across all 5 projects).
+- [x] 6.3 `ChapterMark.tsx` brief variant — number drops from `clamp(5rem,12vw,12rem)` to ~`clamp(3rem,6vw,5rem)`; title drops from `md:text-7xl lg:text-[5.5rem]` to ~`md:text-3xl lg:text-4xl`; slot `min-h` from `60vh` to `auto` (Brief slot's `min-h-[100svh]` provides the budget); padding `px-8 pt-32 md:px-16` → `px-8 md:px-12` (no top padding — the slot handles vertical centering); inner `max-w-5xl` → `max-w-[44ch]`.
+- [x] 6.4 `TextBlockRender.tsx` brief variant — collapse `md:grid-cols-12` 4/8 split to vertical stack; padding `px-8 py-16 md:px-16 md:py-24` → `px-8 py-8 md:px-12`; inner `max-w-6xl` → `max-w-[44ch]`; body text stays `text-lg md:text-xl` (reading typography unchanged).
+- [x] 6.5 New `web/src/components/case-study/CaseStudyBrief.tsx` — accepts `blocks: ContentBlock[]`, wraps in `<section className="flex min-h-[100svh] flex-col justify-center">`, maps blocks through `BlockRenderer` with `variant="brief"`. Returns `null` if `blocks.length === 0`.
+- [x] 6.6 `app/work/[slug]/page.tsx` — call `splitBlocks(project)` to get `{ brief, body }`. Hero band section's right column now renders `<CaseStudyHero />` then `<CaseStudyBrief blocks={brief} />`. Body column maps over `body` instead of `project.blocks`.
+- [ ] 6.7 Visual review pass — `npm run dev`, scroll all 5 case studies (mission-bell, new-belgium, consume-and-create, craftedkit, phantom-labs). Confirm: hero slot reads at K0→K1, brief slot reads at K2→K3, chapter 01 content fits the 100svh budget on desktop, mobile flow still stacks cleanly beneath the 1:1 strip.
+- [x] 6.8 `npm run guardrails` — green.
+
+## Files expected to change (phase 6)
+
+Modified:
+- `web/src/data/projects.ts` (add `splitBlocks` helper)
+- `web/src/components/case-study/BlockRenderer.tsx` (thread `variant` prop)
+- `web/src/components/case-study/ChapterMark.tsx` (brief variant styles)
+- `web/src/components/case-study/TextBlockRender.tsx` (brief variant styles)
+- `web/src/app/work/[slug]/page.tsx` (mount `<CaseStudyBrief />`, map body over `body` slice)
+
+Created:
+- `web/src/components/case-study/CaseStudyBrief.tsx`
+- `web/docs/adr/0005-hero-band-right-column-splits-into-hero-slot-and-brief-slot.md` (already written)
+
+Out of scope (phase 6):
+- Brief variants of `MediaBlockRender`, `VideoBlockRender`, `SpotlightSlot` (no chapter-01 needs them today)
+- Adjusting shader K0–K3 keypoints to better pace against the new Hero slot / Brief slot split (tuning, not structural)
+- Authoring rule enforcement for chapter-01 max length (soft constraint, caught by visual review)
+
+## Review (phase 6)
+
+Shipped the Hero band right-column split. The right column now hosts two `min-h-[100svh]` rectangles inside the existing 200svh band: the Hero slot (unchanged `CaseStudyHero`) on top and the new Brief slot (`CaseStudyBrief`) below it. `splitBlocks(project)` walks `project.blocks[]` and cuts at the first `chapter === '02'` mark — content before flows into the Brief slot via `variant: 'brief'` on the existing renderers, content from chapter 02 onward flows into the Body column unchanged. Brief variants of `ChapterMark` and `TextBlockRender` are shrunken-DNA versions: same shapes, smaller numbers, vertical-stack layout to fit a half-viewport column. On mobile the components stack sequentially under the pinned 1:1 strip; the brief variant's mobile styles are inherently compact enough that they read consistently with body content.
+
+The fix targets the "shader continues with nothing to read" dead zone — chapter 01 content now paces against the shader's K2→K3 keypoints in the bottom half of the band, while K0→K1 still paces the hero slot on top. Band length, shader cycles, and exit fade are unchanged. ADR 0005 captures the decision and rejected alternatives.
+
+Guardrails green: lint + typecheck + asset check + build. All 5 case studies (mission-bell, new-belgium, consume-and-create, craftedkit, phantom-labs) generate as SSG.
+
+**Not verified:** UI behavior in a real browser. The visual review pass (6.7) needs eyes-on across the 5 case studies to confirm:
+- Hero slot reads at K0→K1; brief slot reads at K2→K3
+- Chapter-01 content fits comfortably in the 100svh brief slot per project
+- Mobile flow stacks cleanly beneath the 1:1 strip
+- No regression in the home → case-study slide-in or back-nav fade
+
+## Files touched (phase 6)
+
+Modified:
+- `web/src/data/projects.ts` (added `splitBlocks` helper)
+- `web/src/components/case-study/BlockRenderer.tsx` (thread `variant` prop)
+- `web/src/components/case-study/ChapterMark.tsx` (brief variant styles)
+- `web/src/components/case-study/TextBlockRender.tsx` (brief variant styles)
+- `web/src/app/work/[slug]/page.tsx` (mount `<CaseStudyBrief />`, map body over `body` slice)
+- `web/CONTEXT.md` (Hero slot / Brief slot vocabulary, revised Hero band entry)
+
+Created:
+- `web/src/components/case-study/CaseStudyBrief.tsx`
+- `web/docs/adr/0005-hero-band-right-column-splits-into-hero-slot-and-brief-slot.md`
+
+---
+
+# Home → case-study slide-in fix (ADR 0006 — 2026-05-16)
+
+Patches the "snaps into a half-sized asset" bug exposed once the Work module
+went fullscreen. Splits the forward slide into two phases (contract → morph),
+pins the slide origin to the rect the user saw at click, snaps under
+`prefers-reduced-motion`. Spec in ADR 0006.
+
+## Phase 7 — Slide-in two-phase fix
+
+- [x] 7.1 `SceneCanvas.tsx` — added `slideOriginRef` (`useRef<CanvasSlot | null>`).
+- [x] 7.2 `computeTargetSlot` — accepts `originOverride`; rAF tick passes
+  `slideOriginRef.current`.
+- [x] 7.3 Forward-slide branch — captures `topRaw/leftRaw/wRaw/hRaw` via
+  `.get()` at slide-start, runs contract (600ms cubic-out) then morph (500ms
+  ease-in-out, +450ms delay). Reduced-motion path snaps both.
+- [x] 7.4 Cleared `slideOriginRef` on contract `onComplete`, back-nav,
+  slug→slug, direct entry, and reduced-motion paths.
+- [x] 7.5 Moved MotionValue declarations above the pathname effect so it can
+  snapshot via `.get()`. Removed the lower duplicates.
+- [x] 7.6 ADR 0006 written.
+- [x] 7.7 CONTEXT.md — added **Navigation transitions** section with **Slide-in**
+  and **Slide origin** entries.
+- [x] 7.8 `npm run typecheck` + `npm run lint` — green.
+- [x] 7.9 `ScrollProgress.tsx` (case-study) no longer writes `scrollProgress`.
+  Fixed a second leak: it was clobbering the home timeline's value to 0 on
+  mount, flipping `BackgroundField` into Hero mode and leaking hero-circle
+  shader through phase 1 of the slide. Case-study pages now leave the home
+  `scrollProgress` alone; `csHeroBandProgress` writes are unchanged.
+- [ ] 7.10 Browser QA: scroll into Work IDLE, click each of the 5 cards, confirm
+  the wrapper contracts smoothly (no snap), the **Work-mode shader** is visible
+  during phase 1 (NOT hero circles), and the hero shader fades in after the
+  contract settles. Repeat with reduced motion forced on; confirm both phases
+  snap. Repeat on mobile; confirm snap (no regression).
+
+## Files touched (phase 7)
+
+Modified:
+- `web/src/components/SceneCanvas.tsx` (origin ref, two-phase forward, reduced-motion snap)
+- `web/src/components/case-study/ScrollProgress.tsx` (drop `setScrollProgress` writes)
+- `web/CONTEXT.md` (Navigation transitions section)
+
+Created:
+- `web/docs/adr/0006-home-to-case-study-slide-in-two-phase.md`
+
+## Pre-launch audit (2026-05-16)
+
+Snapshot of what's actually pending — most "Phase 1 / Phase 2" items higher in
+this file are superseded by Phases 3–6 and ADRs 0003–0006.
+
+**Shipped and build-verified:**
+- Phases 3, 4, 5, 6 (hero shaders / chapter screens / Hero band runway /
+  Hero slot + Brief slot split)
+- Phase 7 slide-in fix (this section)
+- Phantom Labs case study
+
+**Pending QA (build green, browser unverified):**
+- 5.10 / 6.7 visual QA across all 5 case studies
+- 7.9 slide-in QA across the 5 work cards
+
+**Genuinely open work (decide ship vs defer):**
+- Phase 1 — Pixel typography (1.1–1.6 unchecked; some items already landed
+  ad-hoc inside `ChapterMark`/`CaseStudyHero`. Audit which are still needed.)
+- Phase 2 — Image dither shared shader (CONTEXT.md says image-dither
+  "survives the runway redesign — unaffected," implying it exists. Reconcile
+  with todo state — likely close as already-shipped.)
+- Phase 4.12 — reduced-motion poster fallback for chapter screens (deferred,
+  not launch-blocking)
+
+**Stale / superseded (recommend close without action):**
+- M-series (mobile sticky layout)
+- V-series (morph keypoint manual tests)
+- P / R-series (preset rename, About plus-grid rework)
+- Sliding-window cycle phases 1–3 (superseded by ADR 0004 five-up grid)
+
+---
+
+# Homepage scroll-shader smoothness pass (perf)
+
+## Diagnosis (2026-05-16, Firefox Profiler)
+
+Choppy = scroll-driven shader response in **transitions**, especially
+about→work and work→contact. Profiler shows two large Parent Process
+CPU humps coinciding with those windows, plus red jank ticks. Cause:
+
+- Two modes evaluate simultaneously during weight overlap (`wAbout > 0`
+  and `wWork > 0`)
+- ScreenQuad opens to fullscreen during rect-expand, ~2× pixel count
+- Chemistry HOLD beat re-evaluates one mode with warped UV (+1 full eval)
+- `modeWorkSpread` is the hot mode (88 cells × multi-keypoint SDF morph)
+
+Peak transition cost ≈ 4–6× IDLE.
+
+## Plan
+
+- [ ] **A. Dynamic DPR during transitions.** Drop Canvas DPR from device
+      max → ~1.25 inside any module-overlap region (chemistry envelope
+      active), restore at IDLE. Driven off `scrollProgress` in
+      `SceneCanvas`. ~30 min, 1-line revert.
+- [ ] **B. Collapse chemistry double-eval to single-eval.** Replace the
+      second full `modeX(p + offset)` call with a cheap displaced sample
+      of the already-computed color. Touch only the four `if (uChem…)`
+      branches in `BackgroundField.tsx`. 1–2 hrs.
+- [ ] **C. FBM octave reduction during chemistry envelope.** Add a
+      runtime `uFbmOctaves` (4 normally, 2 during chemistry > 0).
+      Optional: clamp Work Spread cell-eval radius during HOLD. 2–3 hrs.
+
+## Out of scope (deferred unless A+B+C don't move the needle)
+
+- D. Render-target FBO architecture — multi-day refactor
+- E. Redesign Work Spread to fewer cells — design call, not a perf call
+
+## Success criterion
+
+Re-record the 12s scroll-through in Firefox Profiler. Jank ticks during
+the two transition windows should be visibly reduced; FPS lane should
+stay green through HOLD.
+
+## Review
+
+**Final state: B + C only. A reverted on user preference (keep DPR=2 on desktop).**
+
+**Files touched:**
+- `src/lib/moduleTimeline.ts` — added `isInTransition(progress)` helper
+  (now consumed only by BackgroundField for FBM gating)
+- `src/components/SceneCanvas.tsx` — unchanged from original (DPR
+  controller removed after dev-test pass: the gl.setPixelRatio()
+  boundary reallocation was dropping a frame on transition entry/exit,
+  which read as "scene feels choppier" between transitions)
+- `src/components/sections/BackgroundField.tsx`
+  - new `chemTaylor()` helper: first-order Taylor approximation of
+    `modeX(p + off)` via `dFdx`/`dFdy` + edge-clamp
+  - all four chemistry `modeX(p + offset, uTime)` second-evals replaced
+    by `chemTaylor` — one full SDF morph eval removed per HOLD pixel
+  - new `uFbmOctaves` uniform, `fbm()` now early-breaks on it; driven
+    from `useFrame` (4 at IDLE, 2 during transition)
+
+**Cost reduction (rough math, per fragment during HOLD):**
+- Before: 2× full mode eval + 1× chemistry re-eval = up to ~6× IDLE
+- After: 2× full mode eval + 1× Taylor (~free) = ~4× IDLE
+- Plus FBM lookups halved during the transition span
+
+**Visual diff to watch for during dev test:**
+- ~~Slight softness at DPR=1.25 during transitions~~ — bumped to 1.5
+  after first dev-test pass; pop at boundary was too visible at 1.25
+  and the setPixelRatio() reallocation was dropping a frame on entry/
+  exit of each transition window.
+- Chemistry warp at high `uChemStrength` (>1.0) may look subtler than
+  before because the linearized warp is bounded by edge clamp; tune
+  via Leva Chemistry → strength if needed
+- IDLE beats unchanged (fbm=4, no DPR change, no chemistry)
+
+**Verification:**
+- `tsc --noEmit` clean
+- `eslint` clean on touched files
+- `npm run build` succeeds (Next.js production build)
+- Browser smoke test deferred to user — re-record the same 12s scroll
+  in Firefox Profiler and compare jank ticks during transitions

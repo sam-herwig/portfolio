@@ -3,15 +3,15 @@
 import { Canvas } from '@react-three/fiber';
 import { animate, m, useMotionValue, useTransform } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BackgroundField from '@/components/sections/BackgroundField';
-import LetterFillField from '@/components/sections/LetterFillField';
 import CaseStudyHeroLayer from '@/components/CaseStudyHeroLayer';
 import useCanvasGate from '@/lib/useCanvasGate';
 import useIsMobileViewport from '@/lib/useIsMobileViewport';
 import useWebGLSupport from '@/lib/useWebGLSupport';
 import { useSceneStore } from '@/lib/useSceneStore';
 import { canvasSlot, type CanvasSlot } from '@/lib/moduleTimeline';
+import { heroBandVisibility } from '@/lib/caseStudyTimeline';
 
 const WORK_PATH = /^\/work\/([^/]+)$/;
 
@@ -23,9 +23,17 @@ const SLUG_TO_INDEX: Record<string, number> = {
   'phantom-labs': 4,
 };
 
-const FORWARD_DURATION = 1.1;
+// Forward slide is two-phase: clip-path contracts first (phase 1), then the
+// case-study hero shader fades in atop the now-settled rect (phase 2). The
+// 150ms overlap (morph starts at 0.45s while contract ends at 0.6s) hides the
+// seam so the eye doesn't register a stop-and-restart. Back-nav stays a single
+// fast shader fade; the geometry snap is invisible because csHeroWeight=0
+// hides the case-study layer the moment the user is back on home.
+const FORWARD_CONTRACT_DURATION = 0.6;
+const FORWARD_CONTRACT_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const FORWARD_MORPH_DURATION = 0.5;
+const FORWARD_MORPH_DELAY = 0.45;
 const BACK_FADE_DURATION = 0.4;
-const FORWARD_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 // Case-study mode slot — left half on desktop. Mobile case study uses its own
 // 100vw 1:1 strip path below, so this rect is desktop-only.
@@ -46,8 +54,17 @@ function blendSlot(home: CanvasSlot, cs: CanvasSlot, slide: number): CanvasSlot 
   };
 }
 
-function computeTargetSlot(s: { scrollProgress: number; canvasSlide: number }, isMobile: boolean): CanvasSlot {
-  const home = canvasSlot(s.scrollProgress, isMobile);
+function computeTargetSlot(
+  s: { scrollProgress: number; canvasSlide: number },
+  isMobile: boolean,
+  originOverride: CanvasSlot | null,
+): CanvasSlot {
+  // During a forward slide we pin `home` to the rect the canvas was actually
+  // showing at click-time. Defense-in-depth against any scroll-driven write
+  // landing on `scrollProgress` mid-transition (case-study ScrollProgress no
+  // longer writes it, but the snapshot also captures the visual rect more
+  // honestly than re-deriving from a global).
+  const home = originOverride ?? canvasSlot(s.scrollProgress, isMobile);
   return isMobile ? home : blendSlot(home, CS_SLOT_DESKTOP, s.canvasSlide);
 }
 
@@ -77,8 +94,26 @@ export default function SceneCanvas() {
   const visible = enableCanvas && (isHome || isCaseStudy);
   const isMobileCaseStudy = isMobile && isCaseStudy;
 
-  // Pathname-driven choreography. Forward = slide. Back = snap-position + fade-shader.
-  // Direct entry = snap. Slug→slug = index swap only.
+  // Snapshot of the canvas slot rect the user saw at click-time. Kept in a
+  // ref (not the store) because only the rAF tick in this component reads it,
+  // and ref reads bypass React re-render cycles entirely. Non-null only while
+  // a forward slide is animating; cleared on completion, back-nav, slug→slug,
+  // or any cancel.
+  const slideOriginRef = useRef<CanvasSlot | null>(null);
+
+  // Source MotionValues for the slot rect. Driven from a per-rAF loop, not a
+  // store subscription. Declared before the pathname effect so its slide-start
+  // snapshot can read the current visual rect via `.get()`.
+  const initial = computeTargetSlot(useSceneStore.getState(), isMobile, null);
+  const topRaw = useMotionValue(initial.top);
+  const leftRaw = useMotionValue(initial.left);
+  const wRaw = useMotionValue(initial.w);
+  const hRaw = useMotionValue(initial.h);
+  const heroOpacityRaw = useMotionValue(1);
+
+  // Pathname-driven choreography. Forward = two-phase slide (contract then
+  // identity-morph). Back = snap-position + fade-shader. Direct entry = snap.
+  // Slug→slug = index swap only.
   useEffect(() => {
     const store = useSceneStore.getState();
     const prev = store.previousPathname;
@@ -94,33 +129,59 @@ export default function SceneCanvas() {
 
     if (isCaseStudy) {
       if (prev === '/' && !isMobile) {
-        // Forward slide
-        const aSlide = animate(store.canvasSlide, 1, {
-          duration: FORWARD_DURATION,
-          ease: FORWARD_EASE,
-          onUpdate: (v) => {
-            if (cancelled) return;
-            store.setCanvasSlide(v);
-          },
-        });
-        const aWeight = animate(store.csHeroWeight, 1, {
-          duration: FORWARD_DURATION,
-          ease: FORWARD_EASE,
-          onUpdate: (v) => {
-            if (cancelled) return;
-            store.setCsHeroWeight(v);
-          },
-        });
-        stopHandles.push(
-          () => aSlide.stop(),
-          () => aWeight.stop(),
-        );
+        const reducedMotion =
+          typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reducedMotion) {
+          slideOriginRef.current = null;
+          store.setCanvasSlide(1);
+          store.setCsHeroWeight(1);
+        } else {
+          // Capture the rect the user just saw. The MotionValues hold the last
+          // rAF-tick output regardless of what the store has done since.
+          slideOriginRef.current = {
+            top: topRaw.get(),
+            left: leftRaw.get(),
+            w: wRaw.get(),
+            h: hRaw.get(),
+          };
+          // Phase 1: clip-path contracts from origin slot → CS_SLOT_DESKTOP.
+          const aSlide = animate(store.canvasSlide, 1, {
+            duration: FORWARD_CONTRACT_DURATION,
+            ease: FORWARD_CONTRACT_EASE,
+            onUpdate: (v) => {
+              if (cancelled) return;
+              store.setCanvasSlide(v);
+            },
+            onComplete: () => {
+              if (cancelled) return;
+              slideOriginRef.current = null;
+            },
+          });
+          // Phase 2: case-study hero shader fades in inside the settled slot.
+          // Delayed so the contraction reads against a stable Work-mode shader
+          // for most of phase 1; the 150ms overlap softens the join.
+          const aWeight = animate(store.csHeroWeight, 1, {
+            duration: FORWARD_MORPH_DURATION,
+            delay: FORWARD_MORPH_DELAY,
+            ease: 'easeInOut',
+            onUpdate: (v) => {
+              if (cancelled) return;
+              store.setCsHeroWeight(v);
+            },
+          });
+          stopHandles.push(
+            () => aSlide.stop(),
+            () => aWeight.stop(),
+          );
+        }
       } else {
         // Direct entry, slug→slug, or mobile — snap.
+        slideOriginRef.current = null;
         store.setCanvasSlide(1);
         store.setCsHeroWeight(1);
       }
     } else if (isHome) {
+      slideOriginRef.current = null;
       if (prevIsCaseStudy && !isMobile) {
         // Back navigation — snap canvas position, fade shader.
         store.setCanvasSlide(0);
@@ -145,22 +206,15 @@ export default function SceneCanvas() {
       cancelled = true;
       stopHandles.forEach((stop) => stop());
     };
-  }, [pathname, isCaseStudy, isHome, isMobile, slug]);
+  }, [pathname, isCaseStudy, isHome, isMobile, slug, topRaw, leftRaw, wRaw, hRaw]);
 
-  // Source MotionValues for the slot rect. Driven from a per-rAF loop, not a
-  // store subscription. Browser scroll events fire on input cadence (often
-  // ~30Hz on mouse wheels) with discrete deltas — binding m.div directly
-  // to that chunked source produces a visible staircase on the wrapper rect.
-  // Per-rAF lerp toward the latest store target filters that chunkiness into a
-  // smooth 60Hz output. Smoothing rate `k` is high enough that perceived lag
-  // stays under ~80ms (≈ 5 frames at 60fps) but low enough to absorb scroll
-  // event boundaries without staircase.
-  const initial = computeTargetSlot(useSceneStore.getState(), isMobile);
-  const topRaw = useMotionValue(initial.top);
-  const leftRaw = useMotionValue(initial.left);
-  const wRaw = useMotionValue(initial.w);
-  const hRaw = useMotionValue(initial.h);
-
+  // Per-rAF lerp from current MotionValue toward the computed target slot.
+  // Browser scroll events fire on input cadence (often ~30Hz on mouse wheels)
+  // with discrete deltas — binding m.div directly to that chunked source
+  // produces a visible staircase. Per-rAF smoothing at `k=30` keeps perceived
+  // lag under ~80ms while absorbing scroll-event boundaries. heroOpacityRaw
+  // tracks the case-study Hero band exit fade — stays 1 on home and inside
+  // the band; fades 1→0 as scroll exits the band.
   useEffect(() => {
     let raf = 0;
     let prev = performance.now();
@@ -169,7 +223,8 @@ export default function SceneCanvas() {
       const dt = Math.min(0.05, (now - prev) / 1000);
       prev = now;
       const factor = 1 - Math.exp(-k * dt);
-      const t = computeTargetSlot(useSceneStore.getState(), isMobile);
+      const state = useSceneStore.getState();
+      const t = computeTargetSlot(state, isMobile, slideOriginRef.current);
       topRaw.set(topRaw.get() + (t.top - topRaw.get()) * factor);
       leftRaw.set(leftRaw.get() + (t.left - leftRaw.get()) * factor);
       wRaw.set(wRaw.get() + (t.w - wRaw.get()) * factor);
@@ -180,11 +235,13 @@ export default function SceneCanvas() {
       useSceneStore
         .getState()
         .setSlotCenter([(leftRaw.get() + wRaw.get() / 2) / 100, (topRaw.get() + hRaw.get() / 2) / 100]);
+      const targetOpacity = isCaseStudy ? heroBandVisibility(state.csHeroBandProgress) : 1;
+      heroOpacityRaw.set(heroOpacityRaw.get() + (targetOpacity - heroOpacityRaw.get()) * factor);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [isMobile, topRaw, leftRaw, wRaw, hRaw]);
+  }, [isMobile, isCaseStudy, topRaw, leftRaw, wRaw, hRaw, heroOpacityRaw]);
 
   // Derive clip-path inset from the rect MotionValues. Wrapper stays full
   // viewport; clip-path masks the visible region. Animating clip-path is
@@ -232,6 +289,7 @@ export default function SceneCanvas() {
               height: '100vw',
               pointerEvents: 'none',
               zIndex: 10,
+              opacity: heroOpacityRaw,
             }
           : {
               position: 'fixed',
@@ -246,6 +304,7 @@ export default function SceneCanvas() {
               pointerEvents: 'none',
               zIndex: 0,
               clipPath,
+              opacity: heroOpacityRaw,
             }
       }
     >
@@ -256,7 +315,6 @@ export default function SceneCanvas() {
         gl={{ antialias: !isMobile, alpha: true }}
       >
         <BackgroundField />
-        <LetterFillField />
         <CaseStudyHeroLayer />
       </Canvas>
     </m.div>

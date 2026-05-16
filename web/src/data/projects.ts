@@ -77,7 +77,7 @@ const projects: Project[] = [
     subtitle: 'One Engine. Five Brands. Zero Redundancy.',
     slug: 'new-belgium',
     year: '2021–present',
-    role: 'Lead Front-End Engineer',
+    role: 'Tech Lead',
     client: 'New Belgium Brewing',
     deliverables: ['Web', 'Component System', 'Brand Theming'],
     tags: [
@@ -252,10 +252,10 @@ const projects: Project[] = [
   },
   {
     title: 'Phantom Labs',
-    subtitle: "The Best Thing I Haven't Shipped",
+    subtitle: 'Six Months Live, Then a Studio Pivot',
     slug: 'phantom-labs',
     year: '2023',
-    role: 'Lead Front-End Engineer',
+    role: 'Front-End Engineer',
     client: 'Phantom Labs (studio)',
     deliverables: ['Web', 'WebGL', 'Motion', 'Interaction'],
     tags: [
@@ -279,7 +279,7 @@ const projects: Project[] = [
     ],
     overview: {
       headline: 'A Studio Site Built Without Library Defaults',
-      body: "Built for Phantom Labs in 2023. The studio took a different direction mid-build and the site never went public. Including it here because it's still the best thing I've made.",
+      body: "Built for Phantom Labs in 2023. The site shipped, lived for about six months, then the studio moved on from it. Including it here because it's still the best thing I've made.",
     },
     blocks: [
       { type: 'chapter', number: '01', title: 'The Brief' },
@@ -290,8 +290,8 @@ const projects: Project[] = [
       },
       {
         type: 'text-block',
-        heading: 'And then the studio pivoted',
-        body: 'Mid-build, the studio took a different direction. The site never went public. The work is still mine.',
+        heading: 'And then the studio moved on',
+        body: 'The site shipped and lived for about six months before the studio moved in a different direction. The work is still mine.',
       },
       { type: 'chapter', number: '02', title: 'The build', eyebrow: 'Hand-Authored Primitives' },
       {
@@ -364,11 +364,11 @@ const projects: Project[] = [
         alt: 'Phantom Labs case study layout',
         aspect: '16/9',
       },
-      { type: 'chapter', number: '05', title: 'Almost shipped, still mine' },
+      { type: 'chapter', number: '05', title: 'Six months live, still mine' },
       {
         type: 'text-block',
         heading: 'Still my best build',
-        body: "Site never went live. Custom shaders, motion by hand, no library defaults — everything I've made since is downstream of this one.",
+        body: "Site shipped, lived for about six months, then the studio moved on. Custom shaders, motion by hand, no library defaults — everything I've made since is downstream of this one.",
       },
     ],
     featured: true,
@@ -379,7 +379,7 @@ const projects: Project[] = [
     subtitle: 'A Craft-First Portfolio for a Craft-First Shop',
     slug: 'mission-bell',
     year: '2023',
-    role: 'Lead Front-End Engineer',
+    role: 'Front-End Engineer',
     client: 'Mission Bell',
     deliverables: ['Web', 'CMS', 'Motion'],
     tags: ['Nuxt', 'Vue', 'GSAP', 'Sanity CMS', 'WCAG 2.1 AA', 'Component Library', 'Front End Engineering'],
@@ -457,7 +457,7 @@ const projects: Project[] = [
     subtitle: 'Building for the Hardest Client',
     slug: 'consume-and-create',
     year: '2021',
-    role: 'Lead Front-End Engineer',
+    role: 'Tech Lead',
     client: 'Consume and Create',
     deliverables: ['Web', 'CMS', 'Performance'],
     tags: ['Nuxt', 'Contentful CMS', 'Vue', 'Performance Optimization', 'Animation', 'Lighthouse', 'Agency'],
@@ -650,4 +650,14 @@ export function getAdjacentProjects(slug: string): { prev: Project | null; next:
     prev: idx > 0 ? featured[idx - 1] : null,
     next: idx < featured.length - 1 ? featured[idx + 1] : null,
   };
+}
+
+// Splits a project's blocks at the first chapter-02 mark. Brief = chapter 01
+// content (mark + text-block by convention), rendered in the Hero band's
+// Brief slot. Body = everything from chapter 02 onward. See ADR 0005.
+export function splitBlocks(project: Project): { brief: ContentBlock[]; body: ContentBlock[] } {
+  const blocks = project.blocks ?? [];
+  const cutIdx = blocks.findIndex((b) => b.type === 'chapter' && b.number === '02');
+  if (cutIdx === -1) return { brief: [], body: blocks };
+  return { brief: blocks.slice(0, cutIdx), body: blocks.slice(cutIdx) };
 }

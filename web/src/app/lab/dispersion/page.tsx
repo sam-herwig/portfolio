@@ -244,7 +244,7 @@ export default function DispersionLab() {
 
   return (
     <main className="relative h-screen w-full bg-background">
-      <Leva collapsed titleBar={{ title: 'Dispersion · Live tune' }} />
+      {process.env.NODE_ENV !== 'production' && <Leva collapsed titleBar={{ title: 'Dispersion · Live tune' }} />}
       <Link
         href="/"
         className="absolute left-6 top-6 z-20 text-xs uppercase tracking-[0.3em] text-foreground/55 hover:text-foreground"

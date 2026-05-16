@@ -13,7 +13,11 @@ interface Props extends Omit<MediaBlock, 'type'> {
 }
 
 export default function MediaBlockRender({ src, alt, aspect = '16/9', fullBleed, caption, slug }: Props) {
-  const wrap = fullBleed ? 'w-full' : 'w-full px-8 md:px-16';
+  // Non-fullBleed media gets a generous centered max-width — wider than the
+  // text reading column (~58ch) but shorter of full-bleed. Body column hosts
+  // this block at page width post-redesign, so without a cap it would
+  // explode edge-to-edge regardless of the fullBleed flag.
+  const wrap = fullBleed ? 'w-full' : 'mx-auto w-full max-w-[1200px] px-8 md:px-16';
 
   return (
     <figure className={`${wrap} py-12 md:py-16`}>

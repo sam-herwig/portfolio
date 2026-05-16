@@ -91,6 +91,12 @@ const FRAG = /* glsl */ `
   uniform float uPLCycles;
   uniform float uPLIdleDrift;
   uniform float uPLWhooshGain;
+  uniform float uPLDotSize;
+  uniform float uPLDotSoftness;
+  uniform float uPLDotJitter;
+  uniform int   uPLDotShape;
+  uniform float uPLFalloffStart;
+  uniform float uPLFalloffStrength;
 
   // Interaction layer mirrored from BackgroundField via useSceneStore — same
   // Leva folder drives every shader on the page. Applied to cuv once before
@@ -806,7 +812,47 @@ const FRAG = /* glsl */ `
     float bias    = exp(-(d * d) / (falloff * falloff));
     // Add a low-amplitude ambient scatter so the field never goes fully dark.
     bias = clamp(bias + jitter.x * 0.04, 0.0, 1.0);
-    float particle = step(1.0 - bias, h);
+    float cellOn = step(1.0 - bias, h);
+
+    // Sub-cell SDF — replaces the full-cell square. Frac coords are in
+    // [-0.5, 0.5] across the cell; offset by per-cell jitter to break the
+    // grid. Shape selector picks the distance metric (circle / square /
+    // diamond / plus); smoothstep with uPLDotSoftness gives optional AA /
+    // softening while keeping the default crisp 1-bit aesthetic at 0.
+    vec2  frac    = fract(cuv * uPLGridDensity) - 0.5 - jitter * uPLDotJitter;
+    float dotEdge = max(uPLDotSoftness, 1e-4);
+    float dotAlpha;
+    if (uPLDotShape == 1) {
+      // Square — Chebyshev distance to cell center.
+      float ds = max(abs(frac.x), abs(frac.y));
+      dotAlpha = 1.0 - smoothstep(uPLDotSize - dotEdge, uPLDotSize + dotEdge, ds);
+    } else if (uPLDotShape == 2) {
+      // Diamond — Manhattan distance, normalized to half-diagonal so the
+      // same uPLDotSize knob produces a diamond inscribed in the same circle.
+      float ds = (abs(frac.x) + abs(frac.y)) * 0.7071;
+      dotAlpha = 1.0 - smoothstep(uPLDotSize - dotEdge, uPLDotSize + dotEdge, ds);
+    } else if (uPLDotShape == 3) {
+      // Plus — union of two perpendicular bars. Half-length = uPLDotSize,
+      // half-thickness = uPLDotSize * 0.35. SDF is negative inside.
+      float halfThick = uPLDotSize * 0.35;
+      float dH = max(abs(frac.x) - uPLDotSize, abs(frac.y) - halfThick);
+      float dV = max(abs(frac.x) - halfThick, abs(frac.y) - uPLDotSize);
+      float dPlus = min(dH, dV);
+      dotAlpha = 1.0 - smoothstep(-dotEdge, dotEdge, dPlus);
+    } else {
+      // Circle (default) — Euclidean distance.
+      float dc = length(frac);
+      dotAlpha = 1.0 - smoothstep(uPLDotSize - dotEdge, uPLDotSize + dotEdge, dc);
+    }
+
+    // Focal-distance opacity falloff. uPLFalloffStrength = 0 keeps current
+    // behavior (uniform opacity); 1 fades particles fully at unit distance
+    // from the focal point. uPLFalloffStart shifts where the fade begins.
+    float dF = length(cuv - uPLFocal);
+    float fT = smoothstep(uPLFalloffStart, 1.0, dF);
+    float focalAlpha = 1.0 - fT * uPLFalloffStrength;
+
+    float particle = cellOn * dotAlpha * focalAlpha;
 
     // Crisp focal ring — persistent across all 4 keypoints as the unifying motif.
     float dFocal = plRingDist(p, uPLFocalRingRadius, uPLFocalRingWidth);
@@ -866,7 +912,7 @@ const uniforms = {
   uMBWedgeSoftness: { value: 0.18 },
   uMBHaloRadius: { value: 0.4 },
   uMBHaloWidth: { value: 0.05 },
-  uMBCycles: { value: 3.0 },
+  uMBCycles: { value: 1.0 },
   uMBIdleDrift: { value: 0.04 },
   uMBWhooshGain: { value: 0.08 },
   uNBVariant: { value: 1 },
@@ -881,7 +927,7 @@ const uniforms = {
   uNBLogBase: { value: 1.7 },
   uNBSpiralPitch: { value: 1.4 },
   uNBSpiralTurns: { value: 4.0 },
-  uNBCycles: { value: 3.0 },
+  uNBCycles: { value: 1.0 },
   uNBIdleDrift: { value: 0.05 },
   uNBWhooshGain: { value: 0.06 },
   uCCSourceA: { value: new Vector2(-0.18, 0.04) },
@@ -890,7 +936,7 @@ const uniforms = {
   uCCPropAngle: { value: 0.78 },
   uCCChirp: { value: 44.0 },
   uCCChirpTilt: { value: 0.9 },
-  uCCCycles: { value: 3.0 },
+  uCCCycles: { value: 1.0 },
   uCCIdlePhase: { value: 0.45 },
   uCCWhooshGain: { value: 0.8 },
   uCKFocal: { value: new Vector2(-0.16, 0.1) },
@@ -899,7 +945,7 @@ const uniforms = {
   uCKArcRadius: { value: 0.5 },
   uCKGridTilt: { value: 0.22 },
   uCKFocalCell: { value: new Vector2(2, -1) },
-  uCKCycles: { value: 3.0 },
+  uCKCycles: { value: 1.0 },
   uCKIdleDrift: { value: 0.06 },
   uCKWhooshGain: { value: 0.06 },
 
@@ -910,10 +956,16 @@ const uniforms = {
   uPLFocalRingRadius: { value: 0.05 },
   uPLFocalRingWidth: { value: 0.004 },
   uPLScatter: { value: 0.12 },
-  uPLSpiralPitch: { value: 0.4 },
-  uPLCycles: { value: 3.0 },
-  uPLIdleDrift: { value: 0.03 },
+  uPLSpiralPitch: { value: 0.68 },
+  uPLCycles: { value: 1.0 },
+  uPLIdleDrift: { value: 0.09 },
   uPLWhooshGain: { value: 0.08 },
+  uPLDotSize: { value: 0.36 },
+  uPLDotSoftness: { value: 0.03 },
+  uPLDotJitter: { value: 0.36 },
+  uPLDotShape: { value: 0 },
+  uPLFalloffStart: { value: 0.15 },
+  uPLFalloffStrength: { value: 0.5 },
 
   // Interaction — driven by useSceneStore (set by BackgroundField's Leva).
   // Defaults match the store so SSR / first-frame are coherent.
@@ -993,6 +1045,12 @@ const PRESETS = {
       plCycles: 1.0,
       plIdleDrift: 0.01,
       plWhooshGain: 0.03,
+      plDotSize: 0.32,
+      plDotSoftness: 0.02,
+      plDotJitter: 0.0,
+      plDotShape: 0,
+      plFalloffStart: 0.2,
+      plFalloffStrength: 0.4,
     },
   },
   'Bauhaus Manifesto': {
@@ -1061,6 +1119,12 @@ const PRESETS = {
       plCycles: 3.0,
       plIdleDrift: 0.03,
       plWhooshGain: 0.08,
+      plDotSize: 0.36,
+      plDotSoftness: 0.0,
+      plDotJitter: 0.15,
+      plDotShape: 1,
+      plFalloffStart: 0.1,
+      plFalloffStrength: 0.55,
     },
   },
   'Op-Art Vertigo': {
@@ -1129,6 +1193,12 @@ const PRESETS = {
       plCycles: 4.0,
       plIdleDrift: 0.08,
       plWhooshGain: 0.18,
+      plDotSize: 0.42,
+      plDotSoftness: 0.08,
+      plDotJitter: 0.35,
+      plDotShape: 2,
+      plFalloffStart: 0.05,
+      plFalloffStrength: 0.7,
     },
   },
 } as const;
@@ -1222,7 +1292,7 @@ export default function CaseStudyHeroLayer() {
       ),
       Motion: folder(
         {
-          mbCycles: { value: 3.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
+          mbCycles: { value: 1.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
           mbIdleDrift: { value: 0.04, min: 0.0, max: 0.4, step: 0.005 },
           mbWhooshGain: { value: 0.08, min: 0.005, max: 0.2, step: 0.005, label: 'softmin k' },
         },
@@ -1263,7 +1333,7 @@ export default function CaseStudyHeroLayer() {
       ),
       Motion: folder(
         {
-          nbCycles: { value: 3.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
+          nbCycles: { value: 1.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
           nbIdleDrift: { value: 0.05, min: 0.0, max: 0.4, step: 0.005 },
           nbWhooshGain: { value: 0.06, min: 0.005, max: 0.2, step: 0.005, label: 'softmin k' },
         },
@@ -1289,7 +1359,7 @@ export default function CaseStudyHeroLayer() {
       ),
       Motion: folder(
         {
-          ccCycles: { value: 3.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
+          ccCycles: { value: 1.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
           ccIdlePhase: { value: 0.45, min: 0.0, max: 2.0, step: 0.01, label: 'idle phase v' },
           ccWhooshGain: { value: 0.8, min: 0.05, max: 2.0, step: 0.05, label: 'softmin k' },
         },
@@ -1315,7 +1385,7 @@ export default function CaseStudyHeroLayer() {
       ),
       Motion: folder(
         {
-          ckCycles: { value: 3.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
+          ckCycles: { value: 1.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
           ckIdleDrift: { value: 0.06, min: 0.0, max: 0.3, step: 0.005 },
           ckWhooshGain: { value: 0.06, min: 0.005, max: 0.2, step: 0.005, label: 'softmin k' },
         },
@@ -1330,6 +1400,21 @@ export default function CaseStudyHeroLayer() {
     () => ({
       plFocal: { value: [0.0, 0.0] as [number, number], step: 0.01, label: 'focal xy' },
       plGridDensity: { value: 180.0, min: 60.0, max: 320.0, step: 5.0, label: 'grid density' },
+      Particles: folder(
+        {
+          plDotShape: {
+            value: 0,
+            options: { circle: 0, square: 1, diamond: 2, plus: 3 },
+            label: 'dot shape',
+          },
+          plDotSize: { value: 0.36, min: 0.05, max: 0.5, step: 0.01, label: 'dot size' },
+          plDotSoftness: { value: 0.03, min: 0.0, max: 0.3, step: 0.005, label: 'dot softness' },
+          plDotJitter: { value: 0.36, min: 0.0, max: 1.0, step: 0.02, label: 'dot jitter' },
+          plFalloffStart: { value: 0.15, min: 0.0, max: 1.0, step: 0.01, label: 'falloff start' },
+          plFalloffStrength: { value: 0.5, min: 0.0, max: 1.0, step: 0.01, label: 'falloff strength' },
+        },
+        { collapsed: true },
+      ),
       Geometry: folder(
         {
           plRingRadius: { value: 0.32, min: 0.15, max: 0.55, step: 0.005, label: 'ring radius' },
@@ -1337,14 +1422,14 @@ export default function CaseStudyHeroLayer() {
           plFocalRingRadius: { value: 0.05, min: 0.02, max: 0.12, step: 0.002, label: 'focal r' },
           plFocalRingWidth: { value: 0.004, min: 0.001, max: 0.02, step: 0.0005, label: 'focal w' },
           plScatter: { value: 0.12, min: 0.02, max: 0.3, step: 0.005, label: 'scatter falloff' },
-          plSpiralPitch: { value: 0.4, min: 0.1, max: 1.0, step: 0.01, label: 'spiral pitch' },
+          plSpiralPitch: { value: 0.68, min: 0.1, max: 1.0, step: 0.01, label: 'spiral pitch' },
         },
         { collapsed: true },
       ),
       Motion: folder(
         {
-          plCycles: { value: 3.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
-          plIdleDrift: { value: 0.03, min: 0.0, max: 0.2, step: 0.005 },
+          plCycles: { value: 1.0, min: 1.0, max: 4.0, step: 0.5, label: 'cycles/scroll' },
+          plIdleDrift: { value: 0.09, min: 0.0, max: 0.2, step: 0.005 },
           plWhooshGain: { value: 0.08, min: 0.005, max: 0.2, step: 0.005, label: 'softmin k' },
         },
         { collapsed: true },
@@ -1436,7 +1521,11 @@ export default function CaseStudyHeroLayer() {
     uniforms.uTime.value = lastTimeRef.current;
 
     const forced = scene.forceIndex >= 0;
-    uniforms.uScroll.value = scene.forceScroll ? scene.scrollValue : s.scrollProgress;
+    // Drive uScroll from the Hero band's local 0→1 progress, not the page's
+    // global scrollProgress. With cycles=1 (the new default), 0→1 traverses
+    // K0→K3 exactly once across the 200svh Hero band — every saved keypoint
+    // earns its scroll dwell. The leva `force scroll` override still wins.
+    uniforms.uScroll.value = scene.forceScroll ? scene.scrollValue : Math.min(1, s.csHeroBandProgress);
     uniforms.uIndex.value = forced ? scene.forceIndex : s.csHeroIndex;
     uniforms.uWeight.value = forced ? scene.forceWeight : s.csHeroWeight;
     uniforms.uAspect.value = state.size.width / Math.max(1, state.size.height);
@@ -1503,6 +1592,12 @@ export default function CaseStudyHeroLayer() {
     uniforms.uPLCycles.value = pl.plCycles;
     uniforms.uPLIdleDrift.value = pl.plIdleDrift;
     uniforms.uPLWhooshGain.value = pl.plWhooshGain;
+    uniforms.uPLDotSize.value = pl.plDotSize;
+    uniforms.uPLDotSoftness.value = pl.plDotSoftness;
+    uniforms.uPLDotJitter.value = pl.plDotJitter;
+    uniforms.uPLDotShape.value = pl.plDotShape;
+    uniforms.uPLFalloffStart.value = pl.plFalloffStart;
+    uniforms.uPLFalloffStrength.value = pl.plFalloffStrength;
 
     // Pull interaction params + mouse target from the shared store. Same
     // 0.08 lerp factor as BackgroundField / LetterFillField so all three
