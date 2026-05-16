@@ -85,6 +85,43 @@ The rest are polish, not blockers.
 - `<head>` preload count drops from 10 → ≤7.
 - `/process` and `/404` show no R3F chunk in the Network tab.
 
+## Lighthouse pass — 2026-05-16 (post-deploy)
+
+Ran Lighthouse 13 (desktop preset + mobile default) against staging once the P0+P1 changes shipped. All header / OG / canonical / skip-link / font-preload fixes confirmed live on staging via `curl -I`.
+
+### Scores
+
+| Route | Device | Perf | A11y | Best | SEO |
+|---|---|---|---|---|---|
+| `/` | Desktop | 94 | 90 | 100 | 66* |
+| `/` | Mobile | 57 | 90 | 100 | 66* |
+| `/process` | Desktop | 99 | 94 | 100 | 66* |
+| `/work/phantom-labs` | Desktop | 97 | 91 | 100 | 69* |
+| `/work/phantom-labs` | Mobile | 73 | 91 | — | — |
+
+*SEO 66 is the noindex penalty (intentional on staging — production will score 95+).
+
+### New findings + fixes applied in this pass
+
+1. **Leva auto-mounts a default panel in production.** Both `DevLeva` and `CaseStudyDebugPanel` returned `null` outside dev — but `useControls()` calls in `BackgroundField` / `CaseStudyHeroLayer` still ran, triggering Leva's fallback panel injection. That panel was the source of every "form elements without labels" + "contrast" finding outside of intentional micro-copy. **Fix:** both panels now render `<Leva hidden />` instead of returning null. Should bump a11y from 90/91 → 95+ once deployed.
+2. **NextProject `aria-label="Next project: Mission Bell"` vs visible text "Mission Bell"** — accessible name didn't start with visible text (WCAG 2.5.3). **Fix:** flipped to `aria-label="${title} — next project"`.
+
+### Real findings to follow up (deferred)
+
+1. **Mobile LCP on `/` is 10.3 s** under 4× CPU throttle. The Hero `PixelTitle` uses a `clip-path` wipe over 900 ms which probably defers LCP measurement until the wipe settles. Combined with the Canvas/Three init blocking the main thread, this is the biggest opportunity. Worth: render the hero text with its final visible width and animate something cheaper (opacity / transform) instead of clip-path width.
+2. **`/process` heading-order failure** — the `CraftedKitPipelineSpotlight` renders `h3`s between the page `h1` and the first `h2`. Either promote the spotlight's headings to `h2`, or downgrade them to `div role="heading" aria-level=...` to match document order.
+3. **`/process` contrast findings on Todd / Orchestrator pill** are Lighthouse capturing the scroll-reveal mid-animation. The `m.div style={{ opacity: toddOpacity }}` starts low and ramps as the user scrolls; Lighthouse measures the page state at capture time. Real users see full opacity once they scroll into the section. Fix only if you want a perfect a11y score: bump the initial opacity in the spotlight or move the reveal off `opacity` (which axe-core composites against the bg).
+4. **Unused JS estimate: 388 KiB.** Mostly Three.js + R3F + Drei subsystems that ship but aren't used on every route. Real win would come from splitting BackgroundField + CaseStudyHeroLayer into separate dynamic chunks so case-study pages don't ship BackgroundField (and vice versa).
+5. **Total byte weight `/` ≈ 2.4 MB** — acceptable for a 3D portfolio. Consider compressing the case-study .webp originals; some look 200–400 KB each.
+
+### Verified live on staging
+- `x-frame-options: DENY`, `referrer-policy: strict-origin-when-cross-origin`, `permissions-policy: camera=(), microphone=(), geolocation=()` all ship on HTML.
+- `robots.txt` returns `Disallow: /` on staging; HTML carries `<meta name="robots" content="noindex, nofollow">`.
+- Canonicals on staging point at the staging host (was: cross-domain to samherwig.dev).
+- `/process` carries `og:image` + `twitter:image` (1200×630, with alt).
+- `<main id="main-content">` present on `/process` and `/work/[slug]`.
+- Font preload count: **10 → 7** woff2s on every route.
+
 ## Review (2026-05-16)
 
 All P0 + P1 items shipped. `npm run typecheck`, `npm run lint`, and `npm run build` all green.

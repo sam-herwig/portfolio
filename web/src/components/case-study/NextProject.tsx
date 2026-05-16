@@ -8,7 +8,7 @@ export default function NextProject({ next }: { next: Project }) {
       <Link
         href={`/work/${next.slug}`}
         className="group relative block h-[80vh] w-full overflow-hidden"
-        aria-label={`Next project: ${next.title}`}
+        aria-label={`${next.title} — next project`}
       >
         <Image
           src={next.thumbnail}

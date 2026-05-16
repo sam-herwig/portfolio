@@ -17,6 +17,11 @@ interface Props {
   // …or run a one-shot mount animation (hero).
   mount?: boolean;
   as?: PixelTag;
+  // Skip the wipe entirely; render text fully visible from first paint. Use
+  // for above-the-fold content (e.g. the hero) where the clip-path:inset(0
+  // 100% 0 0) initial state ships in SSR HTML and blocks LCP measurement
+  // until the rAF-driven wipe completes (~900ms after hydration).
+  instant?: boolean;
 }
 
 const TAG_MAP = {
@@ -39,6 +44,7 @@ export default function PixelTitle({
   window: win,
   mount,
   as = 'h1',
+  instant,
 }: Props) {
   const intro = useTransform(progress ?? makeStaticMV(0), (v) => {
     if (mount || !win) return 1;
@@ -53,7 +59,7 @@ export default function PixelTitle({
 
   return (
     <Component className={className} style={{ fontFamily: fontVar(variant), fontFeatureSettings: '"liga" 0' }}>
-      <WipeText text={text} intro={intro} mount={!!mount} />
+      {instant ? text : <WipeText text={text} intro={intro} mount={!!mount} />}
     </Component>
   );
 }

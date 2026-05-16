@@ -226,9 +226,9 @@ function PipelineFrame({
       <div className="relative mt-4 min-h-[160px] border-t border-foreground/10 pt-4 md:mt-6 md:min-h-[180px] md:pt-6">
         <m.div style={{ opacity: introOpacity }} className="absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/55">The Pipeline</p>
-          <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">
+          <h2 className="font-instrument text-2xl italic text-foreground md:text-3xl">
             One brief in. One pull request out.
-          </h3>
+          </h2>
           <p className="mt-3 font-instrument text-base leading-relaxed text-foreground/70 md:text-lg">
             Four specialist agents. Four human gates I sit at personally. Todd routes every mission.
           </p>
@@ -337,7 +337,7 @@ function BeatAnnotation({ beat, index, activeIdx }: { beat: Beat; index: number;
       <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/55">
         {beat.kind === 'agent' ? `Stage ${beat.step}` : `Gate ${beat.step.replace('G', '')} — ${beat.title}`}
       </p>
-      <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">{beat.annoHeading}</h3>
+      <h2 className="font-instrument text-2xl italic text-foreground md:text-3xl">{beat.annoHeading}</h2>
       <p className="mt-3 font-instrument text-base leading-relaxed text-foreground/70 md:text-lg">{beat.annoBody}</p>
       {beat.kind === 'agent' && (
         <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.25em] text-foreground/50">
@@ -353,7 +353,7 @@ function FinalAnnotation({ activeIdx }: { activeIdx: MotionValue<number> }) {
   return (
     <m.div style={{ opacity }} className="pointer-events-none absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
       <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/55">The Machine</p>
-      <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">Four agents. Four gates. One PR.</h3>
+      <h2 className="font-instrument text-2xl italic text-foreground md:text-3xl">Four agents. Four gates. One PR.</h2>
       <p className="mt-3 font-instrument text-base leading-relaxed text-foreground/70 md:text-lg">
         The numbers below are the scaffolding — five agents including Todd, twenty-two Claude commands wiring up each
         mission, eight hook matchers enforcing style and safety, two pipelines (net-new and enhance).

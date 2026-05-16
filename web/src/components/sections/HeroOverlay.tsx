@@ -25,7 +25,7 @@ function HeroBody() {
       <div className="flex flex-1 items-center justify-start px-2">
         <PixelTitle
           text="Sam Herwig"
-          mount
+          instant
           className="text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-8xl"
         />
       </div>
