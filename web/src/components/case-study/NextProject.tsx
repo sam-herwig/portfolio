@@ -5,11 +5,7 @@ import type { Project } from '@/data/projects';
 export default function NextProject({ next }: { next: Project }) {
   return (
     <section className="relative mt-24 w-full">
-      <Link
-        href={`/work/${next.slug}`}
-        className="group relative block h-[80vh] w-full overflow-hidden"
-        aria-label={`${next.title} — next project`}
-      >
+      <Link href={`/work/${next.slug}`} className="group relative block h-[80vh] w-full overflow-hidden">
         <Image
           src={next.thumbnail}
           alt=""
