@@ -65,3 +65,13 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Leva dev panel: when useControls() is called without a visible <Leva />
+   ancestor (i.e. the panel is hidden or unmounted), Leva auto-mounts a panel
+   into <body> with id="leva__root". That orphan surfaces in axe-core as
+   unlabeled inputs + low-contrast text and tanks the accessibility audit.
+   DevLeva's dev path renders <Leva /> inline so the #leva__root id never
+   exists in dev — this rule is effectively production-only. */
+#leva__root {
+  display: none !important;
+}
