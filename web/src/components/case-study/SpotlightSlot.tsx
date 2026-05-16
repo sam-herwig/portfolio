@@ -19,7 +19,7 @@ export default function SpotlightSlot({ spotlightId, caption }: Omit<SpotlightBl
     return (
       <div className="mx-auto my-16 max-w-[1400px] px-8 md:px-16">
         <p
-          className="text-xs uppercase tracking-[0.3em] text-foreground/40"
+          className="text-xs uppercase tracking-[0.3em] text-foreground/55"
           style={{ fontFamily: 'var(--font-geist-mono)' }}
         >
           Missing spotlight: {spotlightId}

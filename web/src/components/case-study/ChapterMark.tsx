@@ -38,7 +38,7 @@ export default function ChapterMark({ number, title, eyebrow, variant = 'body' }
       <div className={isBrief ? 'mx-auto w-full max-w-[44ch]' : 'mx-auto w-full max-w-5xl'}>
         {eyebrow && (
           <p
-            className="mb-6 text-[11px] uppercase tracking-[0.4em] text-foreground/40"
+            className="mb-6 text-[11px] uppercase tracking-[0.4em] text-foreground/55"
             style={{ fontFamily: 'var(--font-geist-mono)' }}
           >
             {eyebrow}

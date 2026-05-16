@@ -19,7 +19,7 @@ function AboutBody({ progress }: { progress?: MotionValue<number> }) {
           Section 02
         </p>
         <p
-          className="hidden text-[11px] uppercase tracking-[0.4em] text-foreground/45 md:block"
+          className="hidden text-[11px] uppercase tracking-[0.4em] text-foreground/55 md:block"
           style={{ fontFamily: 'var(--font-geist-mono)' }}
         >
           Denver, CO · 2021–
@@ -55,7 +55,7 @@ function AboutBody({ progress }: { progress?: MotionValue<number> }) {
 
       {/* Mobile-only location line. Desktop moves it to the eyebrow row above. */}
       <p
-        className="text-[10px] uppercase tracking-[0.4em] text-foreground/45 md:hidden"
+        className="text-[10px] uppercase tracking-[0.4em] text-foreground/55 md:hidden"
         style={{ fontFamily: 'var(--font-geist-mono)' }}
       >
         Denver, CO · 2021–

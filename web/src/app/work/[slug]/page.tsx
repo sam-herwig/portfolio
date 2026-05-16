@@ -62,7 +62,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   };
 
   return (
-    <main className="min-h-screen w-full">
+    <main id="main-content" className="min-h-screen w-full">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       <ScrollProgress />
       <CaseStudyDebugPanel />
@@ -130,7 +130,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
                           className="inline-flex items-baseline gap-3 text-sm text-foreground/60 hover:text-foreground"
                         >
                           <span
-                            className="text-[10px] uppercase tracking-[0.3em] text-foreground/40"
+                            className="text-[10px] uppercase tracking-[0.3em] text-foreground/55"
                             style={{ fontFamily: 'var(--font-geist-mono)' }}
                           >
                             {site.tag}

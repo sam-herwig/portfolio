@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
-import { GeistPixelGrid, GeistPixelSquare } from 'geist/font/pixel';
+import localFont from 'next/font/local';
 import MotionProvider from '@/components/MotionProvider';
 import SceneCanvasClient from '@/components/SceneCanvasClient';
-import { SITE_URL } from '@/lib/siteUrl';
+import { ALLOW_INDEXING, SITE_URL } from '@/lib/siteUrl';
 import './globals.css';
 
 const fraunces = Fraunces({
@@ -31,6 +31,28 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
   variable: '--font-geist-mono',
   display: 'swap',
+});
+
+// Pixel fonts: bypass geist/font/pixel because its barrel declares all 5
+// variants at module scope, so Next preloads woff2s we never use (Circle,
+// Line, Triangle). Importing only Square + Grid via next/font/local keeps the
+// critical-path font preloads down to what we actually render.
+const geistPixelSquare = localFont({
+  src: '../fonts/GeistPixel-Square.woff2',
+  variable: '--font-geist-pixel-square',
+  weight: '500',
+  display: 'swap',
+  adjustFontFallback: false,
+  fallback: ['Geist Mono', 'ui-monospace', 'monospace'],
+});
+
+const geistPixelGrid = localFont({
+  src: '../fonts/GeistPixel-Grid.woff2',
+  variable: '--font-geist-pixel-grid',
+  weight: '500',
+  display: 'swap',
+  adjustFontFallback: false,
+  fallback: ['Geist Mono', 'ui-monospace', 'monospace'],
 });
 
 export const metadata: Metadata = {
@@ -66,6 +88,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'Sam Herwig', url: SITE_URL }],
   creator: 'Sam Herwig',
   category: 'portfolio',
+  ...(ALLOW_INDEXING ? {} : { robots: { index: false, follow: false } }),
 };
 
 export const viewport: Viewport = {
@@ -107,7 +130,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
       </head>
       <body
-        className={`${fraunces.variable} ${instrumentSerif.variable} ${geistSans.variable} ${geistMono.variable} ${GeistPixelSquare.variable} ${GeistPixelGrid.variable} antialiased bg-background text-foreground`}
+        className={`${fraunces.variable} ${instrumentSerif.variable} ${geistSans.variable} ${geistMono.variable} ${geistPixelSquare.variable} ${geistPixelGrid.variable} antialiased bg-background text-foreground`}
         style={{ fontFamily: 'var(--font-geist-sans)' }}
       >
         <a

@@ -38,7 +38,7 @@ function HeroBody() {
           3D web, motion systems, AI agent pipelines. Currently shipping things at the limit of WebGL and taste.
         </p>
         <p
-          className="text-[10px] uppercase tracking-[0.4em] text-foreground/45"
+          className="text-[10px] uppercase tracking-[0.4em] text-foreground/55"
           style={{ fontFamily: 'var(--font-geist-mono)' }}
         >
           Scroll ↓

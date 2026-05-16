@@ -70,7 +70,7 @@ function ContactInner({
       )}
 
       <div
-        className="flex flex-col items-start justify-between gap-4 border-t border-foreground/10 pt-6 text-[10px] uppercase tracking-[0.3em] text-foreground/40 md:flex-row md:items-center"
+        className="flex flex-col items-start justify-between gap-4 border-t border-foreground/10 pt-6 text-[10px] uppercase tracking-[0.3em] text-foreground/55 md:flex-row md:items-center"
         style={{ fontFamily: 'var(--font-geist-mono)' }}
       >
         <span>© Sam Herwig · 2026</span>

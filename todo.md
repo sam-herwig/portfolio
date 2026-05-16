@@ -1,6 +1,120 @@
-# samherwig.dev — Redesign Plan (Agency-Tier Pivot)
+# samherwig.dev — Pre-launch Audit & Plan (2026-05-16)
 
-> Drafted from /grill-me + 10 parallel research agents. Awaiting verification before any code is written.
+> Live target: `staging--vocal-hamster-363b22.netlify.app` → `samherwig.dev`. Awaiting verification before any code is written. Original redesign plan preserved below.
+
+## Audit summary
+
+The build is in good shape on the fundamentals — per-route metadata, JSON-LD, OG image generation, dynamic sitemap/robots, skip link, reduced-motion fallback, WebGL fallback, lazy R3F bundle, optimized image formats. The launch-blockers are narrow:
+
+1. **Staging is wide open to Google** and every page canonicalizes to `samherwig.dev`, which guarantees duplicate-content / cross-domain canonical confusion the moment anyone shares the staging URL.
+2. **Skip-to-content link is dead** on `/process` and `/work/[slug]` — both routes use `<main>` without `id="main-content"`.
+3. **`netlify.toml` security headers aren't applied** to HTML responses (`Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options` declared but absent live — Next adapter shadows them).
+4. **`/process` ships no `og:image`/`twitter:image`** — Next isn't inheriting the root `opengraph-image.tsx` because `/process` declares its own `openGraph` block without `images`.
+5. **Font preload bloat**: 10 woff2 preloads in `<head>`, including 5 Geist Pixel variants when only `Square` + `Grid` are imported in layout.tsx — Geist's pixel module is preloading sibling variants.
+
+The rest are polish, not blockers.
+
+## Findings by area
+
+### SEO (mostly green)
+- ✅ Title, description, canonical, OG, Twitter card, JSON-LD Person (root) + CreativeWork (case study) + Article (process).
+- ✅ `generateMetadata` per-slug; per-slug OG image at `/work/[slug]/opengraph-image`.
+- ✅ Sitemap covers `/`, `/process`, all 5 `/work/*`. Robots disallows `/lab/`.
+- ⚠️ Canonical points at `samherwig.dev` regardless of host — staging deploys will leak to search.
+- ⚠️ `/process` missing OG image (root inheritance didn't apply because it overrides `openGraph`).
+- ⚠️ `twitter:site` not set (only `twitter:creator`). Minor.
+- ⚠️ `personJsonLd` uses `image: ${SITE_URL}/opengraph-image` — that's the route handler URL, not a static .png; works but Google occasionally caches the redirect.
+
+### Accessibility
+- ✅ `lang="en"`, skip-link present with visible focus state, reduced-motion fallback path.
+- ✅ Videos `aria-hidden="true" role="presentation"`, Canvas wrapper `aria-hidden`.
+- ✅ WorkCard has `aria-label="Visit X case study"`, decorative arrows `aria-hidden`.
+- ✅ `next/image` with `alt` on every case-study media via `DitheredImage`.
+- ✅ Headings: one h1 per page, hierarchy intact (h1 → h2 → h3) on home/process/case study.
+- ❌ Skip link points to `#main-content` but only HomeSceneRoot sets that id. `/process` and `/work/[slug]` render `<main>` with no id — skip link goes nowhere for keyboard users on those routes.
+- ⚠️ Contrast: a lot of micro-copy uses `text-foreground/40`–`/55` against a near-black shader-driven background. Mostly readable but several spots will fail WCAG AA on lighter shader frames. Worth a contrast pass on the eyebrow labels (`Section 02`, `© Sam Herwig · 2026`, etc.) and the `text-foreground/45` "Denver, CO" line.
+- ⚠️ `DitheredImage` renders the `next/image` at `opacity-0` so the WebGL View can paint over it. If WebGL fails on a case study page, the user sees an empty box — there's no fallback path to make the image visible.
+
+### Performance
+- ✅ R3F/Three/Drei/GSAP/Framer in `optimizePackageImports`. Canvas is `dynamic({ ssr: false })`. Frameloop pauses on hidden tab. Mobile drops DPR + antialias.
+- ✅ Images: AVIF/WebP enabled. Videos `preload="metadata"`, immutable 1y cache.
+- ✅ Static prerender (`x-nextjs-prerender: 1`) + Netlify Durable cache.
+- ❌ 10 woff2 preloads in `<head>` — 5 Geist Pixel variants (Circle, Grid, Line, Square, Triangle) preloaded though only Square + Grid are imported. Almost certainly `geist/font/pixel` re-exports the bundle. Need to either pin to the imported variants only or drop the unused ones.
+- ⚠️ `<SceneCanvasClient />` is mounted in the root layout — every route loads the SceneCanvas chunk after hydration, including `/process` where it returns `null`. Worth gating mount at the route level (Canvas only on `/` and `/work/*`).
+- ⚠️ `DitheredImage` requests the full webp via `next/image` AND streams the same texture through `TextureLoader` in `DitheredPlane` — double download per image. Worth a single-source-of-truth (e.g. drop the next/image, or feed `DitheredPlane` from the next/image-served URL only).
+- ⚠️ Case study pages are 60KB of HTML — that's the JSON-LD + content blocks inline. Acceptable.
+
+### Content
+- ✅ 5 case studies with hero/brief/body blocks, captions, credits, related-sites.
+- ✅ Process page reads cleanly.
+- ⚠️ Hero tagline + about copy + contact CTA are clear and on-brand.
+- ⚠️ No 404 fallback for `/work/<bad-slug>` content beyond the global not-found (the case study page calls `notFound()`, good). Verified `not-found.tsx` exists with `robots: { index: false }` ✅.
+- ⚠️ No `/sitemap.xml` entries for any future blog/notes section — fine since none exist yet.
+
+### Security / Headers
+- ✅ HSTS, `X-Content-Type-Options: nosniff` ship live.
+- ❌ `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options` declared in `netlify.toml` but **not present in live HTML response headers**. The `@netlify/plugin-nextjs` adapter writes Next's own response headers and the toml `[[headers]]` block doesn't merge for prerendered routes.
+- ❌ No `Content-Security-Policy` (acceptable for portfolio but a nice-to-have).
+
+## Plan (prioritized)
+
+### P0 — launch blockers
+- [ ] **Block staging from search.** Add an `X-Robots-Tag: noindex, nofollow` header for any deploy where `CONTEXT !== 'production'` (Netlify build env) — easiest path is a `_headers` file written at build time, or branch-conditional metadata: in `app/layout.tsx`, return `robots: { index: false, follow: false }` when `process.env.CONTEXT !== 'production'`. Also gate `SITE_URL` so canonicals point at the staging host on staging.
+- [ ] **Fix skip-link target.** Add `id="main-content"` to the `<main>` on `app/process/page.tsx` and `app/work/[slug]/page.tsx`.
+- [ ] **Add `/process` OG image.** Create `app/process/opengraph-image.tsx` (or add explicit `images: ['/opengraph-image']` to the `openGraph` block in `app/process/page.tsx`).
+
+### P1 — visible polish before launch
+- [ ] **Cull font preloads.** Investigate `geist/font/pixel` import — switch to per-variant imports only if available, or drop the unused 3 pixel variants. Goal: 7 → ~4 woff2 preloads.
+- [ ] **Route-gate the Canvas mount.** Move `<SceneCanvasClient />` out of `app/layout.tsx`. Mount it only inside `HomeSceneRoot` and the case-study layout. Eliminates ~Three/R3F chunk fetch on `/process` and `/404`.
+- [ ] **Live security headers.** Convert `netlify.toml` `[[headers]]` to a `public/_headers` file (which the Next plugin respects) or set headers via `next.config.mjs` `headers()`. Verify with `curl -I` after deploy.
+- [ ] **Contrast pass on micro-copy.** Audit `text-foreground/40`–`/55` instances against the darkest shader frames (HOLD beats); bump to `/65` minimum where they fall under AA.
+- [ ] **`DitheredImage` WebGL fallback.** When `useWebGLSupport()` returns false, render the `next/image` at `opacity-100` so case studies remain visually meaningful without WebGL.
+
+### P2 — post-launch
+- [ ] Add `twitter:site` (e.g. `@samherwig`) alongside `twitter:creator`.
+- [ ] Deduplicate the `DitheredImage` image fetch (drop the `next/image` request and source the texture only).
+- [ ] Run a real Lighthouse pass against production once `/process` OG + headers + canonical are fixed; capture LCP/CLS/TTI numbers.
+- [ ] Consider a minimal `Content-Security-Policy` (script-src 'self' + the Next chunks, img-src 'self' data:, etc.).
+- [ ] Add a small `/og` static fallback PNG for older clients that don't render the ImageResponse.
+
+## Verification checklist (after P0 + P1)
+- `curl -I` against staging shows `X-Robots-Tag: noindex, nofollow`.
+- `curl -I` against production shows `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`.
+- View source on `/process` includes `og:image` + `twitter:image`.
+- Tabbing on `/process` and `/work/phantom-labs` from URL bar lands the skip link target inside `<main>`.
+- `<head>` preload count drops from 10 → ≤7.
+- `/process` and `/404` show no R3F chunk in the Network tab.
+
+## Review (2026-05-16)
+
+All P0 + P1 items shipped. `npm run typecheck`, `npm run lint`, and `npm run build` all green.
+
+**Files touched**
+- `web/src/lib/siteUrl.ts` — derives SITE_URL from `CONTEXT` / `DEPLOY_PRIME_URL`, exposes `ALLOW_INDEXING`.
+- `web/src/app/layout.tsx` — sets `robots: { index: false, follow: false }` on non-prod deploys; swaps `geist/font/pixel` barrel for two direct `next/font/local` declarations (Square, Grid only).
+- `web/src/app/robots.ts` — returns `Disallow: /` on non-prod deploys.
+- `web/src/app/process/page.tsx` — adds `id="main-content"`; contrast bump on /40 eyebrow.
+- `web/src/app/process/opengraph-image.tsx` *(new)* — bespoke /process OG card.
+- `web/src/app/work/[slug]/page.tsx` — adds `id="main-content"`; contrast bump on related-sites tag.
+- `web/src/components/SceneCanvasClient.tsx` — gates the dynamic SceneCanvas import on `/` and `/work/*` only.
+- `web/next.config.ts` — adds `headers()` for X-Frame-Options / Referrer-Policy / Permissions-Policy.
+- `web/src/components/case-study/DitheredImage.tsx` — when WebGL is unsupported, renders `next/image` at opacity-100 instead of an empty box.
+- `web/src/components/case-study/{ChapterMark,SpotlightSlot}.tsx`, `web/src/components/sections/{Hero,About,Contact}Overlay.tsx`, `web/src/components/spotlights/{NewBelgium,CraftedKitPipeline}Spotlight.tsx` — `text-foreground/40` and `/45` micro-copy → `/55` (WCAG AA at small sizes).
+- `web/src/fonts/GeistPixel-{Square,Grid}.woff2` *(new)* — copied out of `geist` to bypass the barrel.
+
+**Build-verified results**
+- Head preload count: **10 → 7** woff2s. Dropped GeistPixel Circle/Line/Triangle.
+- `/process` head now ships full `og:image` + `twitter:image` (1200×630, with alt).
+- `/process` and `/work/phantom-labs` both render `<main id="main-content">`.
+- New prerendered route `/process/opengraph-image` confirmed in build output.
+
+**Notes / deferred**
+- `geist` dep stays in `package.json` (still works, just not used for pixel fonts). Removal is a P2 cleanup.
+- `netlify.toml` `[[headers]]` are left as-is (they're harmless even if shadowed for HTML; they still apply to assets/webp/mp4 which is what we actually want them for). The Next-level `headers()` covers HTML.
+- Security headers fix requires a real Netlify deploy to verify with `curl -I` — couldn't test locally without spinning the prod server.
+- Contrast bump kept conservative: only `/40` and `/45` got pushed to `/55`. `/50`+ instances left alone. NewBelgium tab inactive hover bumped to `/85` (was `/75`) to keep the hover gap visible after the bump.
+
+---
 
 ## North star
 

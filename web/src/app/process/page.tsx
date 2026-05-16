@@ -82,7 +82,7 @@ export default function ProcessPage() {
   };
 
   return (
-    <main className="min-h-screen w-full">
+    <main id="main-content" className="min-h-screen w-full">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
 
       <nav className="absolute left-8 top-8 z-20 md:left-16">
@@ -156,7 +156,7 @@ export default function ProcessPage() {
               <li key={item.title} className="grid gap-3 md:grid-cols-12 md:gap-8">
                 <div className="md:col-span-3">
                   <p
-                    className="text-[12px] tracking-[0.18em] text-foreground/40"
+                    className="text-[12px] tracking-[0.18em] text-foreground/55"
                     style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
                   >
                     {String(i + 1).padStart(2, '0')}
@@ -197,7 +197,7 @@ export default function ProcessPage() {
               <li key={item.title} className="grid gap-3 md:grid-cols-12 md:gap-8">
                 <div className="md:col-span-3">
                   <p
-                    className="text-[12px] tracking-[0.18em] text-foreground/40"
+                    className="text-[12px] tracking-[0.18em] text-foreground/55"
                     style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
                   >
                     {String(i + 1).padStart(2, '0')}

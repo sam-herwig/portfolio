@@ -45,7 +45,7 @@ export default function NewBelgiumSpotlight({ caption }: { caption?: string }) {
   return (
     <figure className="relative mx-auto max-w-4xl">
       {/* Small-caps specimen label */}
-      <p className="mb-3 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">
+      <p className="mb-3 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/55">
         Interactive Specimen — Brand Atlas
       </p>
 
@@ -67,7 +67,7 @@ export default function NewBelgiumSpotlight({ caption }: { caption?: string }) {
               tabIndex={isActive ? 0 : -1}
               onClick={() => setActive(i)}
               className={`relative font-instrument text-lg italic transition-colors md:text-xl ${
-                isActive ? 'text-foreground' : 'text-foreground/45 hover:text-foreground/75'
+                isActive ? 'text-foreground' : 'text-foreground/55 hover:text-foreground/85'
               }`}
             >
               {b.name}

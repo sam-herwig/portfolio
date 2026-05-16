@@ -193,7 +193,7 @@ function PipelineFrame({
 }) {
   return (
     <div className="relative border border-foreground/20 bg-background/60 p-3 shadow-[0_8px_48px_-12px_rgba(0,0,0,0.15)] md:p-10">
-      <p className="mb-5 hidden text-center font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40 md:block">
+      <p className="mb-5 hidden text-center font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/55 md:block">
         Interactive Specimen — The Pipeline
       </p>
       {/* Todd — pinned conductor */}
@@ -225,7 +225,7 @@ function PipelineFrame({
       {/* Annotation panel — absolute-stacked crossfade */}
       <div className="relative mt-4 min-h-[160px] border-t border-foreground/10 pt-4 md:mt-6 md:min-h-[180px] md:pt-6">
         <m.div style={{ opacity: introOpacity }} className="absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">The Pipeline</p>
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/55">The Pipeline</p>
           <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">
             One brief in. One pull request out.
           </h3>
@@ -334,7 +334,7 @@ function BeatAnnotation({ beat, index, activeIdx }: { beat: Beat; index: number;
 
   return (
     <m.div style={{ opacity, y }} className="pointer-events-none absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">
+      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/55">
         {beat.kind === 'agent' ? `Stage ${beat.step}` : `Gate ${beat.step.replace('G', '')} — ${beat.title}`}
       </p>
       <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">{beat.annoHeading}</h3>
@@ -352,7 +352,7 @@ function FinalAnnotation({ activeIdx }: { activeIdx: MotionValue<number> }) {
   const opacity = useTransform(activeIdx, (v) => (v === 8 ? 1 : 0));
   return (
     <m.div style={{ opacity }} className="pointer-events-none absolute inset-x-0 mx-auto max-w-3xl px-2 md:px-6">
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/40">The Machine</p>
+      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/55">The Machine</p>
       <h3 className="font-instrument text-2xl italic text-foreground md:text-3xl">Four agents. Four gates. One PR.</h3>
       <p className="mt-3 font-instrument text-base leading-relaxed text-foreground/70 md:text-lg">
         The numbers below are the scaffolding — five agents including Todd, twenty-two Claude commands wiring up each
