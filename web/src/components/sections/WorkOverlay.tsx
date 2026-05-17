@@ -146,9 +146,10 @@ function MobileWorkLayout({
   progress?: MotionValue<number>;
   workIdleU: MotionValue<number>;
 }) {
-  // Card 40vh + 3vh gap × 4 = 212vh total stack. Viewport ~92vh usable.
-  // Translate from 0 to -(212 - 92) = -120vh across IDLE u 0→1.
-  const translateY = useTransform(workIdleU, (u) => `-${(u * 120).toFixed(2)}vh`);
+  // Card 40vh + 3vh gap × 4 = 212vh. Stack pt-[6vh] pushes the first card
+  // off the title so it reads as clearly tappable. New total 218vh,
+  // viewport ~92vh usable → translate 0 to -(218 - 92) = -126vh.
+  const translateY = useTransform(workIdleU, (u) => `-${(u * 126).toFixed(2)}vh`);
 
   return (
     <div className="flex h-full w-full flex-col md:hidden">
@@ -163,7 +164,7 @@ function MobileWorkLayout({
         />
       </div>
       <div className="relative flex-1 overflow-hidden">
-        <m.div className="flex flex-col gap-[3vh] px-4" style={{ y: translateY }}>
+        <m.div className="flex flex-col gap-[3vh] px-4 pt-[6vh]" style={{ y: translateY }}>
           {projects.map((project, i) => (
             <div key={project.slug} className="h-[40vh] w-full flex-shrink-0">
               <WorkCard project={project} index={i} videoSrc={getProjectFeaturedVideo(project)} />

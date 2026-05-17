@@ -231,10 +231,13 @@ export default function SceneCanvas() {
       hRaw.set(hRaw.get() + (t.h - hRaw.get()) * factor);
       // Push smoothed slot center to store for the shader's uModuleCenter.
       // Canvas is full viewport, so center is in vUv [0,1] across the whole
-      // canvas. Anchors centered module content (Hero moon) to the visible rect.
+      // canvas. Slots are defined in CSS top-down (slot.top = % from top), but
+      // vUv is bottom-up — flip Y so the moon centers inside the visible slot
+      // rect on mobile (where slots are 50% tall, exposing the bug). Same flip
+      // convention HomeSceneRoot uses for pointer → uMouse.
       useSceneStore
         .getState()
-        .setSlotCenter([(leftRaw.get() + wRaw.get() / 2) / 100, (topRaw.get() + hRaw.get() / 2) / 100]);
+        .setSlotCenter([(leftRaw.get() + wRaw.get() / 2) / 100, 1 - (topRaw.get() + hRaw.get() / 2) / 100]);
       const targetOpacity = isCaseStudy ? heroBandVisibility(state.csHeroBandProgress) : 1;
       heroOpacityRaw.set(heroOpacityRaw.get() + (targetOpacity - heroOpacityRaw.get()) * factor);
       raf = requestAnimationFrame(tick);
