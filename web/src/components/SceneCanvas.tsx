@@ -299,10 +299,10 @@ export default function SceneCanvas() {
               top: 0,
               left: 0,
               width: '100vw',
-              // dvh tracks the iOS Safari URL bar so the canvas wrapper
-              // collapses in sync with the sticky overlay container's 100svh
-              // — eliminates the bottom strip where the shader was visible
-              // beneath the overlay during the letter HOLD beat.
+              // Canvas wrapper and sticky overlay (HomeSceneRoot) both use
+              // 100dvh so the work slot's 50/50 seam stays aligned across
+              // every mobile browser as the URL/toolbar chrome collapses
+              // and expands on scroll.
               height: '100dvh',
               pointerEvents: 'none',
               zIndex: 0,

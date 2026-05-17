@@ -88,7 +88,7 @@ function HomeSceneRootMotion() {
     <>
       <main ref={mainRef} id="main-content" className="relative w-full">
         <section ref={sectionRef} className="relative z-10 w-full" style={{ height: `${totalHeight}svh` }}>
-          <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
+          <div className="sticky top-0 h-[100dvh] w-full overflow-hidden">
             <HeroOverlay progress={scrollYProgress} />
             <AboutOverlay progress={scrollYProgress} />
             <WorkOverlay progress={scrollYProgress} />
