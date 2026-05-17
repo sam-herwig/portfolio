@@ -60,6 +60,11 @@ _Avoid_: crossfade, blend (both undersell the warp)
 The pointer-driven UV warp layered on `BackgroundField`'s output. Modes:
 Magnet / Repel / Swirl / Ripple / Lens. State lives in `useSceneStore`.
 Independent of the chemical reaction; both warps compose.
+**Desktop-only** — the pointer listener that writes `mouseTarget` is gated
+behind `(pointer: fine)`, so touch devices never drive the warp. Card-level
+hover effects (saturate, `↗︎` lift, video tell on hover) are also desktop-
+only by virtue of `:hover` / `onMouseEnter` semantics; the `onTouchStart`
+video-tell handler on `WorkCard` is the touch-side equivalent.
 
 **Work grid**:
 The Work module's desktop layout — a 5-up grid with the "Work" title in a
@@ -68,19 +73,33 @@ the bottom row. All cards are the same size; the bottom row's flanking
 margins let the shader peek through. No cycling, no ranking; all 5 case
 studies are equally on screen for the full **Work IDLE beat**.
 
-**Work stack** _(mobile)_:
-The Work module's mobile layout — a vertical full-width stack of all 5
-cards. The stack translates upward (`translate-Y`) across the Work IDLE
-beat so each card gets prime screen time as the user scrolls through the
-module. Distinct from the desktop static **Work grid** in motion, same
-in content.
+**Work stack** _(mobile, deprecated)_:
+The previous Work module mobile layout — a vertical full-width stack of all 5
+cards that translated upward (`translate-Y`) across the Work IDLE beat.
+Retired because (a) translate-Y under thumb-scroll felt wrong on mobile and
+(c) a 5-on-one-runway concept was fundamentally wrong for the phone form
+factor. Replaced by the **Work reel**. See `docs/adr/0007-work-reel-replaces-
+work-stack-on-mobile.md`.
+
+**Work reel** _(mobile)_:
+The Work module's mobile layout — top half holds the Work-mode shader (same
+slot as before, no change), bottom half holds a single project card at a
+time. As the user scrolls through the mobile Work IDLE beat, each card is
+revealed in turn via short opacity crossfade (~10 svh boundary, ~60 svh
+dwell per card). The top-half shader cycles through its three Work presets
+(`Spread → Stack → Index`) on its own clock, decoupled from card index.
+The "Work" PixelTitle is dropped on mobile — chemistry-warp + shader
+cycle + cards declare the section without an explicit label. Distinct from
+the desktop static **Work grid**.
 
 **Work IDLE beat**:
 The dwell inside the Work module between the end of the about→work
-transition and the start of the work→contact transition. 100 svh of the
-1052 svh total (was 168 of 1120 under the deprecated **Sliding window
-cycle**). Hosts the static **Work grid** on desktop and the translating
-**Work stack** on mobile.
+transition and the start of the work→contact transition. Forks by viewport:
+**desktop** = 100 svh (baseline; scaled with global pace), hosting the static
+**Work grid**. **Mobile** = 340 svh baseline (5 × 60 svh card dwell + 4 × 10
+svh crossfade between cards), hosting the **Work reel**. The mobile fork
+necessitates parallel `MODULE_WINDOWS_MOBILE` / `TIMELINE_HEIGHT_SVH_MOBILE`
+in `moduleTimeline.ts`; desktop totals are unchanged.
 
 ## Relationships
 

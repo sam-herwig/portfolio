@@ -9,7 +9,7 @@ import WorkOverlay from '@/components/sections/WorkOverlay';
 import DevLeva from '@/components/sections/DevLeva';
 import useCanvasGate from '@/lib/useCanvasGate';
 import { useSceneStore } from '@/lib/useSceneStore';
-import { TIMELINE_HEIGHT_SVH } from '@/lib/moduleTimeline';
+import { useTimeline } from '@/lib/moduleTimeline';
 
 export default function HomeSceneRoot() {
   const prefersReducedMotion = useReducedMotion();
@@ -34,6 +34,7 @@ function HomeSceneRootMotion() {
   const mainRef = useRef<HTMLElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const enableCanvas = useCanvasGate();
+  const { totalHeight } = useTimeline();
 
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -46,14 +47,16 @@ function HomeSceneRootMotion() {
 
   // Pointer tracking for shader interactivity. Writes a vUv-space target
   // into the scene store; BackgroundField's useFrame exponential-lerps the
-  // uMouse uniform toward it. After 2.5s of pointer stillness (or always,
-  // on touch idle) a Lissajous figure drives the target so the shader's
-  // interactive layer stays alive without input — same code path mobile
-  // visitors get for free, no gyroscope permission required.
+  // uMouse uniform toward it. Desktop-only: gated behind `(pointer: fine)`
+  // so touch devices never drive the cursor magnet (per ADR 0007). The
+  // Lissajous idle figure still drives the target so the shader's
+  // interactive layer stays alive without input — both desktop pointer-idle
+  // and mobile visitors get the same animated baseline.
   useEffect(() => {
     let lastMove = performance.now();
     let raf = 0;
     const setMouseTarget = useSceneStore.getState().setMouseTarget;
+    const hasFinePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
 
     const onMove = (e: PointerEvent) => {
       lastMove = performance.now();
@@ -70,11 +73,15 @@ function HomeSceneRootMotion() {
       raf = requestAnimationFrame(tick);
     };
 
-    window.addEventListener('pointermove', onMove);
+    if (hasFinePointer) {
+      window.addEventListener('pointermove', onMove);
+    }
     raf = requestAnimationFrame(tick);
 
     return () => {
-      window.removeEventListener('pointermove', onMove);
+      if (hasFinePointer) {
+        window.removeEventListener('pointermove', onMove);
+      }
       cancelAnimationFrame(raf);
     };
   }, []);
@@ -82,7 +89,7 @@ function HomeSceneRootMotion() {
   return (
     <>
       <main ref={mainRef} id="main-content" className="relative w-full">
-        <section ref={sectionRef} className="relative z-10 w-full" style={{ height: `${TIMELINE_HEIGHT_SVH}svh` }}>
+        <section ref={sectionRef} className="relative z-10 w-full" style={{ height: `${totalHeight}svh` }}>
           <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
             <HeroOverlay progress={scrollYProgress} />
             <AboutOverlay progress={scrollYProgress} />

@@ -4,7 +4,7 @@ import { ScreenQuad } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
 import { useEffect, useRef } from 'react';
-import { MODULE_WINDOWS, isInTransition } from '@/lib/moduleTimeline';
+import { MODULE_WINDOWS, isInTransition, useTimeline } from '@/lib/moduleTimeline';
 import { useSceneStore } from '@/lib/useSceneStore';
 import {
   ABOUT_PRESET_NAMES,
@@ -852,6 +852,11 @@ const uniforms = {
 
 export default function BackgroundField() {
   const setRef = useRef<((values: Record<string, unknown>) => void) | null>(null);
+  const { modules } = useTimeline();
+  // useFrame closes over its first-render values, so cache modules in a ref
+  // for the per-frame isInTransition() check below. Updated in the modules-
+  // change effect alongside the uExit uniforms so they all flip together.
+  const modulesRef = useRef(modules);
 
   const [controls, set] = useControls('Background', () => ({
     Combo: folder(
@@ -1060,6 +1065,19 @@ export default function BackgroundField() {
     setRef.current = set as (values: Record<string, unknown>) => void;
   }, [set]);
 
+  // Forward viewport-aware module windows into the shader uniforms. SSR
+  // initialises with desktop values via the static `uniforms` literal; on
+  // mobile this effect reconciles after first client render. The exit-
+  // window uniforms drive the fullscreen chemistry warp and per-mode
+  // weight blending — drifting from `modules` here would visually break
+  // the about→work and work→contact transitions on mobile.
+  useEffect(() => {
+    modulesRef.current = modules;
+    uniforms.uHeroExit.value = [modules.hero.exitStart, modules.hero.exitEnd];
+    uniforms.uAboutExit.value = [modules.about.exitStart, modules.about.exitEnd];
+    uniforms.uWorkExit.value = [modules.work.exitStart, modules.work.exitEnd];
+  }, [modules]);
+
   useEffect(() => {
     uniforms.uHeroRingThickness.value = controls.heroRingThickness;
     uniforms.uHeroShapeRadius.value = controls.heroShapeRadius;
@@ -1153,7 +1171,7 @@ export default function BackgroundField() {
     // fullscreen quad — the warp magnitude is small enough that octaves
     // 3+4 read below the eye's perception threshold there. Restores at
     // IDLE so single-mode beats keep their full noise character.
-    uniforms.uFbmOctaves.value = isInTransition(store.scrollProgress) ? 2 : 4;
+    uniforms.uFbmOctaves.value = isInTransition(store.scrollProgress, modulesRef.current) ? 2 : 4;
 
     // Exponential lerp toward the mouseTarget written by HomeSceneRoot's
     // pointermove listener. 0.08 is the canonical r3f cursor-damping factor

@@ -3,9 +3,10 @@
 import { m, useTransform, type MotionValue } from 'framer-motion';
 import Link from 'next/link';
 import PixelTitle from '@/components/sections/PixelTitle';
-import { MODULE_WINDOWS, overlayOpacity } from '@/lib/moduleTimeline';
+import { overlayOpacity, useTimeline } from '@/lib/moduleTimeline';
 
 function AboutBody({ progress }: { progress?: MotionValue<number> }) {
+  const { modules } = useTimeline();
   return (
     <>
       {/* Top edge — eyebrow row.
@@ -35,7 +36,7 @@ function AboutBody({ progress }: { progress?: MotionValue<number> }) {
           as="h2"
           mount={!progress}
           progress={progress}
-          window={MODULE_WINDOWS.about}
+          window={modules.about}
           className="flex-shrink-0 text-4xl font-medium leading-[0.95] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl"
         />
         <p
@@ -77,7 +78,8 @@ export default function AboutOverlay({ progress }: { progress?: MotionValue<numb
 }
 
 function AboutOverlayMotion({ progress }: { progress: MotionValue<number> }) {
-  const opacity = useTransform(progress, (v) => overlayOpacity(v, MODULE_WINDOWS.about));
+  const { modules } = useTimeline();
+  const opacity = useTransform(progress, (v) => overlayOpacity(v, modules.about));
   return (
     <m.div
       style={{ opacity }}

@@ -1,3 +1,5 @@
+import useIsMobileViewport from '@/lib/useIsMobileViewport';
+
 export type Module = 'hero' | 'about' | 'work' | 'contact';
 
 export interface ModuleWindow {
@@ -9,12 +11,18 @@ export interface ModuleWindow {
 
 // Total scroll length for the unified timeline. The single sticky-pinned
 // container is this tall; scrollYProgress maps 0..1 across this range.
-// Design-intent module-svh breakdown: hero 160, about 128, work 100,
-// contact 232; transitions 144 each (HOLD = chemical reaction).
+// Desktop module-svh breakdown: hero 160, about 128, work 100, contact 232;
+// transitions 144 each (HOLD = chemical reaction).
 // Baseline 160+144+128+144+100+144+232 = 1052svh; global pace scaled
 // +10% (1052 → 1157) to slow the whole page evenly. Module proportions
 // in MODULE_WINDOWS are unchanged — every beat stretches uniformly.
 export const TIMELINE_HEIGHT_SVH = 1157;
+
+// Mobile fork — the Work module hosts the Work reel (one card revealed at
+// a time, ~60svh per card + ~10svh crossfade between cards = ~340svh).
+// Same +10% global pace as desktop: 1292 → 1421. See
+// `docs/adr/0007-work-reel-replaces-work-stack-on-mobile.md`.
+export const TIMELINE_HEIGHT_SVH_MOBILE = 1421;
 
 // Hero is opacity 1 from scroll=0 (no DOM enter — the in-mesh per-glyph
 // reveal animation handles its visual entry). Each subsequent scene
@@ -28,6 +36,32 @@ export const MODULE_WINDOWS: Record<Module, ModuleWindow> = {
   work: { enterStart: 0.4106, enterEnd: 0.5475, exitStart: 0.6426, exitEnd: 0.7795 },
   contact: { enterStart: 0.6426, enterEnd: 0.7795, exitStart: 1.0, exitEnd: 1.0 },
 };
+
+// Mobile module windows — same module-svh breakdown except Work IDLE grows
+// from 100→340 svh to host the Work reel. Boundaries divided by 1292 total.
+// Hero 160 / tx 144 / About 128 / tx 144 / Work 340 / tx 144 / Contact 232.
+export const MODULE_WINDOWS_MOBILE: Record<Module, ModuleWindow> = {
+  hero: { enterStart: 0.0, enterEnd: 0.0, exitStart: 0.1238, exitEnd: 0.2353 },
+  about: { enterStart: 0.1238, enterEnd: 0.2353, exitStart: 0.3344, exitEnd: 0.4458 },
+  work: { enterStart: 0.3344, enterEnd: 0.4458, exitStart: 0.709, exitEnd: 0.8204 },
+  contact: { enterStart: 0.709, enterEnd: 0.8204, exitStart: 1.0, exitEnd: 1.0 },
+};
+
+// Viewport-aware hook — every consumer that needs scroll-progress-to-module
+// math should read from this rather than importing MODULE_WINDOWS directly.
+// SSR returns desktop values; mobile reconciles on first client effect.
+export function useTimeline(): {
+  modules: Record<Module, ModuleWindow>;
+  totalHeight: number;
+  isMobile: boolean;
+} {
+  const isMobile = useIsMobileViewport();
+  return {
+    modules: isMobile ? MODULE_WINDOWS_MOBILE : MODULE_WINDOWS,
+    totalHeight: isMobile ? TIMELINE_HEIGHT_SVH_MOBILE : TIMELINE_HEIGHT_SVH,
+    isMobile,
+  };
+}
 
 function sceneOpacity(progress: number, w: ModuleWindow): number {
   if (progress <= w.enterStart) return w.enterStart === w.enterEnd ? 1 : 0;
@@ -93,12 +127,13 @@ function lerpSlot(a: CanvasSlot, b: CanvasSlot, t: number): CanvasSlot {
 
 export function canvasSlot(progress: number, isMobile: boolean): CanvasSlot {
   const slots = isMobile ? MODULE_CANVAS_SLOT_MOBILE : MODULE_CANVAS_SLOT_DESKTOP;
+  const windows = isMobile ? MODULE_WINDOWS_MOBILE : MODULE_WINDOWS;
   const order: Module[] = ['hero', 'about', 'work', 'contact'];
   let current = slots.hero;
   for (let i = 0; i < order.length - 1; i++) {
     const from = order[i];
     const to = order[i + 1];
-    const w = MODULE_WINDOWS[from];
+    const w = windows[from];
     if (progress < w.exitStart) return current;
     if (progress < w.exitEnd) {
       const u = (progress - w.exitStart) / (w.exitEnd - w.exitStart);
@@ -134,10 +169,10 @@ function smoothstep01(x: number): number {
 // during the rect-expand / HOLD / rect-contract span of a transition.
 // Used to gate transition-only perf knobs (e.g., `BackgroundField`'s
 // FBM-octave drop from 4 → 2 across the heavy window).
-export function isInTransition(progress: number): boolean {
-  const heroW = MODULE_WINDOWS.hero;
-  const aboutW = MODULE_WINDOWS.about;
-  const workW = MODULE_WINDOWS.work;
+export function isInTransition(progress: number, windows: Record<Module, ModuleWindow> = MODULE_WINDOWS): boolean {
+  const heroW = windows.hero;
+  const aboutW = windows.about;
+  const workW = windows.work;
   return (
     (progress > heroW.exitStart && progress < heroW.exitEnd) ||
     (progress > aboutW.exitStart && progress < aboutW.exitEnd) ||

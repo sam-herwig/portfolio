@@ -2,7 +2,7 @@
 
 import { m, useTransform, type MotionValue } from 'framer-motion';
 import PixelTitle from '@/components/sections/PixelTitle';
-import { MODULE_WINDOWS, overlayOpacity } from '@/lib/moduleTimeline';
+import { overlayOpacity, useTimeline } from '@/lib/moduleTimeline';
 
 function HeroBody() {
   return (
@@ -61,7 +61,8 @@ export default function HeroOverlay({ progress }: { progress?: MotionValue<numbe
 }
 
 function HeroOverlayMotion({ progress }: { progress: MotionValue<number> }) {
-  const opacity = useTransform(progress, (v) => overlayOpacity(v, MODULE_WINDOWS.hero));
+  const { modules } = useTimeline();
+  const opacity = useTransform(progress, (v) => overlayOpacity(v, modules.hero));
   return (
     <m.div
       style={{ opacity }}
