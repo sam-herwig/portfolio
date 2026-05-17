@@ -153,8 +153,8 @@ export default function CraftedKitPipelineSpotlight({ caption }: { caption?: str
 
   return (
     <figure className="relative mx-auto max-w-6xl">
-      <div ref={outerRef} className="relative h-[250vh]">
-        <div className="sticky top-[100vw] flex h-[calc(100svh-100vw)] items-center justify-center md:top-0 md:h-screen">
+      <div ref={outerRef} className="relative h-[250svh]">
+        <div className="sticky top-[100vw] flex h-[calc(100svh-100vw)] items-center justify-center md:top-0 md:h-[100dvh]">
           <div className="w-full">
             <PipelineFrame
               activeIdx={activeIdx}

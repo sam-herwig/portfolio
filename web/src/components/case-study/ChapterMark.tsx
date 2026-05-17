@@ -32,7 +32,7 @@ export default function ChapterMark({ number, title, eyebrow, variant = 'body' }
       className={
         isBrief
           ? 'relative flex w-full items-center px-8 md:px-12'
-          : 'relative flex min-h-[60vh] w-full items-center px-8 pt-32 md:px-16'
+          : 'relative flex min-h-[60svh] w-full items-center px-8 pt-32 md:px-16'
       }
     >
       <div className={isBrief ? 'mx-auto w-full max-w-[44ch]' : 'mx-auto w-full max-w-5xl'}>

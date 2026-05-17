@@ -83,7 +83,7 @@ function AboutOverlayMotion({ progress }: { progress: MotionValue<number> }) {
   return (
     <m.div
       style={{ opacity }}
-      className="pointer-events-none absolute bottom-1/2 right-0 top-0 z-10 flex w-full flex-col justify-between gap-6 p-6 md:bottom-0 md:left-0 md:right-0 md:top-auto md:h-[42vh] md:w-full md:p-12 lg:p-16"
+      className="pointer-events-none absolute bottom-1/2 right-0 top-0 z-10 flex w-full flex-col justify-between gap-6 p-6 md:bottom-0 md:left-0 md:right-0 md:top-auto md:h-[42svh] md:w-full md:p-12 lg:p-16"
     >
       <AboutBody progress={progress} />
     </m.div>
