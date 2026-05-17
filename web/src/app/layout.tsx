@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import localFont from 'next/font/local';
@@ -139,10 +140,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Skip to content
         </a>
-        <MotionProvider>
-          <SceneCanvasClient />
-          {children}
-        </MotionProvider>
+        <StrictMode>
+          <MotionProvider>
+            <SceneCanvasClient />
+            {children}
+          </MotionProvider>
+        </StrictMode>
       </body>
     </html>
   );
