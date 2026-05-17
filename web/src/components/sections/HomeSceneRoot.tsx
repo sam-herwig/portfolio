@@ -8,6 +8,7 @@ import HeroOverlay from '@/components/sections/HeroOverlay';
 import WorkOverlay from '@/components/sections/WorkOverlay';
 import DevLeva from '@/components/sections/DevLeva';
 import useCanvasGate from '@/lib/useCanvasGate';
+import useHasFinePointer from '@/lib/useHasFinePointer';
 import { useSceneStore } from '@/lib/useSceneStore';
 import { useTimeline } from '@/lib/moduleTimeline';
 
@@ -34,6 +35,7 @@ function HomeSceneRootMotion() {
   const mainRef = useRef<HTMLElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const enableCanvas = useCanvasGate();
+  const hasFinePointer = useHasFinePointer();
   const { totalHeight } = useTimeline();
 
   const { scrollYProgress } = useScroll({
@@ -47,16 +49,16 @@ function HomeSceneRootMotion() {
 
   // Pointer tracking for shader interactivity. Writes a vUv-space target
   // into the scene store; BackgroundField's useFrame exponential-lerps the
-  // uMouse uniform toward it. Desktop-only: gated behind `(pointer: fine)`
-  // so touch devices never drive the cursor magnet (per ADR 0007). The
-  // Lissajous idle figure still drives the target so the shader's
-  // interactive layer stays alive without input — both desktop pointer-idle
-  // and mobile visitors get the same animated baseline.
+  // uMouse uniform toward it. Desktop-only — both the pointermove listener
+  // AND the Lissajous idle-tick are gated behind `(pointer: fine)`. On
+  // touch devices the whole interaction loop never starts; BackgroundField
+  // additionally forces `uInteractionMode = 0` so even a stale target
+  // can't render a magnet warp (per ADR 0007).
   useEffect(() => {
+    if (!hasFinePointer) return;
     let lastMove = performance.now();
     let raf = 0;
     const setMouseTarget = useSceneStore.getState().setMouseTarget;
-    const hasFinePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
 
     const onMove = (e: PointerEvent) => {
       lastMove = performance.now();
@@ -73,18 +75,14 @@ function HomeSceneRootMotion() {
       raf = requestAnimationFrame(tick);
     };
 
-    if (hasFinePointer) {
-      window.addEventListener('pointermove', onMove);
-    }
+    window.addEventListener('pointermove', onMove);
     raf = requestAnimationFrame(tick);
 
     return () => {
-      if (hasFinePointer) {
-        window.removeEventListener('pointermove', onMove);
-      }
+      window.removeEventListener('pointermove', onMove);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [hasFinePointer]);
 
   return (
     <>

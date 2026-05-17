@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
 import { useEffect, useRef } from 'react';
 import { MODULE_WINDOWS, isInTransition, useTimeline } from '@/lib/moduleTimeline';
+import useHasFinePointer from '@/lib/useHasFinePointer';
 import { useSceneStore } from '@/lib/useSceneStore';
 import {
   ABOUT_PRESET_NAMES,
@@ -853,6 +854,7 @@ const uniforms = {
 export default function BackgroundField() {
   const setRef = useRef<((values: Record<string, unknown>) => void) | null>(null);
   const { modules } = useTimeline();
+  const hasFinePointer = useHasFinePointer();
   // useFrame closes over its first-render values, so cache modules in a ref
   // for the per-frame isInTransition() check below. Updated in the modules-
   // change effect alongside the uExit uniforms so they all flip together.
@@ -1138,7 +1140,11 @@ export default function BackgroundField() {
     uniforms.uChemHoldStart.value = controls.chemHoldStart;
     uniforms.uChemHoldEnd.value = controls.chemHoldEnd;
 
-    uniforms.uInteractionMode.value = controls.interactionMode;
+    // Force interactionMode to 0 (Off) on touch devices — the cursor magnet
+    // is a pointer-driven affordance and has no cursor to follow. Belt-and-
+    // suspenders with the gated Lissajous tick in HomeSceneRoot.
+    const effectiveInteractionMode = hasFinePointer ? controls.interactionMode : 0;
+    uniforms.uInteractionMode.value = effectiveInteractionMode;
     uniforms.uInteractionStrength.value = controls.interactionStrength;
     uniforms.uInteractionRadius.value = controls.interactionRadius;
     uniforms.uInteractionFreq.value = controls.interactionFreq;
@@ -1148,12 +1154,12 @@ export default function BackgroundField() {
     useSceneStore
       .getState()
       .setInteraction(
-        controls.interactionMode,
+        effectiveInteractionMode,
         controls.interactionStrength,
         controls.interactionRadius,
         controls.interactionFreq,
       );
-  }, [controls]);
+  }, [controls, hasFinePointer]);
 
   // Read scroll directly per frame — the wrapper rect, scroll dispatch, and
   // canvasSlot() interpolation are already smooth, and uResolution is updated
