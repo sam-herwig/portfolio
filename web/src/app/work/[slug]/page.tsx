@@ -135,7 +135,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
                           >
                             {site.tag}
                           </span>
-                          {site.name} ↗
+                          {site.name} {'↗︎'}
                         </a>
                       </li>
                     ))}

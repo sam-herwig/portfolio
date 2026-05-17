@@ -90,7 +90,7 @@ function WorkCard({ project, index, videoSrc }: { project: Project; index: numbe
             aria-hidden
             className="inline-block translate-y-[-2px] text-white/55 transition-all duration-300 group-hover/card:translate-x-1 group-hover/card:translate-y-[-4px] group-hover/card:text-white"
           >
-            ↗
+            {'↗︎'}
           </span>
         </h3>
       </div>

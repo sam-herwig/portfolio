@@ -242,7 +242,7 @@ export default function ProcessPage() {
                 fontVariationSettings: '"opsz" 144, "SOFT" 100, "WONK" 0',
               }}
             >
-              hello@craftedkit.io ↗
+              hello@craftedkit.io {'↗︎'}
             </a>
             <a
               href="https://craftedkit.io"
@@ -251,7 +251,7 @@ export default function ProcessPage() {
               className="inline-flex w-fit items-baseline gap-3 text-base text-foreground/60 underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground/80 md:text-lg"
               style={{ fontFamily: 'var(--font-instrument)' }}
             >
-              craftedkit.io ↗
+              craftedkit.io {'↗︎'}
             </a>
           </div>
         </section>

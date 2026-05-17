@@ -61,7 +61,7 @@ export default function CaseStudyHero({ project }: { project: Project }) {
               className="inline-flex shrink-0 items-center gap-2 text-xs uppercase tracking-[0.3em] text-foreground/60 underline-offset-4 hover:text-foreground hover:underline"
               style={{ fontFamily: 'var(--font-geist-mono)' }}
             >
-              Visit live ↗
+              Visit live {'↗︎'}
             </a>
           )}
         </div>

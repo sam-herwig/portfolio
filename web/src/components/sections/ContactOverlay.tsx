@@ -35,7 +35,7 @@ function ContactInner({
           fontVariationSettings: '"opsz" 144, "SOFT" 100, "WONK" 0',
         }}
       >
-        hello@craftedkit.io ↗
+        hello@craftedkit.io {'↗︎'}
       </a>
       <p className="text-base text-foreground/55 md:text-lg" style={{ fontFamily: 'var(--font-instrument)' }}>
         Or run the studio:&nbsp;
