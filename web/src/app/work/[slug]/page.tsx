@@ -5,7 +5,7 @@ import BlockRenderer from '@/components/case-study/BlockRenderer';
 import CaseStudyBrief from '@/components/case-study/CaseStudyBrief';
 import CaseStudyDebugPanel from '@/components/case-study/CaseStudyDebugPanel';
 import CaseStudyHero from '@/components/case-study/CaseStudyHero';
-import IndexLink from '@/components/case-study/IndexLink';
+import HomeLink from '@/components/case-study/HomeLink';
 import NextProject from '@/components/case-study/NextProject';
 import ScrollProgress from '@/components/case-study/ScrollProgress';
 import { SITE_URL } from '@/lib/siteUrl';
@@ -66,7 +66,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       <ScrollProgress />
       <CaseStudyDebugPanel />
-      <IndexLink />
+      <HomeLink />
 
       {/* Hero band — ~200svh pinned scroll runway. Desktop 2-col grid reserves
           the left half for the position:fixed canvas (shader pins via SceneCanvas);

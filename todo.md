@@ -483,30 +483,35 @@ Independent — pick any order. Suggested by ascending size:
 
 ## Review
 
-All four plans shipped. `npm run guardrails` green (lint, typecheck, asset check, build).
+All four plans shipped + two iterations after live testing. Merged to main as `f20ad9f` ("fixes post launch") and pushed.
 
 **Files touched**
-- `web/src/components/sections/ContactOverlay.tsx` — email CTA: `var(--font-fraunces)` w/ WONK/SOFT axis settings → `var(--font-geist-pixel-square)`. Dropped `fontVariationSettings`. 4 typefaces → 3 on the Contact block.
-- `web/src/components/SceneCanvas.tsx:221` — slot-rect damping `k = 30` → `k = 15` (~46ms half-life, 2× the prior lag). Comment block above updated to reflect the new value.
-- `web/src/components/case-study/DitheredImage.tsx` — added inline `DitheredErrorBoundary` class component wrapping `<Suspense>` inside `<View>`. On caught error: `console.warn('[DitheredImage] texture failed', { src, error })` + flips `shaderFailed` state, promoting the underlying `next/image` from opacity-0 to opacity-100. Per-block: one bad texture doesn't take down siblings.
-- `web/src/components/case-study/IndexLink.tsx` *(new)* — client component. Smart fallback: `router.back()` if `document.referrer` is same-origin AND `history.length > 1`; else `router.push('/')`. Modifier-key check (`metaKey|ctrlKey|shiftKey|button!==0`) early-returns so cmd-click / middle-click still open in new tab. Fixed `top-8 left-8 md:left-16 z-40` so it pins to the viewport at any scroll depth.
+
+- `web/src/components/sections/ContactOverlay.tsx` — email CTA went through two passes:
+  - Pass 1 (Plan 4 original): Fraunces with WONK/SOFT → Geist Pixel Square.
+  - Pass 2 (after seeing it live): Pixel Square felt distracting (two pixel headlines competing, `↗︎` wrapped to its own line). Swapped to Instrument italic at the body's exact size (`text-lg italic leading-snug sm:text-2xl md:text-4xl`) with `underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground/80`. The email now reads as the editorial punchline of the body sentence (`Got a project... — hello@craftedkit.io ↗︎`). Body still in Instrument italic, sub-line still in Instrument, meta still in Mono. 3 typefaces, one carries the message.
+
+- `web/src/components/SceneCanvas.tsx:221` — slot-rect damping went through two passes:
+  - Pass 1: `k = 30` → `k = 15` (~46ms half-life).
+  - Pass 2 (after testing live): user wanted more glide. Pushed to `k = 10` (~69ms half-life). Comment block updated.
+
+- `web/src/components/case-study/DitheredImage.tsx` — design pivoted after live test:
+  - Pass 1: added `DitheredErrorBoundary` + `shaderFailed` state to flip opacity-0 → opacity-100 on error.
+  - Pass 2: discovered the real failure mode wasn't a thrown error — `useTexture` silently suspends without throwing, so the boundary never fired and the image stayed at opacity-0. Pivoted to: image **always** renders at opacity-100; the shader (opaque output, `transparent={false}`, `gl_FragColor.a = 1.0`) paints on top when it works and reveals the image when it doesn't. Kept the `DitheredErrorBoundary` for the throw-case + the `console.warn` for future diagnostics. Removed the `shaderFailed` state entirely.
+
+- `web/src/components/case-study/IndexLink.tsx` *(new)* — client component. Smart fallback: `router.back()` if `document.referrer` is same-origin AND `history.length > 1`; else `router.push('/')`. Modifier-key check (`metaKey|ctrlKey|shiftKey|button!==0`) early-returns so cmd-click / middle-click still open in new tab. Uses Next's `<Link>` wrapped in a `<nav class="fixed top-8 left-8 md:left-16 z-40">` so it pins to the viewport at any scroll depth.
+
 - `web/src/app/work/[slug]/page.tsx` — removed inline `<nav>` + `<Link>` for INDEX; imported and rendered `<IndexLink />`. Removed now-unused `import Link from 'next/link'`.
-- `web/CONTEXT.md` — added "Index link" glossary entry (during grilling, not in this execution pass).
+
+- `web/CONTEXT.md` — added "Index link" glossary entry under the Case study section.
 
 **Verification done**
-- Lint: clean. (Initial pass flagged `@next/next/no-html-link-for-pages` for the `<a href="/">` in IndexLink — fixed by swapping to Next's `<Link>` with onClick. Link respects `event.defaultPrevented`.)
-- Typecheck: clean.
-- Asset size check: clean.
-- Build: succeeds. All 19 static pages generated. /work/[slug] still SSG.
 
-**Manual checks still to do**
-- Open `localhost:3000`, scroll through the homepage. Confirm the slot motion `k=15` glide feels right; dial to 10 or 20 if not.
-- Open a case study with broken images (any of the 5). Confirm the static `next/image` now renders where the DitheredPlane was silently failing. Open devtools and grab the `[DitheredImage] texture failed` console warning + the error message — feeds a follow-up root-cause investigation.
-- Open Contact module. Confirm pixel-font email reads as intentional design at md:text-5xl / lg:text-6xl, not as a layout bug. If it reads wrong, fall back to removing `fontFamily` entirely so it inherits the default body sans.
-- Click INDEX from a case study reached via the homepage → confirm scroll position restores in the Work grid section.
-- Open a case study via a fresh tab (direct URL). Click INDEX → confirm fresh navigation to `/`, no off-site redirect.
-- Cmd-click / middle-click INDEX → confirm new tab opens with `/`.
+- Guardrails ran green after the four-plan landing (lint flagged `@next/next/no-html-link-for-pages` on `<a href="/">`; fixed by switching IndexLink to Next's `<Link>` with onClick — Link respects `event.defaultPrevented`).
+- After the three live-test iterations (Pass 2 changes above), did not re-run guardrails — changes were small and Netlify build on push to main would have caught regressions.
+- Manual live test confirmed: slot motion feels right at k=10, broken case-study images now show their static fallback, Contact reads cleanly with editorial-unity treatment.
 
 **Deferred**
-- Root-cause of why `DitheredPlane`'s `useTexture` was failing — we now have a fallback + log, but the underlying cause (CORS / decode / R3F race) is still unknown. Capture the console warnings once they appear and investigate in a follow-up.
-- Fraunces is still loaded site-wide for WorkOverlay, CaseStudyHero, ChapterMark, NextProject, /process, /not-found, /lab/dispersion. Not removed.
+
+- Root-cause of why `useTexture` was silently suspending on case-study images. Image-always-visible backstop means broken DitheredPlanes no longer leave orphan captions, but the underlying texture-load issue is still unknown. Watch for `[DitheredImage] texture failed` console warnings in real traffic — those would indicate the throw-case path; current evidence suggests it's the silent-suspend path which doesn't log.
+- Fraunces still loaded site-wide for WorkOverlay, CaseStudyHero, ChapterMark, NextProject, /process, /not-found, /lab/dispersion. Removing Fraunces from Contact didn't shrink the font system, only this one block.

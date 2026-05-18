@@ -200,15 +200,19 @@ The shader applied to media-block images on case-study pages
 (`DitheredImage` / `DitheredPlane`). Per-block lifecycle, not omnipresent.
 Survives the runway redesign — unaffected.
 
-**Index link**:
-The "← INDEX" affordance on every `/work/[slug]` page. Returns the visitor
-to the homepage with their prior **Work grid** scroll position preserved —
-mimicking the browser back button when the homepage is the previous entry
-in history, falling back to a fresh navigation to `/` for direct/deep-link
-arrivals. Pinned to the viewport so it's reachable anywhere in a case study,
-not just at the top.
-_Avoid_: back button (overloaded with the browser control), home link
-(loses the "return to your spot" semantics).
+**Home link**:
+The "← HOME" affordance on every `/work/[slug]` page. Returns the visitor
+to the homepage with their prior **Work grid** scroll position preserved.
+Uses `router.back()` when there's an entry to step back to (mimicking the
+browser back button — same scroll-restoration path), falling back to a
+fresh navigation to `/` only when `history.length === 1` (a truly direct
+deep-link arrival). The `document.referrer` heuristic was tried first and
+abandoned: SPA `<Link>` navigation doesn't update referrer, so visits via
+`/` → `/work/foo` always arrive with referrer === '' and a same-origin
+check fails. Pinned to the viewport so it's reachable anywhere in a case
+study, not just at the top.
+_Avoid_: back button (overloaded with the browser control), index link
+(prior name — retired; case studies are the index, the homepage is "home").
 
 ## Navigation transitions
 
