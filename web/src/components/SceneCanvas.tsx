@@ -211,14 +211,14 @@ export default function SceneCanvas() {
   // Per-rAF lerp from current MotionValue toward the computed target slot.
   // Browser scroll events fire on input cadence (often ~30Hz on mouse wheels)
   // with discrete deltas — binding m.div directly to that chunked source
-  // produces a visible staircase. Per-rAF smoothing at `k=30` keeps perceived
-  // lag under ~80ms while absorbing scroll-event boundaries. heroOpacityRaw
-  // tracks the case-study Hero band exit fade — stays 1 on home and inside
-  // the band; fades 1→0 as scroll exits the band.
+  // produces a visible staircase. Per-rAF smoothing at `k=10` (~69ms half-life)
+  // lets the slot trail the scroll with weight while absorbing scroll-event
+  // boundaries. heroOpacityRaw tracks the case-study Hero band exit fade —
+  // stays 1 on home and inside the band; fades 1→0 as scroll exits the band.
   useEffect(() => {
     let raf = 0;
     let prev = performance.now();
-    const k = 30;
+    const k = 10;
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - prev) / 1000);
       prev = now;

@@ -380,3 +380,133 @@ Trail theme stripped, theme-neutral scaffold compiles, archive branch pushed.
 - Instrument Serif: https://fonts.google.com/specimen/Instrument+Serif (OFL)
 - Geist Sans: https://vercel.com/font (OFL)
 - Geist Mono: https://fonts.google.com/specimen/Geist+Mono (OFL)
+
+---
+
+# Feedback pass — 2026-05-18
+
+Four independent plans from a feedback round. Each is small and reversible. Each was grilled with the user via `/grill-with-docs` before this writeup; decisions are captured.
+
+## Plan 1 — INDEX link: history-back behavior + viewport-pinned
+
+**Goal:** Clicking "← INDEX" inside a case study returns the visitor to the homepage with their **Work grid** scroll position preserved (mimicking the browser back button). Link stays reachable at any scroll depth.
+
+**Decisions:**
+- Smart fallback: `router.back()` only when `document.referrer` has the same origin AND `history.length > 1`; otherwise `router.push('/')` (covers deep links / direct URLs / refresh).
+- Pin behavior: fixed to the viewport, always visible from scroll=0 (no threshold/appear).
+- Visual: keep the current naked text (`text-foreground/55 hover:text-foreground`) — no chip / no backdrop-blur.
+
+**Tasks:**
+- [ ] Extract INDEX into a small client component (`web/src/components/case-study/IndexLink.tsx`). `page.tsx` is currently a Server Component.
+- [ ] Click handler: check same-origin referrer + `history.length > 1` → `router.back()`; else `router.push('/')`.
+- [ ] Change positioning from `absolute left-8 top-8 z-20` → `fixed left-8 top-8 z-30 md:left-16` so it stays pinned through scroll.
+- [ ] Confirm stacking against the case-study `ScrollProgress` bar (also `z-30`, but at `top-0` as a thin bar — shouldn't collide).
+- [ ] Verify on mobile that the fixed link doesn't collide with the hero-band title.
+- [x] `web/CONTEXT.md`: add "Index link" glossary entry (done during grilling).
+
+**Files:** `web/src/app/work/[slug]/page.tsx:69–77`, new `web/src/components/case-study/IndexLink.tsx`.
+
+## Plan 2 — Mission Bell "missing" images (silent DitheredPlane failures)
+
+**Goal:** Image blocks on case-study pages never silently disappear. When `DitheredPlane`'s texture load throws, fall back to the plain Next.js `<Image>` already mounted in the tree.
+
+**Diagnosis:**
+- All referenced files exist on disk. NOT an asset-missing issue.
+- `DitheredPlane` runs `useTexture(src)` inside `<Suspense fallback={null}>` with no error boundary (`DitheredImage.tsx:35`, `DitheredPlane.tsx:93`). Failures get swallowed. The `<Image>` stays at `opacity-0` (`DitheredImage.tsx:31`); the caption keeps rendering because it lives in the parent `MediaBlockRender.tsx:27`.
+- User confirmed other case studies have broken images too → architectural, not asset-specific.
+
+**Decisions:**
+- Both patch AND log: graceful UI fallback + `console.warn` for root-cause breadcrumbs.
+- Per-block error boundary (one bad image doesn't take down the rest).
+
+**Tasks:**
+- [ ] Add a small `ErrorBoundary` class component (or use `react-error-boundary` if it's in deps — verify first).
+- [ ] Wrap `DitheredPlane` inside `DitheredImage.tsx` with the boundary.
+- [ ] On caught error: `console.warn('[DitheredImage] texture failed', { src, error })`, then promote the underlying `next/image` from `opacity-0` → `opacity-100`.
+- [ ] Smoke-test every case study (MB, NB, C&C, CK, PL) by viewing all media blocks.
+- [ ] Capture the actual error message from console once logging lands — feeds a follow-up root-cause investigation.
+
+**Files:** `web/src/components/case-study/DitheredImage.tsx`, `web/src/components/case-study/DitheredPlane.tsx`.
+
+## Plan 3 — WebGL slot motion: more glide
+
+**Goal:** The canvas slot rect traveling between Hero / About / Work / Contact feels softer and has more "weight" relative to scroll. Same total travel distance — just trails the scroll instead of snapping.
+
+**Diagnosis:**
+- Slot rect (clip-path) is exponentially damped at `k = 30` (`SceneCanvas.tsx:221`) — current half-life ≈ 23ms.
+- User wants more glide, not more scroll runway. (Widening transition windows in `moduleTimeline.ts` was explicitly rejected.)
+
+**Decisions:**
+- Lower `k` from `30` → `15` (~46ms half-life, 2× the current lag).
+- A/B in the browser; dial up/down from there.
+
+**Tasks:**
+- [ ] `web/src/components/SceneCanvas.tsx:221` — change `const k = 30` → `const k = 15`.
+- [ ] Open `localhost:3000`. Scroll through hero→about, about→work, work→contact on desktop. Compare to "before" feel.
+- [ ] If too sluggish → bump to `k = 20`. If still too tight → drop to `k = 10`. One number knob.
+- [ ] Confirm `uModuleCenter` (line 240, derives from the same MotionValues) still tracks correctly — shapes should remain anchored to the slot center.
+
+**Files:** `web/src/components/SceneCanvas.tsx` (one line).
+
+## Plan 4 — Contact module typography: fewer fonts
+
+**Goal:** Reduce typeface count on the Contact overlay from 4 → 3, matching Hero/About/Work.
+
+**Diagnosis:**
+- Contact currently uses: **Pixel Square** (heading), **Instrument** (body + sub-line), **Fraunces** with variable-axis (email CTA), **Geist Mono** (meta) = 4 typefaces in one ~60svh block.
+- Other overlays use 3 max.
+- User explicitly said *"sizing and hierarchy seems pretty good"* — so we do NOT touch sizes, hierarchy, or any other element.
+- Fraunces IS used elsewhere on the site (WorkOverlay, case-study pages, /process). Removing it from Contact doesn't shrink the site-wide font system, only this one block.
+
+**Decisions:**
+- Swap email CTA `var(--font-fraunces)` (with `"opsz" 144, "SOFT" 100, "WONK" 0`) → `var(--font-geist-pixel-square)` (matches the "Contact" PixelTitle above it).
+- Drop `fontVariationSettings` (pixel font isn't variable).
+- Leave body paragraph, "Or run the studio" sub-line, and mono meta UNTOUCHED.
+- Bold/quirky choice acknowledged: pixel-font email at md:text-5xl / lg:text-6xl is unusual but intentional. Fall back to inheriting the default body sans only if it reads as a layout bug.
+
+**Tasks:**
+- [ ] `web/src/components/sections/ContactOverlay.tsx:33–37` — swap inline `fontFamily` to `var(--font-geist-pixel-square)`, drop the `fontVariationSettings` line.
+- [ ] Scroll to Contact at `localhost:3000`, confirm the email reads as intentional craft and not as a bug.
+- [ ] If it feels wrong, fall back to removing `fontFamily` entirely so the email inherits the default sans.
+- [ ] No font-import changes — Fraunces still loaded for the rest of the site.
+
+**Files:** `web/src/components/sections/ContactOverlay.tsx` (lines 33–37 only).
+
+## Suggested execution order
+
+Independent — pick any order. Suggested by ascending size:
+
+1. **Plan 4** — 1 file, 1 line. Fastest visible win.
+2. **Plan 3** — 1 file, 1 number. Tune live in the browser.
+3. **Plan 2** — error boundary + fallback. Restores broken images.
+4. **Plan 1** — new client component + smart back behavior. Largest of the four but still small.
+
+## Review
+
+All four plans shipped. `npm run guardrails` green (lint, typecheck, asset check, build).
+
+**Files touched**
+- `web/src/components/sections/ContactOverlay.tsx` — email CTA: `var(--font-fraunces)` w/ WONK/SOFT axis settings → `var(--font-geist-pixel-square)`. Dropped `fontVariationSettings`. 4 typefaces → 3 on the Contact block.
+- `web/src/components/SceneCanvas.tsx:221` — slot-rect damping `k = 30` → `k = 15` (~46ms half-life, 2× the prior lag). Comment block above updated to reflect the new value.
+- `web/src/components/case-study/DitheredImage.tsx` — added inline `DitheredErrorBoundary` class component wrapping `<Suspense>` inside `<View>`. On caught error: `console.warn('[DitheredImage] texture failed', { src, error })` + flips `shaderFailed` state, promoting the underlying `next/image` from opacity-0 to opacity-100. Per-block: one bad texture doesn't take down siblings.
+- `web/src/components/case-study/IndexLink.tsx` *(new)* — client component. Smart fallback: `router.back()` if `document.referrer` is same-origin AND `history.length > 1`; else `router.push('/')`. Modifier-key check (`metaKey|ctrlKey|shiftKey|button!==0`) early-returns so cmd-click / middle-click still open in new tab. Fixed `top-8 left-8 md:left-16 z-40` so it pins to the viewport at any scroll depth.
+- `web/src/app/work/[slug]/page.tsx` — removed inline `<nav>` + `<Link>` for INDEX; imported and rendered `<IndexLink />`. Removed now-unused `import Link from 'next/link'`.
+- `web/CONTEXT.md` — added "Index link" glossary entry (during grilling, not in this execution pass).
+
+**Verification done**
+- Lint: clean. (Initial pass flagged `@next/next/no-html-link-for-pages` for the `<a href="/">` in IndexLink — fixed by swapping to Next's `<Link>` with onClick. Link respects `event.defaultPrevented`.)
+- Typecheck: clean.
+- Asset size check: clean.
+- Build: succeeds. All 19 static pages generated. /work/[slug] still SSG.
+
+**Manual checks still to do**
+- Open `localhost:3000`, scroll through the homepage. Confirm the slot motion `k=15` glide feels right; dial to 10 or 20 if not.
+- Open a case study with broken images (any of the 5). Confirm the static `next/image` now renders where the DitheredPlane was silently failing. Open devtools and grab the `[DitheredImage] texture failed` console warning + the error message — feeds a follow-up root-cause investigation.
+- Open Contact module. Confirm pixel-font email reads as intentional design at md:text-5xl / lg:text-6xl, not as a layout bug. If it reads wrong, fall back to removing `fontFamily` entirely so it inherits the default body sans.
+- Click INDEX from a case study reached via the homepage → confirm scroll position restores in the Work grid section.
+- Open a case study via a fresh tab (direct URL). Click INDEX → confirm fresh navigation to `/`, no off-site redirect.
+- Cmd-click / middle-click INDEX → confirm new tab opens with `/`.
+
+**Deferred**
+- Root-cause of why `DitheredPlane`'s `useTexture` was failing — we now have a fallback + log, but the underlying cause (CORS / decode / R3F race) is still unknown. Capture the console warnings once they appear and investigate in a follow-up.
+- Fraunces is still loaded site-wide for WorkOverlay, CaseStudyHero, ChapterMark, NextProject, /process, /not-found, /lab/dispersion. Not removed.

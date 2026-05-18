@@ -30,11 +30,8 @@ function ContactInner({
       </p>
       <a
         href="mailto:hello@craftedkit.io"
-        className="text-balance text-2xl font-medium tracking-tight text-foreground transition-opacity hover:opacity-70 sm:text-3xl md:text-5xl lg:text-6xl"
-        style={{
-          fontFamily: 'var(--font-fraunces)',
-          fontVariationSettings: '"opsz" 144, "SOFT" 100, "WONK" 0',
-        }}
+        className="text-balance text-lg italic leading-snug text-foreground underline decoration-foreground/30 underline-offset-4 transition-colors hover:decoration-foreground/80 sm:text-2xl md:text-4xl"
+        style={{ fontFamily: 'var(--font-instrument)' }}
       >
         hello@craftedkit.io {'↗︎'}
       </a>
